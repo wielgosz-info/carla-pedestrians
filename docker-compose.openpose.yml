@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  openpose:
+    build:
+      context: openpose
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+        USERNAME: carla-pedestrians-openpose
+    image: wielgoszinfo/carla-pedestrians-openpose:latest
+    user: ${USER_ID}:${GROUP_ID}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${OPENPOSE_DATASETS_PATH}:/datasets:ro
+      - ${PWD}/openpose:/app
+      - vscode:/home/carla-pedestrians-openpose/.vscode-server
+      - vscode-insiders:/home/carla-pedestrians-openpose/.vscode-server-insiders
+      - outputs:/outputs
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,graphics,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['${OPENPOSE_GPU_ID:-0}']
+              capabilities: ['compute','graphics','utility']
+
+volumes: 
+  vscode:
+  vscode-insiders:
+  outputs:
