@@ -1,5 +1,5 @@
 # CARLA Pedestrians
-Bringing in more realistic pedestrians movements into CARLA
+Bringing more realistic pedestrians movements into CARLA.
 
 ## (Cumbersome) Running Steps
 
@@ -25,9 +25,12 @@ The generated files will be saved in the `carla-pedestrians_outputs` Docker volu
 ### Step 2
 Magic up the `/outputs/JAAD/annotations.csv` file. Automation script for that may be coming one day.
 
-(For now) it needs to have `video`, `frame`, `x1`,`y1`, `x2`, `y2`, `id`, `action` and `speed` columns, where `x1`,`y1`, `x2`, `y2` define pedestrian bounding box, `id` is the pedestrian id, `action` is what the pedestrian is doing (since right now only the `walking` ones will be used) and `speed` is the car speed category (for now only `stopped` cars will be used).
+(For now) it needs to have `video`, `frame`, `x1`,`y1`, `x2`, `y2`, `id`, `action`, `gender`, `age`, and `speed` columns, where `x1`,`y1`, `x2`, `y2` define pedestrian bounding box, `id` is the pedestrian id, `action` is what the pedestrian is doing (since right now only the `walking` ones will be used) and `speed` is the car speed category (for now only `stopped` cars will be used).
 
 ### More steps in progress...
+
+## Reference skeletons
+Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_carla/reference_skeletons` are extracted form [CARLA project Walkers *.uasset files](https://bitbucket.org/carla-simulator/carla-content).
 
 ## License
 MIT License

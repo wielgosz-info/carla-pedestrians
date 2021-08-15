@@ -1,0 +1,235 @@
+transforms:
+  crl_root:
+    location:
+      x: 0.000000
+      y: 0.000000
+      z: 0.000000
+    rotation:
+      pitch: 0.000000
+      yaw: 0.000000
+      roll: 89.999977
+  crl_hips__C:
+    location:
+      x: 0.000000
+      y: -61.480427
+      z: 0.175299
+    rotation:
+      pitch: 0.000000
+      yaw: 0.000000
+      roll: 0.000000
+  crl_spine__C:
+    location:
+      x: 0.000000
+      y: -6.235634
+      z: -0.663762
+    rotation:
+      pitch: 0.000000
+      yaw: 0.000000
+      roll: 0.000000
+  crl_spine01__C:
+    location:
+      x: 0.000000
+      y: -9.492020
+      z: -1.990320
+    rotation:
+      pitch: 0.000000
+      yaw: 0.000000
+      roll: 1.146048
+  crl_shoulder__L:
+    location:
+      x: 2.411211
+      y: -8.653436
+      z: 0.178948
+    rotation:
+      pitch: -8.222242
+      yaw: 2.705138
+      roll: -0.533445
+  crl_arm__L:
+    location:
+      x: 8.653010
+      y: 0.024726
+      z: 0.008183
+    rotation:
+      pitch: 8.130958
+      yaw: -1.672840
+      roll: -179.801041
+  crl_foreArm__L:
+    location:
+      x: 17.188292
+      y: 0.298856
+      z: 0.000151
+    rotation:
+      pitch: -12.093539
+      yaw: 0.000072
+      roll: -0.001195
+  crl_hand__L:
+    location:
+      x: 13.878342
+      y: 0.057703
+      z: -0.001418
+    rotation:
+      pitch: 89.591690
+      yaw: 121.621826
+      roll: -59.433094
+  crl_neck__C:
+    location:
+      x: 0.000001
+      y: -12.445250
+      z: -0.671307
+    rotation:
+      pitch: 0.000020
+      yaw: -179.999924
+      roll: 170.977905
+  crl_Head__C:
+    location:
+      x: -0.000006
+      y: -6.365326
+      z: -0.509481
+    rotation:
+      pitch: 0.000000
+      yaw: -0.000000
+      roll: 0.000000
+  crl_eye__L:
+    location:
+      x: -0.000006
+      y: -6.365326
+      z: -0.509481
+    rotation:
+      pitch: 0.000000
+      yaw: -0.000000
+      roll: 0.000000
+  crl_eye__R:
+    location:
+      x: 2.389013
+      y: -5.402094
+      z: -4.895399
+    rotation:
+      pitch: -0.000007
+      yaw: -179.999924
+      roll: 170.977905
+  crl_shoulder__R:
+    location:
+      x: -2.411209
+      y: -8.653436
+      z: 0.178951
+    rotation:
+      pitch: -8.166474
+      yaw: 177.129959
+      roll: 1.543657
+  crl_arm__R:
+    location:
+      x: 8.653080
+      y: 0.000002
+      z: 0.000000
+    rotation:
+      pitch: -11.944211
+      yaw: -177.876144
+      roll: -0.301647
+  crl_foreArm__R:
+    location:
+      x: -17.151833
+      y: -0.177732
+      z: -1.143589
+    rotation:
+      pitch: -9.223494
+      yaw: -0.770420
+      roll: 1.444826
+  crl_hand__R:
+    location:
+      x: -13.876346
+      y: -0.068094
+      z: -0.234481
+    rotation:
+      pitch: 88.132179
+      yaw: 169.425995
+      roll: -11.719076
+  crl_thigh__R:
+    location:
+      x: -6.816930
+      y: 5.130413
+      z: -0.822663
+    rotation:
+      pitch: 2.164275
+      yaw: -0.994304
+      roll: 179.763107
+  crl_leg__R:
+    location:
+      x: -1.159112
+      y: -27.167562
+      z: 0.743765
+    rotation:
+      pitch: 0.041125
+      yaw: 0.693376
+      roll: 178.054245
+  crl_foot__R:
+    location:
+      x: -1.594373
+      y: 24.275511
+      z: -2.559338
+    rotation:
+      pitch: -0.774427
+      yaw: 1.658993
+      roll: 118.831696
+  crl_toe__R:
+    location:
+      x: 0.000000
+      y: -7.702981
+      z: 0.000000
+    rotation:
+      pitch: -22.070089
+      yaw: -91.805153
+      roll: -89.186783
+  crl_toeEnd__R:
+    location:
+      x: 2.685130
+      y: 0.000000
+      z: -0.000000
+    rotation:
+      pitch: 88.226334
+      yaw: 88.049240
+      roll: -27.971342
+  crl_thigh__L:
+    location:
+      x: 6.816935
+      y: 5.130432
+      z: -0.822667
+    rotation:
+      pitch: -2.164275
+      yaw: 0.994304
+      roll: -0.236886
+  crl_leg__L:
+    location:
+      x: 1.159104
+      y: 27.167536
+      z: -0.743764
+    rotation:
+      pitch: -0.040974
+      yaw: 0.693271
+      roll: -175.168152
+  crl_foot__L:
+    location:
+      x: 1.596809
+      y: -24.407724
+      z: -0.325714
+    rotation:
+      pitch: 0.000020
+      yaw: 0.000031
+      roll: -65.955315
+  crl_toe__L:
+    location:
+      x: 0.006528
+      y: -7.698376
+      z: -0.266326
+    rotation:
+      pitch: -24.097486
+      yaw: -88.886429
+      roll: -90.389671
+  crl_toeEnd__L:
+    location:
+      x: 2.685127
+      y: 0.000000
+      z: 0.000000
+    rotation:
+      pitch: 89.761780
+      yaw: -105.737465
+      roll: -177.769180

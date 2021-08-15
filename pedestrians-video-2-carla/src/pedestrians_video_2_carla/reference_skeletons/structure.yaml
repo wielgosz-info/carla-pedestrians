@@ -1,0 +1,27 @@
+structure:
+  - crl_root:
+    - crl_hips__C:
+      - crl_spine__C:
+        - crl_spine01__C:
+          - crl_shoulder__L:
+            - crl_arm__L:
+              - crl_foreArm__L:
+                - crl_hand__L: null
+          - crl_neck__C:
+            - crl_Head__C:
+              - crl_eye__L: null
+              - crl_eye__R: null
+          - crl_shoulder__R:
+            - crl_arm__R:
+              - crl_foreArm__R:
+                - crl_hand__R: null
+        - crl_thigh__R:
+          - crl_leg__R:
+            - crl_foot__R:
+              - crl_toe__R:
+                - crl_toeEnd__R: null
+        - crl_thigh__L:
+          - crl_leg__L:
+            - crl_foot__L:
+              - crl_toe__L:
+                - crl_toeEnd__L: null
