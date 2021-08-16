@@ -22,9 +22,12 @@ References:
 
 import argparse
 import logging
+import time
 import sys
 
 from pedestrians_video_2_carla import __version__
+from pedestrians_video_2_carla.utils.destroy import destroy
+from pedestrians_video_2_carla.utils.setup import *
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -86,19 +89,32 @@ def setup_logging(loglevel):
 
 
 def main(args):
-    """Wrapper allowing :func:`fib` to be called with string arguments in a CLI fashion
-
-    Instead of returning the value from :func:`fib`, it prints the result to the
-    ``stdout`` in a nicely formatted message.
+    """
 
     Args:
       args (List[str]): command line parameters as list of strings
-          (for example  ``["--verbose", "42"]``).
+          (for example  ``["--verbose"]``).
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
 
     _logger.debug("Starting crazy calculations...")
+
+    client, world = setup_client_and_world()
+    world.tick()
+    pedestrian = setup_pedestrian(world, 'adult', 'female')
+    world.tick()
+    camera_rgb = setup_camera(world, pedestrian)
+    camera_rgb.listen(lambda image: image.save_to_disk(
+        '/outputs/carla/%06d.png' % image.frame))
+
+    ticks = 0
+    while ticks < 30:
+        ticks += 1
+        time.sleep(1/30.0)
+        world.tick()
+
+    destroy(client, world)
 
     _logger.info("Script ends here")
 
