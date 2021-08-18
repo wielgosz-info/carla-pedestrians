@@ -8,7 +8,7 @@ services:
       "-opengl",
       "-carla-rpc-port=${CARLA_SERVER_PORT:-2000}",
       "-carla-streaming-port=${CARLA_STREAMING_PORT:-2001}",
-      "-quality-level=Low"
+      "-quality-level=Epic"
     ]
     expose:
       - "${CARLA_SERVER_PORT:-2000}-${CARLA_STREAMING_PORT_2:-2002}"

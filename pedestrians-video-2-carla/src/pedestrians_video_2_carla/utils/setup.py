@@ -16,6 +16,8 @@ def setup_client_and_world(fps=30.0):
     traffic_manager = client.get_trafficmanager()
     traffic_manager.set_synchronous_mode(True)
 
+    world.tick()
+
     return client, world
 
 
@@ -35,15 +37,27 @@ def setup_pedestrian(world, age, gender):
     if pedestrian is None:
         raise RuntimeError("Couldn't spawn pedestrian")
 
+    world.tick()
+
     return pedestrian
 
 
-def setup_camera(world, pedestrian):
+def setup_camera(world, sensor_list, sensor_queue, pedestrian):
     blueprint_library = world.get_blueprint_library()
     camera_bp = blueprint_library.find('sensor.camera.rgb')
     camera_rgb = world.spawn_actor(camera_bp, carla.Transform(
-        carla.Location(x=1, y=1, z=1.5),
-        carla.Rotation(yaw=-179)
+        carla.Location(x=3.1, y=0, z=0),
+        carla.Rotation(yaw=-180)
     ), attach_to=pedestrian)
 
-    return camera_rgb
+    world.tick()
+
+    def camera_callback(sensor_data, sensor_queue, sensor_name):
+        sensor_data.save_to_disk(
+            '/outputs/carla/%06d.png' % sensor_data.frame)
+        sensor_queue.put((sensor_data.frame, sensor_name))
+
+    camera_rgb.listen(lambda data: camera_callback(data, sensor_queue, "camera_rgb"))
+    sensor_list.append(camera_rgb)
+
+    return sensor_list

@@ -25,6 +25,8 @@ import logging
 import time
 import sys
 
+from queue import Queue, Empty
+
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.utils.destroy import destroy
 from pedestrians_video_2_carla.utils.setup import *
@@ -101,20 +103,28 @@ def main(args):
     _logger.debug("Starting crazy calculations...")
 
     client, world = setup_client_and_world()
-    world.tick()
     pedestrian = setup_pedestrian(world, 'adult', 'female')
-    world.tick()
-    camera_rgb = setup_camera(world, pedestrian)
-    camera_rgb.listen(lambda image: image.save_to_disk(
-        '/outputs/carla/%06d.png' % image.frame))
+
+    sensor_list = []
+    sensor_queue = Queue()
+
+    sensor_list = setup_camera(world, sensor_list, sensor_queue, pedestrian)
 
     ticks = 0
-    while ticks < 30:
-        ticks += 1
-        time.sleep(1/30.0)
+    while ticks < 3:
         world.tick()
+        w_frame = world.get_snapshot().frame
 
-    destroy(client, world)
+        try:
+            for _ in range(len(sensor_list)):
+                s_frame = sensor_queue.get(True, 1.0)
+                print("World Frame: %d    Frame: %d   Sensor: %s" %
+                      (w_frame, s_frame[0], s_frame[1]))
+            ticks += 1
+        except Empty:
+            print("Some of the sensor information is missed")
+
+    destroy(client, world, sensor_list)
 
     _logger.info("Script ends here")
 
