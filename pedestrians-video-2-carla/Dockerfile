@@ -28,13 +28,20 @@ RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.
 COPY --from=carlasim/carla:0.9.11 /home/carla/PythonAPI/carla/dist/carla-0.9.11-py3.7-linux-x86_64.egg /usr/local/lib/python3.8/dist-packages/carla-0.9.11-py3.7-linux-x86_64.egg
 RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86_64.egg\nimport sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)" > /usr/local/lib/python3.8/dist-packages/easy_install.pth
 
-# Direct project dependencied are defined in pedestrians-video-2-carla/setup.cfg
+# Direct project dependencies are defined in pedestrians-video-2-carla/setup.cfg
 # However, we want to leverage the cache, so we're going to specify at least basic ones with versions here
 RUN pip install --no-cache-dir \
     cameratransform==1.1 \
-    numpy==1.21 \
-    Pillow==8.3 \
-    scipy==1.7
+    numpy==1.21.1 \
+    Pillow==8.3.1 \
+    scipy==1.7.1
+
+# Copy client files so that we can do editable pip install
+COPY . /app
+
+ARG COMMIT="0000000"
+RUN cd /app \
+    && SETUPTOOLS_SCM_PRETEND_VERSION="0.0.post0.dev38+${COMMIT}.dirty" pip install --no-cache-dir -e .
 
 # Create non-root user
 ARG USER_ID=1000

@@ -35,6 +35,7 @@ services:
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
         USERNAME: carla-pedestrians-client
+        COMMIT: ${COMMIT}
     image: wielgoszinfo/carla-pedestrians-client:latest
     user: ${USER_ID}:${GROUP_ID}
     volumes:

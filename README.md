@@ -10,7 +10,7 @@ Copy `.env.template` to `.env` and adjust the variables, especially the path to 
 Extract pedestrians skeletons from video clips using container specified in `docker-compose.openpose.yml`:
 
 ```sh
-docker-compose -f "docker-compose.openpose.yml" up -d --build
+COMMIT=$(git rev-parse --short HEAD) docker-compose -f "docker-compose.openpose.yml" --env-file .env up -d --build
 docker exec -it carla-pedestrians_openpose_1 /bin/bash
 ```
 
