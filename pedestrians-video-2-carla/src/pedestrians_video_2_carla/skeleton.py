@@ -30,6 +30,7 @@ from queue import Queue, Empty
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.utils.destroy import destroy
 from pedestrians_video_2_carla.utils.setup import *
+from pedestrians_video_2_carla.walker_control.reference_pose import apply_reference_pose
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -109,6 +110,8 @@ def main(args):
     sensor_queue = Queue()
 
     sensor_list = setup_camera(world, sensor_list, sensor_queue, pedestrian)
+
+    apply_reference_pose(world, pedestrian)
 
     ticks = 0
     while ticks < 3:

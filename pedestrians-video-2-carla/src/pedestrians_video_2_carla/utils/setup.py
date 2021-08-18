@@ -32,7 +32,7 @@ def setup_pedestrian(world, age, gender):
     while pedestrian is None and tries < 10:
         tries += 1
         walker_loc = world.get_random_location_from_navigation()
-        pedestrian = world.spawn_actor(walker_bp, carla.Transform(walker_loc))
+        pedestrian = world.try_spawn_actor(walker_bp, carla.Transform(walker_loc))
 
     if pedestrian is None:
         raise RuntimeError("Couldn't spawn pedestrian")
