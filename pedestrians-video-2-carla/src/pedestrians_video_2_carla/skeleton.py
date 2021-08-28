@@ -26,11 +26,13 @@ import time
 import sys
 
 from queue import Queue, Empty
+from collections import OrderedDict
 
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.utils.destroy import destroy
 from pedestrians_video_2_carla.utils.setup import *
-from pedestrians_video_2_carla.walker_control.reference_pose import apply_reference_pose
+from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -104,14 +106,14 @@ def main(args):
     _logger.debug("Starting crazy calculations...")
 
     client, world = setup_client_and_world()
-    pedestrian = setup_pedestrian(world, 'adult', 'female')
+    pedestrian = ControlledPedestrian(world, 'adult', 'female')
 
-    sensor_list = []
+    sensor_list = OrderedDict()
     sensor_queue = Queue()
 
-    sensor_list = setup_camera(world, sensor_list, sensor_queue, pedestrian)
+    sensor_list['camera_rgb'] = setup_camera(world, sensor_queue, pedestrian)
 
-    apply_reference_pose(world, pedestrian)
+    projection = PoseProjection(sensor_list['camera_rgb'], pedestrian)
 
     ticks = 0
     while ticks < 3:
@@ -119,10 +121,13 @@ def main(args):
         w_frame = world.get_snapshot().frame
 
         try:
-            for _ in range(len(sensor_list)):
+            for _ in range(len(sensor_list.values())):
                 s_frame = sensor_queue.get(True, 1.0)
                 print("World Frame: %d    Frame: %d   Sensor: %s" %
                       (w_frame, s_frame[0], s_frame[1]))
+
+            projection.current_pose_to_image(w_frame)
+
             ticks += 1
         except Empty:
             print("Some of the sensor information is missed")

@@ -1,5 +1,7 @@
 import carla
-import random
+import cameratransform as ct
+
+from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
 
 
 def setup_client_and_world(fps=30.0):
@@ -21,43 +23,30 @@ def setup_client_and_world(fps=30.0):
     return client, world
 
 
-def setup_pedestrian(world, age, gender):
-    blueprint_library = world.get_blueprint_library()
-    matching_blueprints = [bp for bp in blueprint_library.filter("walker.pedestrian.*")
-                           if bp.get_attribute('age') == age and bp.get_attribute('gender') == gender]
-    walker_bp = random.choice(matching_blueprints)
-
-    pedestrian = None
-    tries = 0
-    while pedestrian is None and tries < 10:
-        tries += 1
-        walker_loc = world.get_random_location_from_navigation()
-        pedestrian = world.try_spawn_actor(walker_bp, carla.Transform(walker_loc))
-
-    if pedestrian is None:
-        raise RuntimeError("Couldn't spawn pedestrian")
-
-    world.tick()
-
-    return pedestrian
-
-
-def setup_camera(world, sensor_list, sensor_queue, pedestrian):
+def setup_camera(world, sensor_queue, pedestrian):
     blueprint_library = world.get_blueprint_library()
     camera_bp = blueprint_library.find('sensor.camera.rgb')
+    pedestrian_transform = pedestrian.transform
     camera_rgb = world.spawn_actor(camera_bp, carla.Transform(
-        carla.Location(x=3.1, y=0, z=0),
-        carla.Rotation(yaw=-180)
-    ), attach_to=pedestrian)
+        carla.Location(
+            x=pedestrian_transform.location.x+3.1,
+            y=pedestrian_transform.location.y,
+            z=pedestrian_transform.location.z
+        ),
+        carla.Rotation(
+            pitch=pedestrian_transform.rotation.pitch,
+            yaw=pedestrian_transform.rotation.yaw-180,
+            roll=pedestrian_transform.rotation.roll,
+        )
+    ))
 
     world.tick()
 
     def camera_callback(sensor_data, sensor_queue, sensor_name):
         sensor_data.save_to_disk(
-            '/outputs/carla/%06d.png' % sensor_data.frame)
+            '/outputs/carla/{:06d}.png'.format(sensor_data.frame))
         sensor_queue.put((sensor_data.frame, sensor_name))
 
     camera_rgb.listen(lambda data: camera_callback(data, sensor_queue, "camera_rgb"))
-    sensor_list.append(camera_rgb)
 
-    return sensor_list
+    return camera_rgb

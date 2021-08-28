@@ -4,7 +4,7 @@ import carla
 def destroy(client, world, sensor_list):
     all_actors = world.get_actors()
 
-    for sensor in sensor_list:
+    for sensor in sensor_list.values():
         sensor.stop()
         sensor.destroy()
 
