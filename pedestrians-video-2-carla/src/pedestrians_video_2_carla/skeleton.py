@@ -22,7 +22,7 @@ References:
 
 import argparse
 import logging
-import time
+import random
 import sys
 
 from queue import Queue, Empty
@@ -113,10 +113,11 @@ def main(args):
 
     sensor_list['camera_rgb'] = setup_camera(world, sensor_queue, pedestrian)
 
-    projection = PoseProjection(sensor_list['camera_rgb'], pedestrian)
+    projection = PoseProjection(
+        sensor_list['camera_rgb'], pedestrian)
 
     ticks = 0
-    while ticks < 3:
+    while ticks < 10:
         world.tick()
         w_frame = world.get_snapshot().frame
 
@@ -131,6 +132,17 @@ def main(args):
             ticks += 1
         except Empty:
             print("Some of the sensor information is missed")
+
+        # teleport/rotate pedestrian a bit to see if projections are working
+        pedestrian.teleport_by(carla.Transform(
+            location=carla.Location(
+                x=random.random()*2-1,
+                y=random.random()*2-1
+            ),
+            rotation=carla.Rotation(
+                yaw=random.random()*360-180
+            )
+        ))
 
     destroy(client, world, sensor_list)
 

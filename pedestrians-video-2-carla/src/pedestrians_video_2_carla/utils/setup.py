@@ -26,7 +26,7 @@ def setup_client_and_world(fps=30.0):
 def setup_camera(world, sensor_queue, pedestrian):
     blueprint_library = world.get_blueprint_library()
     camera_bp = blueprint_library.find('sensor.camera.rgb')
-    pedestrian_transform = pedestrian.transform
+    pedestrian_transform = pedestrian.world_transform
     camera_rgb = world.spawn_actor(camera_bp, carla.Transform(
         carla.Location(
             x=pedestrian_transform.location.x+3.1,

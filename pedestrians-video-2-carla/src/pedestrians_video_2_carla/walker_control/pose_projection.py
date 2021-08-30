@@ -18,18 +18,22 @@ class PoseProjection(object):
         self._camera_ct = self._setup_camera(camera_rgb)
 
     def _setup_camera(self, camera_rgb: carla.Sensor):
-        # basic transform is in UE world coords, which are different
-        cam_y_offset = camera_rgb.get_transform().location.x - self._pedestrian.transform.location.x
+        # basic transform is in UE world coords, axes of which are different
+        cam_y_offset = camera_rgb.get_transform().location.x - \
+            self._pedestrian.world_transform.location.x
+
         camera_ct = ct.Camera(
             ct.RectilinearProjection(
                 image_width_px=self._image_size[0],
                 image_height_px=self._image_size[1],
-                view_x_deg=float(camera_rgb.attributes['fov'])
+                view_x_deg=float(camera_rgb.attributes['fov']),
+                sensor_width_mm=float(camera_rgb.attributes['lens_x_size'])*1000,
+                sensor_height_mm=float(camera_rgb.attributes['lens_y_size'])*1000
             ),
             ct.SpatialOrientation(
-                pos_y_m=-cam_y_offset*7,  # TODO: figure out correct value
-                elevation_m=1,  # TODO: figure out correct value
-                heading_deg=0,
+                pos_y_m=cam_y_offset,
+                elevation_m=self._pedestrian.spawn_shift.z,
+                heading_deg=180,
                 tilt_deg=90
             )
         )
@@ -37,9 +41,19 @@ class PoseProjection(object):
         return camera_ct
 
     def current_pose_to_points(self):
+        # TODO: change to log or remove
+        print('Walker world transform: {},{},{}'.format(
+            self._pedestrian.world_transform.location.x, self._pedestrian.world_transform.location.y, self._pedestrian.world_transform.location.z))
+        print('Walker relative transform: {},{},{}'.format(
+            self._pedestrian.transform.location.x, self._pedestrian.transform.location.y, self._pedestrian.transform.location.z))
+
+        relativeBones = [
+            self._pedestrian.transform.transform(bone.location)
+            for bone in self._pedestrian.current_pose.values()
+        ]
         return self._camera_ct.imageFromSpace([
-            (transform.location.x, transform.location.y, transform.location.z)
-            for transform in self._pedestrian.current_pose.values()
+            (bone.x, bone.y, bone.z)
+            for bone in relativeBones
         ], hide_backpoints=False)
 
     def current_pose_to_image(self, frame_no):
@@ -53,4 +67,5 @@ class PoseProjection(object):
         cv2.line(img, rounded[0], rounded[1], [255, 0, 0, 255], 1)
         cv2.circle(img, rounded[1], 1, [0, 255, 0, 255], 3)
 
-        cv2.imwrite('/outputs/carla/{:06d}_pose.png'.format(frame_no), img)
+        cv2.imwrite(
+            '/outputs/carla/{:06d}_pose.png'.format(frame_no), img)

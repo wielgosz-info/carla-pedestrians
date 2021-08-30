@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from logging import currentframe
 import random
 import carla
 
@@ -14,7 +15,11 @@ class ControlledPedestrian(object):
         self._age = age
         self._gender = gender
 
+        # spawn point (may be different than actual location the pedesrian has spawned, especially Z-wise)
+        self._spawn_loc: carla.Location = None
         self._walker = self._spawn_walker()
+        # initial world location of where the pedestrian has spawned
+        self._initial_transform = self._walker.get_transform()
 
         # ensure we will always get bones in the same order
         self._current_pose = self._structure_to_pose()
@@ -50,6 +55,8 @@ class ControlledPedestrian(object):
 
         if walker is None:
             raise RuntimeError("Couldn't spawn walker")
+        else:
+            self._spawn_loc = walker_loc
 
         self._world.tick()
 
@@ -67,6 +74,26 @@ class ControlledPedestrian(object):
 
         return absolute_pose
 
+    def teleport_by(self, transform: carla.Transform, cue_tick=False):
+        world_transform = self.world_transform
+        self._walker.set_transform(
+            carla.Transform(
+                location=carla.Location(
+                    x=world_transform.location.x + transform.location.x,
+                    y=world_transform.location.y + transform.location.y,
+                    z=world_transform.location.z + transform.location.z
+                ),
+                rotation=carla.Rotation(
+                    pitch=world_transform.rotation.pitch + transform.rotation.pitch,
+                    yaw=world_transform.rotation.yaw + transform.rotation.yaw,
+                    roll=world_transform.rotation.roll + transform.rotation.roll
+                )
+            )
+        )
+
+        if cue_tick:
+            self._world.tick()
+
     @property
     def age(self) -> str:
         return self._age
@@ -76,9 +103,39 @@ class ControlledPedestrian(object):
         return self._gender
 
     @property
-    def transform(self) -> carla.Transform:
+    def world_transform(self) -> carla.Transform:
         return self._walker.get_transform()
+
+    @property
+    def transform(self) -> carla.Transform:
+        """
+        Current pedestrian transform relative to the position it was spawned at
+        """
+        world_transform = self.world_transform
+        return carla.Transform(
+            location=carla.Location(
+                x=world_transform.location.x - self._initial_transform.location.x,
+                y=world_transform.location.y - self._initial_transform.location.y,
+                z=world_transform.location.z - self._initial_transform.location.z
+            ),
+            rotation=carla.Rotation(
+                pitch=world_transform.rotation.pitch - self._initial_transform.rotation.pitch,
+                yaw=world_transform.rotation.yaw - self._initial_transform.rotation.yaw,
+                roll=world_transform.rotation.roll - self._initial_transform.rotation.roll
+            )
+        )
 
     @property
     def current_pose(self) -> OrderedDict:
         return self._current_pose
+
+    @property
+    def spawn_shift(self):
+        """
+        Difference between spawn point and actual spawn location
+        """
+        return carla.Location(
+            x=self._initial_transform.location.x - self._spawn_loc.x,
+            y=self._initial_transform.location.y - self._spawn_loc.y,
+            z=self._initial_transform.location.z - self._spawn_loc.z
+        )
