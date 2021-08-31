@@ -41,14 +41,20 @@ class PoseProjection(object):
         return camera_ct
 
     def current_pose_to_points(self):
-        # TODO: change to log or remove
-        print('Walker world transform: {},{},{}'.format(
-            self._pedestrian.world_transform.location.x, self._pedestrian.world_transform.location.y, self._pedestrian.world_transform.location.z))
-        print('Walker relative transform: {},{},{}'.format(
-            self._pedestrian.transform.location.x, self._pedestrian.transform.location.y, self._pedestrian.transform.location.z))
+        ct_transform = carla.Transform(location=carla.Location(
+            x=self._pedestrian.transform.location.y,
+            y=self._pedestrian.transform.location.x,
+            z=self._pedestrian.transform.location.z
+        ), rotation=carla.Rotation(
+            yaw=-self._pedestrian.transform.rotation.yaw
+        ))
 
         relativeBones = [
-            self._pedestrian.transform.transform(bone.location)
+            ct_transform.transform(carla.Location(
+                x=bone.location.x,
+                y=bone.location.y,
+                z=bone.location.z
+            ))
             for bone in self._pedestrian.current_pose.values()
         ]
         return self._camera_ct.imageFromSpace([

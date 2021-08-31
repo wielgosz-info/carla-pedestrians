@@ -103,8 +103,6 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    _logger.debug("Starting crazy calculations...")
-
     client, world = setup_client_and_world()
     pedestrian = ControlledPedestrian(world, 'adult', 'female')
 
@@ -124,14 +122,15 @@ def main(args):
         try:
             for _ in range(len(sensor_list.values())):
                 s_frame = sensor_queue.get(True, 1.0)
-                print("World Frame: %d    Frame: %d   Sensor: %s" %
-                      (w_frame, s_frame[0], s_frame[1]))
+                _logger.debug(("World Frame: {:06d}    Frame: {:06d}   Sensor: {:s}".format(
+                    w_frame, s_frame[0], s_frame[1])))
 
             projection.current_pose_to_image(w_frame)
 
             ticks += 1
         except Empty:
-            print("Some of the sensor information is missed")
+            _logger.info(
+                "Some sensor information is missed in frame {:06d}".format(w_frame))
 
         # teleport/rotate pedestrian a bit to see if projections are working
         pedestrian.teleport_by(carla.Transform(
@@ -145,8 +144,6 @@ def main(args):
         ))
 
     destroy(client, world, sensor_list)
-
-    _logger.info("Script ends here")
 
 
 def run():
