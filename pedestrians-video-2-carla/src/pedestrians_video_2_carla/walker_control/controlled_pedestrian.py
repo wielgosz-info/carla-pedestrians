@@ -1,10 +1,13 @@
 from collections import OrderedDict
-from logging import currentframe
+import copy
+from hashlib import new
 import random
+from typing import Dict
 import carla
+from scipy.spatial.transform import rotation
 
 from pedestrians_video_2_carla.walker_control.io import load_reference
-from pedestrians_video_2_carla.walker_control.transforms import unreal_to_carla
+from pedestrians_video_2_carla.walker_control.transforms import mul_rotations, relative_to_absolute_pose, unreal_to_carla
 
 
 class ControlledPedestrian(object):
@@ -22,12 +25,12 @@ class ControlledPedestrian(object):
         self._initial_transform = self._walker.get_transform()
 
         # ensure we will always get bones in the same order
-        self._current_pose = self._structure_to_pose()
+        self._current_pose, self._structure = self._structure_to_pose()
         self._current_pose.update(self._apply_reference_pose())
 
     def _structure_to_pose(self) -> OrderedDict:
         pose = OrderedDict()
-        root = load_reference('structure')['structure'][0]
+        root = load_reference('structure')['structure']
 
         def add_to_pose(structure):
             (bone_name, substructures) = list(structure.items())[0]
@@ -36,9 +39,9 @@ class ControlledPedestrian(object):
                 for substructure in substructures:
                     add_to_pose(substructure)
 
-        add_to_pose(root)
+        add_to_pose(root[0])
 
-        return pose
+        return pose, root
 
     def _spawn_walker(self):
         blueprint_library = self._world.get_blueprint_library()
@@ -64,7 +67,9 @@ class ControlledPedestrian(object):
 
     def _apply_reference_pose(self):
         unreal_pose = load_reference('{}_{}'.format(self._age, self._gender))
-        absolute_pose = unreal_to_carla(unreal_pose['transforms'])
+        relative_pose = unreal_to_carla(unreal_pose['transforms'])
+
+        absolute_pose = relative_to_absolute_pose(relative_pose, self._structure)
 
         control = carla.WalkerBoneControl()
         control.bone_transforms = list(absolute_pose.items())
@@ -72,7 +77,7 @@ class ControlledPedestrian(object):
         self._walker.apply_control(control)
         self._world.tick()
 
-        return absolute_pose
+        return relative_pose
 
     def teleport_by(self, transform: carla.Transform, cue_tick=False):
         world_transform = self.world_transform
@@ -93,6 +98,34 @@ class ControlledPedestrian(object):
 
         if cue_tick:
             self._world.tick()
+
+    def apply_movement(self, rotations: Dict[str, carla.Rotation], cue_tick=False):
+        """
+        Apply the movement specified as change in local rotations for selected bones.
+        For example `pedestrian.apply_movement({ 'crl_foreArm__L': carla.Rotation(pitch=60) })`
+        will make the arm bend in the elbow by 60deg around Y axis using its current rotation
+        plane (which gives roughly 60deg bend around the global Z axis).
+        """
+
+        # use getter to ensure we have a copy of self._current_pose
+        new_pose = self.current_relative_pose
+
+        # for each defined rotation, we merge it with the current one
+        for bone_name, rotation_change in rotations.items():
+            new_pose[bone_name].rotation = mul_rotations(
+                new_pose[bone_name].rotation, rotation_change)
+
+        absolute_pose = relative_to_absolute_pose(new_pose, self._structure)
+
+        control = carla.WalkerBoneControl()
+        control.bone_transforms = list(absolute_pose.items())
+
+        self._walker.apply_control(control)
+
+        if cue_tick:
+            self._world.tick()
+
+        self._current_pose = new_pose
 
     @property
     def age(self) -> str:
@@ -126,8 +159,27 @@ class ControlledPedestrian(object):
         )
 
     @property
-    def current_pose(self) -> OrderedDict:
-        return self._current_pose
+    def current_absolute_pose(self) -> OrderedDict:
+        return relative_to_absolute_pose(self._current_pose, self._structure)
+
+    @property
+    def current_relative_pose(self) -> OrderedDict:
+        # carla.Transform cannot be deepcopied, so we do it manually
+        pose_copy = OrderedDict()
+        for bone_name, transform in self._current_pose.items():
+            pose_copy[bone_name] = carla.Transform(
+                location=carla.Location(
+                    x=transform.location.x,
+                    y=transform.location.y,
+                    z=transform.location.z,
+                ),
+                rotation=carla.Rotation(
+                    pitch=transform.rotation.pitch,
+                    yaw=transform.rotation.yaw,
+                    roll=transform.rotation.roll,
+                )
+            )
+        return pose_copy
 
     @property
     def spawn_shift(self):

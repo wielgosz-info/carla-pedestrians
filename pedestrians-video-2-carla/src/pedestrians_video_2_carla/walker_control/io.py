@@ -4,7 +4,7 @@ from typing import Any, Dict
 import carla
 import yaml
 
-from pedestrians_video_2_carla.walker_control.transforms import relative_to_absolute, unreal_to_carla
+from pedestrians_video_2_carla.walker_control.transforms import relative_to_absolute_pose, unreal_to_carla
 
 try:
     from yaml import CLoader as Loader
@@ -13,13 +13,16 @@ except ImportError:
 
 
 def load_reference(type) -> Dict[str, Any]:
-    filename = {
-        "adult_female": 'sk_female.yaml',
-        "adult_male": 'sk_male.yaml',
-        "child_female": 'sk_girl.yaml',
-        "child_male": 'sk_kid.yaml',
-        "structure": 'structure.yaml',
-    }[type]
+    try:
+        filename = {
+            "adult_female": 'sk_female_relative.yaml',
+            "adult_male": 'sk_male_relative.yaml',
+            "child_female": 'sk_girl_relative.yaml',
+            "child_male": 'sk_kid_relative.yaml',
+            "structure": 'structure.yaml',
+        }[type]
+    except KeyError:
+        filename = type
 
     with open(os.path.join(os.path.dirname(__file__), '..', 'reference_skeletons', filename), 'r') as f:
         return yaml.load(f, Loader=Loader)

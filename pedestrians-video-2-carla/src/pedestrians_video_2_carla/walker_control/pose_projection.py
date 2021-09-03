@@ -41,6 +41,7 @@ class PoseProjection(object):
         return camera_ct
 
     def current_pose_to_points(self):
+        # switch from UE world coords, axes of which are different
         ct_transform = carla.Transform(location=carla.Location(
             x=self._pedestrian.transform.location.y,
             y=self._pedestrian.transform.location.x,
@@ -51,11 +52,11 @@ class PoseProjection(object):
 
         relativeBones = [
             ct_transform.transform(carla.Location(
-                x=bone.location.x,
+                x=-bone.location.x,
                 y=bone.location.y,
                 z=bone.location.z
             ))
-            for bone in self._pedestrian.current_pose.values()
+            for bone in self._pedestrian.current_absolute_pose.values()
         ]
         return self._camera_ct.imageFromSpace([
             (bone.x, bone.y, bone.z)

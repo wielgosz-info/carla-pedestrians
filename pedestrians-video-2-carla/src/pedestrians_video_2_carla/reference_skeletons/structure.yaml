@@ -15,12 +15,12 @@ structure:
             - crl_arm__R:
               - crl_foreArm__R:
                 - crl_hand__R: null
-        - crl_thigh__R:
-          - crl_leg__R:
-            - crl_foot__R:
-              - crl_toe__R:
-                - crl_toeEnd__R: null
-        - crl_thigh__L:
+      - crl_thigh__R:
+        - crl_leg__R:
+          - crl_foot__R:
+            - crl_toe__R:
+              - crl_toeEnd__R: null
+      - crl_thigh__L:
           - crl_leg__L:
             - crl_foot__L:
               - crl_toe__L:

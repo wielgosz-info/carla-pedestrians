@@ -135,13 +135,17 @@ def main(args):
         # teleport/rotate pedestrian a bit to see if projections are working
         pedestrian.teleport_by(carla.Transform(
             location=carla.Location(
-                x=random.random()*2-1,
-                y=random.random()*2-1
+                x=random.random()-0.5,
+                y=random.random()-0.5
             ),
             rotation=carla.Rotation(
                 yaw=random.random()*360-180
             )
         ))
+        pedestrian.apply_movement({
+            'crl_arm__L': carla.Rotation(yaw=-6),
+            'crl_foreArm__L': carla.Rotation(pitch=-6)
+        })
 
     destroy(client, world, sensor_list)
 
