@@ -22,17 +22,13 @@ References:
 
 import argparse
 import logging
-import random
 import sys
 
-from queue import Queue, Empty
-from collections import OrderedDict
-
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.utils.destroy import destroy
-from pedestrians_video_2_carla.utils.setup import *
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+from pedestrians_video_2_carla.walker_control.io import load_openpose
 from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
+from pedestrians_video_2_carla.walker_control.transforms import normalize_points, openpose_to_image_points
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -103,51 +99,39 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    client, world = setup_client_and_world()
-    pedestrian = ControlledPedestrian(world, 'adult', 'female')
+    pedestrian = ControlledPedestrian(None, 'adult', 'female')
 
-    sensor_list = OrderedDict()
-    sensor_queue = Queue()
+    projection = PoseProjection(None, pedestrian)
+    image_projection_points = projection.current_pose_to_points()
+    alt_projection_points, (hips_idx, _) = projection.openpose_hips_neck(
+        image_projection_points)
 
-    sensor_list['camera_rgb'] = setup_camera(world, sensor_queue, pedestrian)
+    raw_openpose = load_openpose('/outputs/from_carla/670889_keypoints.json')
+    image_openpose_points = openpose_to_image_points(
+        raw_openpose[0][0]['pose_keypoints_2d'], pedestrian)
 
-    projection = PoseProjection(
-        sensor_list['camera_rgb'], pedestrian)
+    import numpy as np
+    import scipy
+    import pprint
 
-    ticks = 0
-    while ticks < 10:
-        world.tick()
-        w_frame = world.get_snapshot().frame
+    not_nans = ~np.isnan(image_openpose_points).any(axis=1)
 
-        try:
-            for _ in range(len(sensor_list.values())):
-                s_frame = sensor_queue.get(True, 1.0)
-                _logger.debug(("World Frame: {:06d}    Frame: {:06d}   Sensor: {:s}".format(
-                    w_frame, s_frame[0], s_frame[1])))
+    projection_points = openpose_points = normalize_points(
+        alt_projection_points, not_nans, hips_idx)
+    openpose_points = normalize_points(image_openpose_points, not_nans, hips_idx)
 
-            projection.current_pose_to_image(w_frame)
+    # https://docs.scipy.org/doc/scipy/reference/spatial.distance.html
+    euclidean_distances = np.array([
+        scipy.spatial.distance.euclidean(p, o)
+        for p, o in zip(projection_points, openpose_points)
+    ])
+    pprint.pprint(euclidean_distances)
 
-            ticks += 1
-        except Empty:
-            _logger.info(
-                "Some sensor information is missed in frame {:06d}".format(w_frame))
-
-        # teleport/rotate pedestrian a bit to see if projections are working
-        pedestrian.teleport_by(carla.Transform(
-            location=carla.Location(
-                x=random.random()-0.5,
-                y=random.random()-0.5
-            ),
-            rotation=carla.Rotation(
-                yaw=random.random()*360-180
-            )
-        ))
-        pedestrian.apply_movement({
-            'crl_arm__L': carla.Rotation(yaw=-6),
-            'crl_foreArm__L': carla.Rotation(pitch=-6)
-        })
-
-    destroy(client, world, sensor_list)
+    cosine_distances = np.array([
+        scipy.spatial.distance.cosine(p, o)
+        for p, o in zip(projection_points, openpose_points)
+    ])
+    pprint.pprint(cosine_distances)
 
 
 def run():

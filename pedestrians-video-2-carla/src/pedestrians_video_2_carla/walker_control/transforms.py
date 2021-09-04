@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, OrderedDict, Union
 import carla
+import numpy as np
 from scipy.spatial.transform import Rotation
 
 
@@ -21,6 +22,56 @@ def unreal_to_carla(unreal_transforms: Dict[str, Dict[str, Dict[str, float]]]) -
             )
         ) for (bone_name, transform_dict) in unreal_transforms.items()
     }
+
+
+def openpose_to_image_points(keypoints_2d: List[float], pedestrian: Any) -> np.ndarray:
+    """
+    [summary]
+
+    :param keypoints_2d: List of keypoints in OpenPose format
+        `[x0,y0,confidence0, x1,y1,confidence1, ..., x24,y24,confidence24]`
+    :type keypoints_2d: List[float]
+    :param pedestrian: pedestrian object on which `structure_as_pose()` can be called to get an empty
+        OrderedDict with bones in correct order
+    :type pedestrian: ControlledPedestrian
+    :return: array of points in the image coordinates
+    :rtype: np.ndarray
+    """
+    structure_as_pose, _ = pedestrian.structure_as_pose()
+
+    points = np.array(keypoints_2d).reshape((-1, 3))  # x,y,confidence
+
+    # match OpenPose BODY_25 to CARLA walker bones as much as possible
+    structure_as_pose['crl_root'] = [np.NaN, np.NaN]
+    # No. 8 is actually the point between thighs in OpenPose, so lower than CARLA one
+    structure_as_pose['crl_hips__C'] = points[8, :2]
+    structure_as_pose['crl_spine__C'] = [np.NaN, np.NaN]
+    structure_as_pose['crl_spine01__C'] = [np.NaN, np.NaN]
+    structure_as_pose['crl_shoulder__L'] = [np.NaN, np.NaN]
+    structure_as_pose['crl_arm__L'] = points[5, :2]
+    structure_as_pose['crl_foreArm__L'] = points[6, :2]
+    structure_as_pose['crl_hand__L'] = points[7, :2]
+    # No. 1 is actually the point between shoulders in OpenPose, so lower than CARLA one
+    structure_as_pose['crl_neck__C'] = points[1, :2]
+    structure_as_pose['crl_Head__C'] = points[0, :2]
+    structure_as_pose['crl_shoulder__R'] = [np.NaN, np.NaN]
+    structure_as_pose['crl_arm__R'] = points[2, :2]
+    structure_as_pose['crl_foreArm__R'] = points[3, :2]
+    structure_as_pose['crl_hand__R'] = points[4, :2]
+    structure_as_pose['crl_eye__L'] = points[16, :2]
+    structure_as_pose['crl_eye__R'] = points[15, :2]
+    structure_as_pose['crl_thigh__R'] = points[9, :2]
+    structure_as_pose['crl_leg__R'] = points[10, :2]
+    structure_as_pose['crl_foot__R'] = points[11, :2]
+    structure_as_pose['crl_toe__R'] = points[22, :2]
+    structure_as_pose['crl_toeEnd__R'] = points[23, :2]
+    structure_as_pose['crl_thigh__L'] = points[12, :2]
+    structure_as_pose['crl_leg__L'] = points[13, :2]
+    structure_as_pose['crl_foot__L'] = points[14, :2]
+    structure_as_pose['crl_toe__L'] = points[19, :2]
+    structure_as_pose['crl_toeEnd__L'] = points[20, :2]
+
+    return np.array(list(structure_as_pose.values()))
 
 
 def carla_to_scipy_rotation(rotation: Union[carla.Rotation, carla.Transform]) -> Rotation:
@@ -57,8 +108,8 @@ def mul_rotations(reference_rotation: carla.Rotation, local_rotation: carla.Rota
 
 
 def relative_to_absolute_pose(
-        relative_transforms: Dict[str, carla.Transform],
-        structure: List[Dict[str, List[Dict[str, Any]]]]) -> Dict[str, carla.Transform]:
+        relative_transforms: OrderedDict[str, carla.Transform],
+        structure: List[Dict[str, List[Dict[str, Any]]]]) -> OrderedDict[str, carla.Transform]:
     # ensure bones in absolute pose will be in the same order as they were in relative
     absolute_transforms = OrderedDict(relative_transforms)
 
@@ -85,6 +136,20 @@ def relative_to_absolute_pose(
     transform_descendants(structure[0], carla.Transform())
 
     return absolute_transforms
+
+
+def normalize_points(image_points, not_nans, hips_idx):
+    hips = image_points[hips_idx]
+    points = image_points[not_nans]
+
+    height = points[:, 1].max() - points[:, 1].min()
+    zeros = np.array([
+        hips[0],  # X of hips point
+        points[:, 1].min()
+    ])
+    points = (points - zeros) / height
+
+    return points
 
 
 if __name__ == '__main__':

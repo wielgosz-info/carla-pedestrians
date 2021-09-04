@@ -1,10 +1,9 @@
+from queue import Queue
 import carla
-import cameratransform as ct
-
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+from typing import Any, Tuple
 
 
-def setup_client_and_world(fps=30.0):
+def setup_client_and_world(fps=30.0) -> Tuple[carla.Client, carla.World]:
     client = carla.Client('server', 2000)
     client.set_timeout(10.0)
 
@@ -23,22 +22,51 @@ def setup_client_and_world(fps=30.0):
     return client, world
 
 
-def setup_camera(world, sensor_queue, pedestrian):
-    blueprint_library = world.get_blueprint_library()
-    camera_bp = blueprint_library.find('sensor.camera.rgb')
+def get_camera_transform(pedestrian: Any, distance=3.1, elevation=1.2) -> carla.Transform:
+    """
+    Calculates the transform in front of the pedestrian.
+
+    :param pedestrian: pedestrian that should be observed by the camera
+    :type pedestrian: ControlledPedestrian
+    :param distance: distance in meters from the root of pedestrian to camera, defaults to 3.1
+    :type distance: float, optional
+    :param elevation: camera elevation, defaults to 1.2
+    :type elevation: float, optional
+    :return: desired transform of the camera
+    :rtype: carla.Transform
+    """
     pedestrian_transform = pedestrian.world_transform
-    camera_rgb = world.spawn_actor(camera_bp, carla.Transform(
+    return carla.Transform(
         carla.Location(
-            x=pedestrian_transform.location.x+3.1,
-            y=pedestrian_transform.location.y,
-            z=pedestrian_transform.location.z
+            x=pedestrian_transform.location.x-pedestrian.spawn_shift.x+distance,
+            y=pedestrian_transform.location.y-pedestrian.spawn_shift.y,
+            z=pedestrian_transform.location.z-pedestrian.spawn_shift.z+elevation
         ),
         carla.Rotation(
             pitch=pedestrian_transform.rotation.pitch,
             yaw=pedestrian_transform.rotation.yaw-180,
             roll=pedestrian_transform.rotation.roll,
         )
-    ))
+    )
+
+
+def setup_camera(world: carla.World, sensor_queue: Queue, pedestrian: Any) -> carla.Sensor:
+    """
+    Sets up the camera with callback saving frames to disk in front of the pedestrian.
+
+    :param world: 
+    :type world: carla.World
+    :param sensor_queue: 
+    :type sensor_queue: Queue
+    :param pedestrian: 
+    :type pedestrian: ControlledPedestrian
+    :return: RGB Camera
+    :rtype: carla.Sensor
+    """
+    blueprint_library = world.get_blueprint_library()
+    camera_bp = blueprint_library.find('sensor.camera.rgb')
+    camera_tr = get_camera_transform(pedestrian)
+    camera_rgb = world.spawn_actor(camera_bp, camera_tr)
 
     world.tick()
 
