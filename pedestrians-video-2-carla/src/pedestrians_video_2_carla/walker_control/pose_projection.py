@@ -116,13 +116,17 @@ class PoseProjection(object):
         thighR_idx = bone_names.index('crl_thigh__R')
         thighL_idx = bone_names.index('crl_thigh__L')
         projection_points[hips_idx] = np.mean(
-            [projection_points[thighR_idx], projection_points[thighL_idx]])
+            [projection_points[thighR_idx], projection_points[thighL_idx]],
+            axis=0
+        )
 
         neck_idx = bone_names.index('crl_neck__C')
         shoulderR_idx = bone_names.index('crl_shoulder__R')
         shoulderL_idx = bone_names.index('crl_shoulder__L')
         projection_points[neck_idx] = np.mean(
-            [projection_points[shoulderR_idx], projection_points[shoulderL_idx]])
+            [projection_points[shoulderR_idx], projection_points[shoulderL_idx]],
+            axis=0
+        )
 
         return projection_points, (hips_idx, neck_idx)
 
