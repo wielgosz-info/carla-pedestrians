@@ -87,7 +87,7 @@ class PoseProjection(object):
                 y=bone.location.y,
                 z=bone.location.z
             ))
-            for bone in self._pedestrian.current_absolute_pose.values()
+            for bone in self._pedestrian.current_pose.absolute.values()
         ]
         return self._camera_ct.imageFromSpace([
             (bone.x, bone.y, bone.z)
@@ -107,28 +107,6 @@ class PoseProjection(object):
 
         cv2.imwrite(
             '/outputs/carla/{:06d}_pose.png'.format(frame_no), img)
-
-    def openpose_hips_neck(self, original_points: np.ndarray) -> np.ndarray:
-        projection_points = np.copy(original_points)
-
-        bone_names = list(self._pedestrian.current_absolute_pose.keys())
-        hips_idx = bone_names.index('crl_hips__C')
-        thighR_idx = bone_names.index('crl_thigh__R')
-        thighL_idx = bone_names.index('crl_thigh__L')
-        projection_points[hips_idx] = np.mean(
-            [projection_points[thighR_idx], projection_points[thighL_idx]],
-            axis=0
-        )
-
-        neck_idx = bone_names.index('crl_neck__C')
-        shoulderR_idx = bone_names.index('crl_shoulder__R')
-        shoulderL_idx = bone_names.index('crl_shoulder__L')
-        projection_points[neck_idx] = np.mean(
-            [projection_points[shoulderR_idx], projection_points[shoulderL_idx]],
-            axis=0
-        )
-
-        return projection_points, (hips_idx, neck_idx)
 
 
 if __name__ == "__main__":
@@ -171,7 +149,7 @@ if __name__ == "__main__":
                 yaw=15
             )
         ))
-        pedestrian.apply_movement({
+        pedestrian.move({
             'crl_arm__L': carla.Rotation(yaw=-6),
             'crl_foreArm__L': carla.Rotation(pitch=-6)
         })

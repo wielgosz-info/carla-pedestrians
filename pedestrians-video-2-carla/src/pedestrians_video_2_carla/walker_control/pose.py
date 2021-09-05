@@ -4,8 +4,8 @@ import carla
 import time
 from collections import OrderedDict
 
-from pedestrians_video_2_carla.walker_control.io import load_reference
-from pedestrians_video_2_carla.walker_control.transforms import mul_rotations
+from pedestrians_video_2_carla.walker_control.unreal import load_reference
+from pedestrians_video_2_carla.utils.rotations import mul_rotations
 
 
 class Pose(object):
@@ -53,7 +53,11 @@ class Pose(object):
         if subsubstructures is not None:
             for subsubstructure in subsubstructures:
                 self.__transform_descendants(
-                    subsubstructure, absolute_pose[bone_name])
+                    absolute_pose,
+                    relative_pose,
+                    subsubstructure,
+                    absolute_pose[bone_name]
+                )
 
     @staticmethod
     def __deepcopy_pose_dict(orig_pose_dict):
@@ -130,3 +134,14 @@ class Pose(object):
             self.__last_abs_mod = self.__last_rel_mod
 
         return self.__deepcopy_pose_dict(self.__last_abs)
+
+    def move(self, rotations: Dict[str, carla.Rotation]):
+        # use getter to ensure we have a copy of self._relative_pose
+        new_pose = self.relative
+
+        # for each defined rotation, we merge it with the current one
+        for bone_name, rotation_change in rotations.items():
+            new_pose[bone_name].rotation = mul_rotations(
+                new_pose[bone_name].rotation, rotation_change)
+
+        self.relative = new_pose

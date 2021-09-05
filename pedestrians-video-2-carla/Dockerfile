@@ -21,7 +21,8 @@ RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.
     && pip install --no-cache-dir \
     autopep8 \
     pylint \
-    pytest
+    pytest \
+    pytest-cov
 
 # Let's pretend we've installed CARLA via easy_install
 # It's client for Python 3.7 and in Ubuntu 20.04 there's Python 3.8 but hopefully this will work
@@ -33,7 +34,9 @@ RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86
 # However, we want to leverage the cache, so we're going to specify at least basic ones with versions here
 RUN pip install --no-cache-dir \
     cameratransform==1.1 \
+    matplotlib==3.4.3 \
     numpy==1.21.1 \
+    opencv-python-headless==4.5.3.56 \
     Pillow==8.3.1 \
     pyyaml==5.4.1 \
     scipy==1.7.1

@@ -42,7 +42,7 @@ transforms:
       z: 146.588516
     rotation:
       pitch: -2.681300
-      yaw: 11.360085
+      yaw: -11.360085
       roll: 89.999985
   crl_arm__L:
     location:

@@ -3,9 +3,8 @@ import random
 from typing import Dict, Tuple, Any
 import carla
 
-from pedestrians_video_2_carla.walker_control.io import load_reference
-from pedestrians_video_2_carla.walker_control.transforms import mul_rotations, relative_to_absolute_pose, unreal_to_carla
-from pedestrians_video_2_carla.utils.setup import get_camera_transform
+from pedestrians_video_2_carla.walker_control.unreal import load_reference, unreal_to_carla
+from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
 class ControlledPedestrian(object):
@@ -35,10 +34,8 @@ class ControlledPedestrian(object):
         else:
             self._walker = None
 
-        # ensure we will always get bones in the same order
-        self._structure = None
-        self._current_pose, self._structure = self.structure_as_pose()
-        self._current_pose.update(self._apply_reference_pose())
+        self._current_pose = Pose()
+        self._current_pose.relative = self._apply_reference_pose()
 
         if self._walker is not None:
             self._initial_transform = self._walker.get_transform()
@@ -92,14 +89,8 @@ class ControlledPedestrian(object):
         unreal_pose = load_reference('{}_{}'.format(self._age, self._gender))
         relative_pose = unreal_to_carla(unreal_pose['transforms'])
 
-        absolute_pose = relative_to_absolute_pose(relative_pose, self._structure)
-
-        if self._walker is not None:
-            control = carla.WalkerBoneControl()
-            control.bone_transforms = list(absolute_pose.items())
-
-            self._walker.apply_control(control)
-            self._world.tick()
+        self._current_pose.relative = relative_pose
+        self.apply_pose(True)
 
         return relative_pose
 
@@ -124,7 +115,7 @@ class ControlledPedestrian(object):
             if cue_tick:
                 self._world.tick()
 
-    def apply_movement(self, rotations: Dict[str, carla.Rotation], cue_tick=False):
+    def move(self, rotations: Dict[str, carla.Rotation], cue_tick=False):
         """
         Apply the movement specified as change in local rotations for selected bones.
         For example `pedestrian.apply_movement({ 'crl_foreArm__L': carla.Rotation(pitch=60) })`
@@ -132,26 +123,24 @@ class ControlledPedestrian(object):
         plane (which gives roughly 60deg bend around the global Z axis).
         """
 
-        # use getter to ensure we have a copy of self._current_pose
-        new_pose = self.current_relative_pose
+        self._current_pose.move(rotations)
+        self.apply_pose(cue_tick)
 
-        # for each defined rotation, we merge it with the current one
-        for bone_name, rotation_change in rotations.items():
-            new_pose[bone_name].rotation = mul_rotations(
-                new_pose[bone_name].rotation, rotation_change)
+    def apply_pose(self, cue_tick=False):
+        """
+        Applies the current absolute pose to the carla.Walker if it exists.
 
-        absolute_pose = relative_to_absolute_pose(new_pose, self._structure)
-
+        :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
+        :type cue_tick: bool, optional
+        """
         if self._walker is not None:
             control = carla.WalkerBoneControl()
-            control.bone_transforms = list(absolute_pose.items())
+            control.bone_transforms = list(self._current_pose.absolute.items())
 
             self._walker.apply_control(control)
 
             if cue_tick:
                 self._world.tick()
-
-        self._current_pose = new_pose
 
     @property
     def age(self) -> str:
@@ -189,27 +178,8 @@ class ControlledPedestrian(object):
         )
 
     @property
-    def current_absolute_pose(self) -> OrderedDict:
-        return relative_to_absolute_pose(self._current_pose, self._structure)
-
-    @property
-    def current_relative_pose(self) -> OrderedDict:
-        # carla.Transform cannot be deepcopied, so we do it manually
-        pose_copy = OrderedDict()
-        for bone_name, transform in self._current_pose.items():
-            pose_copy[bone_name] = carla.Transform(
-                location=carla.Location(
-                    x=transform.location.x,
-                    y=transform.location.y,
-                    z=transform.location.z,
-                ),
-                rotation=carla.Rotation(
-                    pitch=transform.rotation.pitch,
-                    yaw=transform.rotation.yaw,
-                    roll=transform.rotation.roll,
-                )
-            )
-        return pose_copy
+    def current_pose(self) -> Pose:
+        return self._current_pose
 
     @property
     def spawn_shift(self):
@@ -263,7 +233,7 @@ if __name__ == "__main__":
         ))
 
         # apply some movement to the left arm to see apply_movement in action
-        pedestrian.apply_movement({
+        pedestrian.move({
             'crl_arm__L': carla.Rotation(yaw=-random.random()*15),
             'crl_foreArm__L': carla.Rotation(pitch=-random.random()*15)
         })
