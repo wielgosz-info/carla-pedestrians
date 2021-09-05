@@ -4,10 +4,10 @@ Bringing more realistic pedestrians movements into CARLA.
 ## (Cumbersome) Running Steps
 
 ### Step 0
-Copy `.env.template` to `.env` and adjust the variables, especially the path to datasets (e.g. for dataset root `OPENPOSE_DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.).
+Copy `.env.template` to `.env` and adjust the variables, especially the path to datasets (e.g. for dataset root `OPENPOSE_DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.). By default, the project assumes [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/).
 
 ### Step 1
-Extract pedestrians skeletons from video clips using container specified in `docker-compose.openpose.yml`:
+Extract pedestrians skeletons from video clips with [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) using container specified in `docker-compose.openpose.yml`:
 
 ```sh
 COMMIT=$(git rev-parse --short HEAD) docker-compose -f "docker-compose.openpose.yml" --env-file .env up -d --build
@@ -35,6 +35,6 @@ Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_ca
 ## License
 [MIT License](https://github.com/wielgosz-info/carla-pedestrians/blob/main/LICENSE)
 
-The project uses videos and annotations from [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/), created by Amir Rasouli, Iuliia Kotseruba, and John K. Tsotsos, to extract pedestrians movements and attributes. The videos and annotations are released under [MIT License](https://github.com/ykotseruba/JAAD/blob/JAAD_2.0/LICENSE).
+This project uses videos and annotations from [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/), created by Amir Rasouli, Iuliia Kotseruba, and John K. Tsotsos, to extract pedestrians movements and attributes. The videos and annotations are released under [MIT License](https://github.com/ykotseruba/JAAD/blob/JAAD_2.0/LICENSE).
 
-Please be aware that this project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) to extract pedestrians skeletons from videos, which has its [own licensing](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/LICENSE) (basically, academic or non-profit organization noncommercial research use only).
+This project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), created by Ginés Hidalgo, Zhe Cao, Tomas Simon, Shih-En Wei, Yaadhav Raaj, Hanbyul Joo, and Yaser Sheikh, to extract pedestrians skeletons from videos. OpenPose has its [own licensing](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/LICENSE) (basically, academic or non-profit organization noncommercial research use only).
