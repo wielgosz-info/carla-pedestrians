@@ -25,9 +25,6 @@ import logging
 import sys
 
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
-from pedestrians_video_2_carla.walker_control.openpose import alternative_hips_neck, load_openpose, openpose_to_image_points
-from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -97,53 +94,6 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
-
-    pedestrian = ControlledPedestrian(None, 'adult', 'female')
-
-    projection = PoseProjection(None, pedestrian)
-    image_projection_points = projection.current_pose_to_points()
-    alt_projection_points, (hips_idx, _) = alternative_hips_neck(
-        image_projection_points, pedestrian.current_pose.empty)
-
-    raw_openpose = load_openpose('/outputs/from_carla/670889_keypoints.json')
-    image_openpose_points = openpose_to_image_points(
-        raw_openpose[0][0]['pose_keypoints_2d'], pedestrian.current_pose.empty)
-
-    import numpy as np
-    import scipy
-    import pprint
-
-    not_nans = ~np.isnan(image_openpose_points).any(axis=1)
-
-    def normalize_points(image_points, not_nans, hips_idx):
-        hips = image_points[hips_idx]
-        points = image_points[not_nans]
-
-        height = points[:, 1].max() - points[:, 1].min()
-        zeros = np.array([
-            hips[0],  # X of hips point
-            points[:, 1].min()
-        ])
-        points = (points - zeros) / height
-
-        return points
-
-    projection_points = openpose_points = normalize_points(
-        alt_projection_points, not_nans, hips_idx)
-    openpose_points = normalize_points(image_openpose_points, not_nans, hips_idx)
-
-    # https://docs.scipy.org/doc/scipy/reference/spatial.distance.html
-    euclidean_distances = np.array([
-        scipy.spatial.distance.euclidean(p, o)
-        for p, o in zip(projection_points, openpose_points)
-    ])
-    pprint.pprint(euclidean_distances)
-
-    cosine_distances = np.array([
-        scipy.spatial.distance.cosine(p, o)
-        for p, o in zip(projection_points, openpose_points)
-    ])
-    pprint.pprint(cosine_distances)
 
 
 def run():

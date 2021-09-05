@@ -1,9 +1,6 @@
-import pytest
-
 import numpy as np
 
-from pedestrians_video_2_carla.walker_control.io import load_reference
-from pedestrians_video_2_carla.walker_control.transforms import unreal_to_carla
+from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
 from pedestrians_video_2_carla.walker_control.pose import Pose
 
 

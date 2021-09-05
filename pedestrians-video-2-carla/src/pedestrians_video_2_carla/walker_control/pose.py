@@ -4,7 +4,7 @@ import carla
 import time
 from collections import OrderedDict
 
-from pedestrians_video_2_carla.walker_control.unreal import load_reference
+from pedestrians_video_2_carla.utils.unreal import load_reference
 from pedestrians_video_2_carla.utils.rotations import mul_rotations
 
 

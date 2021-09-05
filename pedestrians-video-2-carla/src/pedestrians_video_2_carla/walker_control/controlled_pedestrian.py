@@ -3,7 +3,7 @@ import random
 from typing import Dict, Tuple, Any
 import carla
 
-from pedestrians_video_2_carla.walker_control.unreal import load_reference, unreal_to_carla
+from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
 from pedestrians_video_2_carla.walker_control.pose import Pose
 
 

@@ -67,7 +67,7 @@ def load_openpose(path: str, frame_no_regexp: Pattern = None, frame_no_as_int=Fa
     return ordered_frames
 
 
-def openpose_to_image_points(keypoints_2d: List[float], empty_pose: OrderedDict) -> np.ndarray:
+def openpose_to_projection_points(keypoints_2d: List[float], empty_pose: OrderedDict) -> np.ndarray:
     """
     Converts list of points from OpenPose JSON output into image-space coordinates.
 
