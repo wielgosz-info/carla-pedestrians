@@ -17,8 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.html \
     torch==1.9.0+cu111 \
     torchvision==0.10.0+cu111 \
-    torchaudio==0.9.0 \
-    && pip install --no-cache-dir \
+    torchaudio==0.9.0
+
+# separate some utility/development requirements, since they will change much more often than PyTorch ones
+RUN pip install --no-cache-dir \
     autopep8 \
     pylint \
     pytest \
