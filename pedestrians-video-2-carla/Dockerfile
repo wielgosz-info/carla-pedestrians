@@ -20,7 +20,8 @@ RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.
     torchaudio==0.9.0 \
     && pip install --no-cache-dir \
     autopep8 \
-    pylint
+    pylint \
+    pytest
 
 # Let's pretend we've installed CARLA via easy_install
 # It's client for Python 3.7 and in Ubuntu 20.04 there's Python 3.8 but hopefully this will work
