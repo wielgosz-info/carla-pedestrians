@@ -1,7 +1,9 @@
 from collections import OrderedDict
+import copy
 import random
 from typing import Dict, Tuple, Any
 import carla
+from pedestrians_video_2_carla.utils.spatial import deepcopy_location, deepcopy_transform
 
 from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
 from pedestrians_video_2_carla.walker_control.pose import Pose
@@ -22,46 +24,69 @@ class ControlledPedestrian(object):
         """
         super().__init__()
 
-        self._world = world
         self._age = age
         self._gender = gender
+        self._current_pose = Pose()
+        self._current_pose.relative = self._load_reference_pose()
 
         # spawn point (may be different than actual location the pedesrian has spawned, especially Z-wise);
         # if world is not specified this will always be point 0,0,0
         self._spawn_loc = carla.Location()
-        if self._world is not None:
-            self._walker = self._spawn_walker()
-        else:
-            self._walker = None
+        self._world = None
+        self._walker = None
+        self._initial_transform = carla.Transform()
+        self._world_transform = carla.Transform()
 
-        self._current_pose = Pose()
-        self._current_pose.relative = self._apply_reference_pose()
+        if world is not None:
+            self.bind(world, True)
 
-        if self._walker is not None:
-            self._initial_transform = self._walker.get_transform()
-            self._world_transform = self._walker.get_transform()
-        else:
-            self._initial_transform = carla.Transform()
-            self._world_transform = carla.Transform()
+    def __deepcopy__(self, memo):
+        """
+        Creates deep copy of the ControlledPedestrian.
+        Please note that the result is unbound to world, since it is impossible to spawn
+        exact same actor in exactly same location. It is up to copying script to actually
+        `.bind()` it as needed.
 
-    def structure_as_pose(self) -> Tuple[OrderedDict, Dict[str, Any]]:
-        pose = OrderedDict()
+        :param memo: [description]
+        :type memo: [type]
+        :return: [description]
+        :rtype: ControlledPedestrian
+        """
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == '_spawn_loc':
+                setattr(result, k, deepcopy_location(v))
+            elif k in ['_initial_transform', '_world_transform']:
+                setattr(result, k, deepcopy_transform(v))
+            elif k in ['_walker', '_world']:
+                setattr(result, k, None)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
 
-        if self._structure is not None:
-            root = self._structure
-        else:
-            root = load_reference('structure')['structure']
+    def bind(self, world: carla.World, ignore_shift=False):
+        """
+        Binds the pedestrian to the instance of carla.World
 
-        def add_to_pose(structure):
-            (bone_name, substructures) = list(structure.items())[0]
-            pose[bone_name] = None
-            if substructures is not None:
-                for substructure in substructures:
-                    add_to_pose(substructure)
+        :param world:
+        :type world: carla.World
+        """
+        # remember current shift from initial position,
+        # so we are able to teleport pedestrian there directly
+        if not ignore_shift:
+            shift = self.transform
 
-        add_to_pose(root[0])
+        self._world = world
+        self._walker = self._spawn_walker()
+        self._initial_transform = self._walker.get_transform()
+        self._world_transform = self._walker.get_transform()
 
-        return pose, root
+        if not ignore_shift:  # there was no shift
+            self.teleport_by(shift)
+
+        self.apply_pose(True)
 
     def _spawn_walker(self):
         blueprint_library = self._world.get_blueprint_library()
@@ -85,16 +110,23 @@ class ControlledPedestrian(object):
 
         return walker
 
-    def _apply_reference_pose(self):
+    def _load_reference_pose(self):
         unreal_pose = load_reference('{}_{}'.format(self._age, self._gender))
         relative_pose = unreal_to_carla(unreal_pose['transforms'])
 
-        self._current_pose.relative = relative_pose
-        self.apply_pose(True)
-
         return relative_pose
 
-    def teleport_by(self, transform: carla.Transform, cue_tick=False):
+    def teleport_by(self, transform: carla.Transform, cue_tick=False) -> int:
+        """
+        Teleports the pedestrian in the world.
+
+        :param transform: Transform relative to the current world transform describing the desired shift
+        :type transform: carla.Transform
+        :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
+        :type cue_tick: bool, optional
+        :return: World frame number if cue_tick==True else 0
+        :rtype: int
+        """
         old_world_transform = self.world_transform
         self._world_transform = carla.Transform(
             location=carla.Location(
@@ -113,25 +145,36 @@ class ControlledPedestrian(object):
             self._walker.set_transform(self._world_transform)
 
             if cue_tick:
-                self._world.tick()
+                return self._world.tick()
 
-    def move(self, rotations: Dict[str, carla.Rotation], cue_tick=False):
+        return 0
+
+    def update_pose(self, rotations: Dict[str, carla.Rotation], cue_tick=False) -> int:
         """
         Apply the movement specified as change in local rotations for selected bones.
-        For example `pedestrian.apply_movement({ 'crl_foreArm__L': carla.Rotation(pitch=60) })`
+        For example `pedestrian.update_pose({ 'crl_foreArm__L': carla.Rotation(pitch=60) })`
         will make the arm bend in the elbow by 60deg around Y axis using its current rotation
         plane (which gives roughly 60deg bend around the global Z axis).
+
+        :param rotations: Change in local rotations for selected bones
+        :type rotations: Dict[str, carla.Rotation]
+        :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
+        :type cue_tick: bool, optional
+        :return: World frame number if cue_tick==True else 0
+        :rtype: int
         """
 
         self._current_pose.move(rotations)
-        self.apply_pose(cue_tick)
+        return self.apply_pose(cue_tick)
 
-    def apply_pose(self, cue_tick=False):
+    def apply_pose(self, cue_tick=False) -> int:
         """
         Applies the current absolute pose to the carla.Walker if it exists.
 
         :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
         :type cue_tick: bool, optional
+        :return: World frame number if cue_tick==True else 0
+        :rtype: int
         """
         if self._walker is not None:
             control = carla.WalkerBoneControl()
@@ -140,17 +183,18 @@ class ControlledPedestrian(object):
             self._walker.apply_control(control)
 
             if cue_tick:
-                self._world.tick()
+                return self._world.tick()
+        return 0
 
-    @property
+    @ property
     def age(self) -> str:
         return self._age
 
-    @property
+    @ property
     def gender(self) -> str:
         return self._gender
 
-    @property
+    @ property
     def world_transform(self) -> carla.Transform:
         if self._walker is not None:
             # if possible, get it from CARLA
@@ -158,10 +202,16 @@ class ControlledPedestrian(object):
             return self._walker.get_transform()
         return self._world_transform
 
-    @property
+    @world_transform.setter
+    def world_transform(self, transform: carla.Transform):
+        if self._walker is not None:
+            return self._walker.set_transform(transform)
+        self._world_transform = transform
+
+    @ property
     def transform(self) -> carla.Transform:
         """
-        Current pedestrian transform relative to the position it was spawned at
+        Current pedestrian transform relative to the position it was spawned at.
         """
         world_transform = self.world_transform
         return carla.Transform(
@@ -177,11 +227,15 @@ class ControlledPedestrian(object):
             )
         )
 
-    @property
+    @ property
+    def initial_transform(self) -> carla.Transform:
+        return deepcopy_transform(self._initial_transform)
+
+    @ property
     def current_pose(self) -> Pose:
         return self._current_pose
 
-    @property
+    @ property
     def spawn_shift(self):
         """
         Difference between spawn point and actual spawn location
@@ -203,20 +257,21 @@ if __name__ == "__main__":
     client, world = setup_client_and_world()
     pedestrian = ControlledPedestrian(world, 'adult', 'female')
 
-    sensor_list = OrderedDict()
-    sensor_queue = Queue()
+    sensor_dict = OrderedDict()
+    camera_queue = Queue()
 
-    sensor_list['camera_rgb'] = setup_camera(world, sensor_queue, pedestrian)
+    sensor_dict['camera_rgb'] = setup_camera(
+        world, camera_queue, pedestrian
+    )
 
     ticks = 0
     while ticks < 10:
-        world.tick()
-        w_frame = world.get_snapshot().frame
+        w_frame = world.tick()
 
         try:
-            for _ in range(len(sensor_list.values())):
-                s_frame = sensor_queue.get(True, 1.0)
-
+            sensor_data = camera_queue.get(True, 1.0)
+            sensor_data.save_to_disk(
+                '/outputs/carla/{:06d}.png'.format(sensor_data.frame))
             ticks += 1
         except Empty:
             print("Some sensor information is missed in frame {:06d}".format(w_frame))
@@ -233,9 +288,9 @@ if __name__ == "__main__":
         ))
 
         # apply some movement to the left arm to see apply_movement in action
-        pedestrian.move({
+        pedestrian.update_pose({
             'crl_arm__L': carla.Rotation(yaw=-random.random()*15),
             'crl_foreArm__L': carla.Rotation(pitch=-random.random()*15)
         })
 
-    destroy(client, world, sensor_list)
+    destroy(client, world, sensor_dict)

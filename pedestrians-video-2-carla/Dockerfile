@@ -42,7 +42,8 @@ RUN pip install --no-cache-dir \
     opencv-python-headless==4.5.3.56 \
     Pillow==8.3.1 \
     pyyaml==5.4.1 \
-    scipy==1.7.1
+    scipy==1.7.1 \
+    tqdm==4.62.2
 
 # Copy client files so that we can do editable pip install
 COPY . /app

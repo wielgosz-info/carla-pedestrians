@@ -1,36 +1,15 @@
-"""
-This is a skeleton file that can serve as a starting point for a Python
-console script. To run this script uncomment the following lines in the
-``[options.entry_points]`` section in ``setup.cfg``::
-
-    console_scripts =
-         fibonacci = pedestrians_video_2_carla.skeleton:run
-
-Then run ``pip install .`` (or ``pip install -e .`` for editable mode)
-which will install the command ``fibonacci`` inside your current environment.
-
-Besides console scripts, the header (i.e. until ``_logger``...) of this file can
-also be used as template for Python modules.
-
-Note:
-    This skeleton file can be safely removed if not needed!
-
-References:
-    - https://setuptools.readthedocs.io/en/latest/userguide/entry_point.html
-    - https://pip.pypa.io/en/stable/reference/pip_install
-"""
-
 import argparse
 import logging
 import sys
+import gym
+from tqdm import tqdm
 
 from pedestrians_video_2_carla import __version__
+from pedestrians_video_2_carla.gym_carla_pedestrians.wrappers import NumpyToDictActionWrapper, CarlaRenderWrapper
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
 __license__ = "MIT"
-
-_logger = logging.getLogger(__name__)
 
 # ---- CLI ----
 # The functions defined in this section are wrappers around the main Python
@@ -84,6 +63,9 @@ def setup_logging(loglevel):
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
+    matplotlib_logger = logging.getLogger('matplotlib')
+    matplotlib_logger.setLevel(logging.INFO)
+
 
 def main(args):
     """
@@ -94,6 +76,28 @@ def main(args):
     """
     args = parse_args(args)
     setup_logging(args.loglevel)
+
+    env = gym.make('CarlaPedestrians-v0', env_id=0)
+    # env = NumpyToDictActionWrapper(env)
+    env = CarlaRenderWrapper(env)
+
+    env.seed(1337)
+
+    total_episodes = 2
+    total_steps = 10
+
+    with tqdm(total=total_episodes, desc='Episode', unit='ep', position=0) as ep_bar:
+        for episode in range(total_episodes):
+            obs = env.reset()
+            with tqdm(total=total_steps, desc='Frame', unit='f', position=1) as steps_bar:
+                for step in range(total_steps):
+                    action = env.action_space.sample()  # or given a custom model, action = policy(observation)
+                    obs, reward, done, info = env.step(action)
+                    frame = env.render(mode='rgb_array')
+                    steps_bar.update(1)
+            ep_bar.update(1)
+
+    env.close()
 
 
 def run():

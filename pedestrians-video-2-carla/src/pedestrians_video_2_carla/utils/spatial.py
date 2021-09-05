@@ -1,7 +1,7 @@
 from typing import Union
 
 import carla
-from scipy.spatial.transform import Rotation
+from scipy.spatial.transform import Rotation, rotation
 
 
 def carla_to_scipy_rotation(rotation: Union[carla.Rotation, carla.Transform]) -> Rotation:
@@ -44,3 +44,26 @@ def mul_rotations(reference_rotation: carla.Rotation, local_rotation: carla.Rota
 
     # and now multiply & convert it back
     return scipy_to_carla_rotation(reference_rot*local_rot)
+
+
+def deepcopy_location(v: carla.Location) -> carla.Location:
+    return carla.Location(
+        x=v.x,
+        y=v.y,
+        z=v.z
+    )
+
+
+def deepcopy_rotation(v: carla.Rotation) -> carla.Rotation:
+    return carla.Rotation(
+        pitch=v.pitch,
+        yaw=v.yaw,
+        roll=v.roll,
+    )
+
+
+def deepcopy_transform(v: carla.Transform) -> carla.Transform:
+    return carla.Transform(
+        location=deepcopy_location(v.location),
+        rotation=deepcopy_rotation(v.rotation)
+    )

@@ -29,7 +29,7 @@ class RGBCameraMock(object):
 
 
 class PoseProjection(object):
-    def __init__(self, camera_rgb: carla.Sensor, pedestrian: ControlledPedestrian, *args, **kwargs) -> None:
+    def __init__(self, pedestrian: ControlledPedestrian, camera_rgb: carla.Sensor = None, *args, **kwargs) -> None:
         super().__init__()
 
         self._pedestrian = pedestrian
@@ -120,25 +120,27 @@ if __name__ == "__main__":
     client, world = setup_client_and_world()
     pedestrian = ControlledPedestrian(world, 'adult', 'female')
 
-    sensor_list = OrderedDict()
-    sensor_queue = Queue()
+    sensor_dict = OrderedDict()
+    camera_queue = Queue()
 
-    sensor_list['camera_rgb'] = setup_camera(world, sensor_queue, pedestrian)
+    sensor_dict['camera_rgb'] = setup_camera(
+        world, camera_queue, pedestrian
+    )
 
     projection = PoseProjection(
-        sensor_list['camera_rgb'], pedestrian)
+        pedestrian,
+        sensor_dict['camera_rgb']
+    )
 
     ticks = 0
     while ticks < 10:
-        world.tick()
-        w_frame = world.get_snapshot().frame
+        w_frame = world.tick()
 
         try:
-            for _ in range(len(sensor_list.values())):
-                s_frame = sensor_queue.get(True, 1.0)
-
+            sensor_data = camera_queue.get(True, 1.0)
+            sensor_data.save_to_disk(
+                '/outputs/carla/{:06d}.png'.format(sensor_data.frame))
             projection.current_pose_to_image(w_frame)
-
             ticks += 1
         except Empty:
             print("Some sensor information is missed in frame {:06d}".format(w_frame))
@@ -149,9 +151,9 @@ if __name__ == "__main__":
                 yaw=15
             )
         ))
-        pedestrian.move({
+        pedestrian.update_pose({
             'crl_arm__L': carla.Rotation(yaw=-6),
             'crl_foreArm__L': carla.Rotation(pitch=-6)
         })
 
-    destroy(client, world, sensor_list)
+    destroy(client, world, sensor_dict)

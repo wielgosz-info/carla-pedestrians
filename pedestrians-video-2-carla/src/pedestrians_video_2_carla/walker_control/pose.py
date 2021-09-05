@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 
 from pedestrians_video_2_carla.utils.unreal import load_reference
-from pedestrians_video_2_carla.utils.rotations import mul_rotations
+from pedestrians_video_2_carla.utils.spatial import deepcopy_transform, mul_rotations
 
 
 class Pose(object):
@@ -65,18 +65,7 @@ class Pose(object):
         for bone_name, transform in orig_pose_dict.items():
             if transform is not None:
                 # carla.Transform cannot be deepcopied, so we do it manually
-                pose_dict[bone_name] = carla.Transform(
-                    location=carla.Location(
-                        x=transform.location.x,
-                        y=transform.location.y,
-                        z=transform.location.z,
-                    ),
-                    rotation=carla.Rotation(
-                        pitch=transform.rotation.pitch,
-                        yaw=transform.rotation.yaw,
-                        roll=transform.rotation.roll,
-                    )
-                )
+                pose_dict[bone_name] = deepcopy_transform(transform)
             else:
                 pose_dict[bone_name] = None
         return pose_dict

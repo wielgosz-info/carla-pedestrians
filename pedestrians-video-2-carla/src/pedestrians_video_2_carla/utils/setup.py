@@ -70,11 +70,6 @@ def setup_camera(world: carla.World, sensor_queue: Queue, pedestrian: Any) -> ca
 
     world.tick()
 
-    def camera_callback(sensor_data, sensor_queue, sensor_name):
-        sensor_data.save_to_disk(
-            '/outputs/carla/{:06d}.png'.format(sensor_data.frame))
-        sensor_queue.put((sensor_data.frame, sensor_name))
-
-    camera_rgb.listen(lambda data: camera_callback(data, sensor_queue, "camera_rgb"))
+    camera_rgb.listen(sensor_queue.put)
 
     return camera_rgb
