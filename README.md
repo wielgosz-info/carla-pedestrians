@@ -33,6 +33,8 @@ Magic up the `/outputs/JAAD/annotations.csv` file. Automation script for that ma
 Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_carla/reference_skeletons` are extracted form [CARLA project Walkers *.uasset files](https://bitbucket.org/carla-simulator/carla-content).
 
 ## License
-MIT License
+[MIT License](https://github.com/wielgosz-info/carla-pedestrians/blob/main/LICENSE)
+
+The project uses videos and annotations from [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/), created by Amir Rasouli, Iuliia Kotseruba, and John K. Tsotsos, to extract pedestrians movements and attributes. The videos and annotations are released under [MIT License](https://github.com/ykotseruba/JAAD/blob/JAAD_2.0/LICENSE).
 
 Please be aware that this project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) to extract pedestrians skeletons from videos, which has its [own licensing](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/LICENSE) (basically, academic or non-profit organization noncommercial research use only).
