@@ -34,9 +34,10 @@ RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86
 
 # Direct project dependencies are defined in pedestrians-video-2-carla/setup.cfg
 # However, we want to leverage the cache, so we're going to specify at least basic ones with versions here
+# Also, temporary use the pre-release version of gym, switch to gym==0.20.0 when released
 RUN pip install --no-cache-dir \
     cameratransform==1.1 \
-    gym==0.19.0 \
+    https://github.com/openai/gym/archive/refs/tags/v0.20.0.zip \
     matplotlib==3.4.3 \
     numpy==1.21.1 \
     opencv-python-headless==4.5.3.56 \

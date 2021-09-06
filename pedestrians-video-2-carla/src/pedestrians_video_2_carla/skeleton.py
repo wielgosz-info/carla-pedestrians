@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+import carla
 import gym
 from tqdm import tqdm
 
@@ -80,6 +81,11 @@ def main(args):
     env = gym.make('CarlaPedestrians-v0', env_id=0)
     # env = NumpyToDictActionWrapper(env)
     env = CarlaRenderWrapper(env)
+    env = gym.wrappers.record_video.RecordVideo(
+        env,
+        video_folder='/outputs/carla/videos',
+        episode_trigger=lambda ep_id: True  # for now, we want video from every episode
+    )
 
     env.seed(1337)
 
@@ -88,12 +94,16 @@ def main(args):
 
     with tqdm(total=total_episodes, desc='Episode', unit='ep', position=0) as ep_bar:
         for episode in range(total_episodes):
-            obs = env.reset()
+            obs = env.reset(
+                age='adult',
+                gender='female',
+                initial_teleport=None,
+                length=10  # we need to know how many frames to match to send 'done'
+            )
             with tqdm(total=total_steps, desc='Frame', unit='f', position=1) as steps_bar:
                 for step in range(total_steps):
                     action = env.action_space.sample()  # or given a custom model, action = policy(observation)
                     obs, reward, done, info = env.step(action)
-                    frame = env.render(mode='rgb_array')
                     steps_bar.update(1)
             ep_bar.update(1)
 

@@ -54,6 +54,8 @@ class CarlaPedestriansEnv(gym.Env):
         self.reward_range = (-np.inf, np.inf)
 
         self._env_id = env_id
+        self._length = None
+        self._steps = 0
         self._pedestrian: ControlledPedestrian = None
         self._pose_projection: PoseProjection = None
 
@@ -72,7 +74,7 @@ class CarlaPedestriansEnv(gym.Env):
 
         return [seed]
 
-    def reset(self, age='adult', gender='female', initial_teleport: carla.Transform = None):
+    def reset(self, age='adult', gender='female', initial_teleport: carla.Transform = None, length=np.inf):
         # actually, we only need CARLA for rendering, so a lot of this could probably be moved to
         # some kind of rendering wrapper
         self.close()
@@ -82,6 +84,9 @@ class CarlaPedestriansEnv(gym.Env):
 
         if initial_teleport is not None:
             self._pedestrian.teleport_by(initial_teleport, True)
+
+        self._steps = 0
+        self._length = length
 
         return self._get_observation()
 
@@ -96,9 +101,11 @@ class CarlaPedestriansEnv(gym.Env):
             for bone_name, rotation in action['update_pose'].items()
         })
 
+        self._steps += 1
+
         observation = self._get_observation()
         reward = 0.0
-        done = False
+        done = self._steps >= self._length
         info = {
             'pedestrian': self._pedestrian,
             'pose_projection': self._pose_projection

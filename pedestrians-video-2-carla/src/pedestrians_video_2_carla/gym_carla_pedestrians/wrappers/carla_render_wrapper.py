@@ -7,6 +7,7 @@ from typing import Any
 import carla
 import gym
 import PIL
+import numpy as np
 from pedestrians_video_2_carla.utils.destroy import destroy
 from pedestrians_video_2_carla.utils.setup import (setup_camera,
                                                    setup_client_and_world)
@@ -15,16 +16,19 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
 
 
 class CarlaRenderWrapper(gym.Wrapper):
-    def __init__(self, env: gym.Env, *args, **kwargs) -> None:
+    def __init__(self, env: gym.Env, fps=30.0, *args, **kwargs) -> None:
         super().__init__(env, *args, **kwargs)
-
         self.metadata['render.modes'].append('rgb_array')
         self.metadata['render.modes'] = list(set(self.metadata['render.modes']))
+        self.metadata['video.frames_per_second'] = fps
 
         self._client: carla.Client = None
         self._world: carla.World = None
         self._sensor_dict: OrderedDict = None
         self._camera_queue: Queue = None
+
+        self._fps = fps
+        self._image_size = None
 
         self._bound_pedestrian = None
 
@@ -39,9 +43,10 @@ class CarlaRenderWrapper(gym.Wrapper):
     def reset(self, *args, **kwargs) -> Any:
         self.close()
 
-        ret = super().reset(*args, **kwargs)
+        observations = super().reset(*args, **kwargs)
 
-        self._client, self._world = setup_client_and_world()
+        self._client, self._world = setup_client_and_world(fps=self._fps)
+
         self._bound_pedestrian: ControlledPedestrian = copy.deepcopy(
             self.env._pedestrian)
         self._bound_pedestrian.bind(self._world)
@@ -52,7 +57,12 @@ class CarlaRenderWrapper(gym.Wrapper):
         self._sensor_dict['camera_rgb'] = setup_camera(
             self._world, self._camera_queue, self._bound_pedestrian)
 
-        return ret
+        self._image_size = (
+            int(self._sensor_dict['camera_rgb'].attributes['image_size_x']),
+            int(self._sensor_dict['camera_rgb'].attributes['image_size_y'])
+        )
+
+        return observations
 
     def render(self, mode='human', **kwargs):
         if mode == 'rgb_array':
@@ -84,8 +94,8 @@ class CarlaRenderWrapper(gym.Wrapper):
                     img = PIL.Image.frombuffer('RGBA', (data.width, data.height),
                                                data.raw_data, "raw", 'RGBA', 0, 1)  # load
                     img = img.convert('RGB')  # drop alpha
-                    return img
+                    return np.array(img)[..., ::-1]
 
-            return None
+            return np.zeros((*self._image_size, 3), dtype=np.uint8)
         else:
             return self.env.render(mode, **kwargs)
