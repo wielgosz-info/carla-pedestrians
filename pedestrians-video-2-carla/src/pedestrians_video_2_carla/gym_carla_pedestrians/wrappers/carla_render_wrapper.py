@@ -32,7 +32,8 @@ class CarlaRenderWrapper(gym.Wrapper):
 
         self._bound_pedestrian = None
 
-        self._logger = logging.getLogger('{}[{}]'.format(__name__, self.env._env_id))
+        self._logger = logging.getLogger(
+            '{}.[{}]'.format(__name__, self.unwrapped.env_id))
 
     def close(self) -> None:
         super().close()
@@ -40,15 +41,15 @@ class CarlaRenderWrapper(gym.Wrapper):
         if (self._client is not None) and (self._world is not None) and (self._sensor_dict is not None):
             destroy(self._client, self._world, self._sensor_dict)
 
-    def reset(self, *args, **kwargs) -> Any:
+    def reset(self, **kwargs) -> Any:
         self.close()
 
-        observations = super().reset(*args, **kwargs)
+        observations = super().reset(**kwargs)
 
         self._client, self._world = setup_client_and_world(fps=self._fps)
 
         self._bound_pedestrian: ControlledPedestrian = copy.deepcopy(
-            self.env._pedestrian)
+            self.unwrapped.pedestrian)
         self._bound_pedestrian.bind(self._world)
 
         self._sensor_dict = OrderedDict()
@@ -67,11 +68,11 @@ class CarlaRenderWrapper(gym.Wrapper):
     def render(self, mode='human', **kwargs):
         if mode == 'rgb_array':
             # sync current pedestrian pose & transform
-            self._bound_pedestrian.current_pose.relative = self.env._pedestrian.current_pose.relative
+            self._bound_pedestrian.current_pose.relative = self.unwrapped.pedestrian.current_pose.relative
             self._bound_pedestrian.apply_pose()
 
-            self._bound_pedestrian.world_transform = self._bound_pedestrian.initial_transform
-            self._bound_pedestrian.teleport_by(self.env._pedestrian.transform)
+            self._bound_pedestrian.teleport_by(
+                self.unwrapped.pedestrian.transform, False, True)
 
             world_frame = self._world.tick()
 
@@ -94,6 +95,7 @@ class CarlaRenderWrapper(gym.Wrapper):
                     img = PIL.Image.frombuffer('RGBA', (data.width, data.height),
                                                data.raw_data, "raw", 'RGBA', 0, 1)  # load
                     img = img.convert('RGB')  # drop alpha
+                    # the data is actually in BGR format, so switch channels
                     return np.array(img)[..., ::-1]
 
             return np.zeros((*self._image_size, 3), dtype=np.uint8)

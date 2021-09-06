@@ -1,10 +1,42 @@
-import carla
-import cameratransform as ct
-import numpy as np
-import cv2
+from collections import OrderedDict
 
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+import cameratransform as ct
+import carla
+import numpy as np
 from pedestrians_video_2_carla.utils.setup import get_camera_transform
+from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
+    ControlledPedestrian
+from PIL import Image, ImageDraw
+
+# try to match OpenPose color scheme for easier visual comparison
+POSE_COLORS = {
+    'crl_root': (128, 128, 128, 128),
+    'crl_hips__C': (255, 0, 0, 192),
+    'crl_spine__C': (255, 0, 0, 128),
+    'crl_spine01__C': (255, 0, 0, 128),
+    'crl_shoulder__L': (170, 255, 0, 128),
+    'crl_arm__L': (170, 255, 0, 255),
+    'crl_foreArm__L': (85, 255, 0, 255),
+    'crl_hand__L': (0, 255, 0, 255),
+    'crl_neck__C': (255, 0, 0, 192),
+    'crl_Head__C': (255, 0, 85, 255),
+    'crl_shoulder__R': (255, 85, 0, 128),
+    'crl_arm__R': (255, 85, 0, 255),
+    'crl_foreArm__R': (255, 170, 0, 255),
+    'crl_hand__R': (255, 255, 0, 255),
+    'crl_eye__L': (170, 0, 255, 255),
+    'crl_eye__R': (255, 0, 170, 255),
+    'crl_thigh__R': (0, 255, 85, 255),
+    'crl_leg__R': (0, 255, 170, 255),
+    'crl_foot__R': (0, 255, 255, 255),
+    'crl_toe__R': (0, 255, 255, 255),
+    'crl_toeEnd__R': (0, 255, 255, 255),
+    'crl_thigh__L': (0, 170, 255, 255),
+    'crl_leg__L': (0, 85, 255, 255),
+    'crl_foot__L': (0, 0, 255, 255),
+    'crl_toe__L': (0, 0, 255, 255),
+    'crl_toeEnd__L': (0, 0, 255, 255),
+}
 
 
 class RGBCameraMock(object):
@@ -98,24 +130,47 @@ class PoseProjection(object):
         points = self.current_pose_to_points()
         rounded = np.round(points).astype(int)
 
-        img = np.zeros((self._image_size[1], self._image_size[0], 4), np.uint8)
-        for point in rounded:
-            cv2.circle(img, point, 1, [0, 0, 255, 255], 1)
+        canvas = np.zeros((self._image_size[1], self._image_size[0], 4), np.uint8)
 
-        cv2.line(img, rounded[0], rounded[1], [255, 0, 0, 255], 1)
-        cv2.circle(img, rounded[1], 1, [0, 255, 0, 255], 3)
+        img = Image.fromarray(self.draw_projection_points(
+            canvas, rounded, self._pedestrian.current_pose.empty.keys()
+        ), 'RGBA')
+        img.save('/outputs/carla/{:06d}_pose.png'.format(frame_no), 'PNG')
 
-        cv2.imwrite(
-            '/outputs/carla/{:06d}_pose.png'.format(frame_no), img)
+    @staticmethod
+    def draw_projection_points(frame, rounded_points, pose_keys):
+        end = frame.shape[-1]
+        has_alpha = end == 4
+        img = Image.fromarray(frame, 'RGBA' if has_alpha else 'RGB')
+        draw = ImageDraw.Draw(img, 'RGBA' if has_alpha else 'RGB')
+
+        color_values = [POSE_COLORS[k] for k in pose_keys]
+
+        # special root point handling
+        draw.rectangle(
+            [tuple(rounded_points[0] - 2), tuple(rounded_points[0] + 2)],
+            fill=color_values[0][:end],
+            outline=None
+        )
+
+        for idx, point in enumerate(rounded_points[1:]):
+            draw.ellipse(
+                [tuple(point - 2), tuple(point + 2)],
+                fill=color_values[idx + 1][:end],
+                outline=None
+            )
+
+        return np.array(img)
 
 
 if __name__ == "__main__":
-    from queue import Queue, Empty
     from collections import OrderedDict
+    from queue import Empty, Queue
 
     from pedestrians_video_2_carla.utils.destroy import destroy
     from pedestrians_video_2_carla.utils.setup import *
-    from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+    from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
+        ControlledPedestrian
 
     client, world = setup_client_and_world()
     pedestrian = ControlledPedestrian(world, 'adult', 'female')
@@ -147,9 +202,8 @@ if __name__ == "__main__":
 
         # rotate & apply slight movement to pedestrian to see if projections are working correctly
         pedestrian.teleport_by(carla.Transform(
-            rotation=carla.Rotation(
-                yaw=15
-            )
+            location=carla.Location(0.1, 0, 0),
+            rotation=carla.Rotation(yaw=15)
         ))
         pedestrian.update_pose({
             'crl_arm__L': carla.Rotation(yaw=-6),

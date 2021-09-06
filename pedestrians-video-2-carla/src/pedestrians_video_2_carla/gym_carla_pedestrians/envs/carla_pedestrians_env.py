@@ -117,3 +117,11 @@ class CarlaPedestriansEnv(gym.Env):
             done,
             info
         )
+
+    @property
+    def env_id(self):
+        return self._env_id
+
+    @property
+    def pedestrian(self):
+        return self._pedestrian

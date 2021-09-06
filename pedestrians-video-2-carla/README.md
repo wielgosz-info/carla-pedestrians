@@ -1,12 +1,7 @@
 # pedestrians-video-2-carla
 
-Add a short description here!
-
-
-## Description
-
-A longer description of your project goes here...
-
+This is a part of the bigger project to bring the more realistic pedestrian movements to CARLA.
+It isn't intended for fully standalone use. Please see the main project README.md for details.
 
 <!-- pyscaffold-notes -->
 

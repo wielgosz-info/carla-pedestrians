@@ -116,7 +116,7 @@ class ControlledPedestrian(object):
 
         return relative_pose
 
-    def teleport_by(self, transform: carla.Transform, cue_tick=False) -> int:
+    def teleport_by(self, transform: carla.Transform, cue_tick=False, from_initial=False) -> int:
         """
         Teleports the pedestrian in the world.
 
@@ -124,20 +124,28 @@ class ControlledPedestrian(object):
         :type transform: carla.Transform
         :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
         :type cue_tick: bool, optional
+        :param from_initial: should teleport be applied from current world position (False, default) or
+            from the initial spawn position (True). Mainly used when copying position/movements between 
+            pedestrian instances.
+        :type from_initial: bool, optional
         :return: World frame number if cue_tick==True else 0
         :rtype: int
         """
-        old_world_transform = self.world_transform
+        if from_initial:
+            reference_transform = self.initial_transform
+        else:
+            reference_transform = self.world_transform
+
         self._world_transform = carla.Transform(
             location=carla.Location(
-                x=old_world_transform.location.x + transform.location.x,
-                y=old_world_transform.location.y + transform.location.y,
-                z=old_world_transform.location.z + transform.location.z
+                x=reference_transform.location.x + transform.location.x,
+                y=reference_transform.location.y + transform.location.y,
+                z=reference_transform.location.z + transform.location.z
             ),
             rotation=carla.Rotation(
-                pitch=old_world_transform.rotation.pitch + transform.rotation.pitch,
-                yaw=old_world_transform.rotation.yaw + transform.rotation.yaw,
-                roll=old_world_transform.rotation.roll + transform.rotation.roll
+                pitch=reference_transform.rotation.pitch + transform.rotation.pitch,
+                yaw=reference_transform.rotation.yaw + transform.rotation.yaw,
+                roll=reference_transform.rotation.roll + transform.rotation.roll
             )
         )
 
@@ -198,14 +206,14 @@ class ControlledPedestrian(object):
     def world_transform(self) -> carla.Transform:
         if self._walker is not None:
             # if possible, get it from CARLA
-            # don't ask me why Z is is some 0.91m above the actual root
+            # don't ask me why Z is is some 0.91m above the actual root sometimes
             return self._walker.get_transform()
         return self._world_transform
 
     @world_transform.setter
     def world_transform(self, transform: carla.Transform):
         if self._walker is not None:
-            return self._walker.set_transform(transform)
+            self._walker.set_transform(transform)
         self._world_transform = transform
 
     @ property
