@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Minimal Working Examples of issues
+pedestrians-video-2-carla/issues_mwe

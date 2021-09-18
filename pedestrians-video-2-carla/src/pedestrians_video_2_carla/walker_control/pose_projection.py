@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Union
 
 import cameratransform as ct
 import carla
@@ -73,7 +74,7 @@ class PoseProjection(object):
             int(camera_rgb.attributes['image_size_x']),
             int(camera_rgb.attributes['image_size_y'])
         )
-        self._camera_ct = self._setup_camera(camera_rgb)
+        self._camera = self._setup_camera(camera_rgb)
 
     def _setup_camera(self, camera_rgb: carla.Sensor):
         # basic transform is in UE world coords, axes of which are different
@@ -105,7 +106,7 @@ class PoseProjection(object):
 
     def current_pose_to_points(self):
         # switch from UE world coords, axes of which are different
-        ct_transform = carla.Transform(location=carla.Location(
+        root_transform = carla.Transform(location=carla.Location(
             x=self._pedestrian.transform.location.y,
             y=self._pedestrian.transform.location.x,
             z=self._pedestrian.transform.location.z
@@ -114,28 +115,33 @@ class PoseProjection(object):
         ))
 
         relativeBones = [
-            ct_transform.transform(carla.Location(
+            root_transform.transform(carla.Location(
                 x=-bone.location.x,
                 y=bone.location.y,
                 z=bone.location.z
             ))
             for bone in self._pedestrian.current_pose.absolute.values()
         ]
-        return self._camera_ct.imageFromSpace([
+        return self._camera.imageFromSpace([
             (bone.x, bone.y, bone.z)
             for bone in relativeBones
         ], hide_backpoints=False)
 
-    def current_pose_to_image(self, frame_no):
-        points = self.current_pose_to_points()
-        rounded = np.round(points).astype(int)
+    def _raw_to_pixel_points(self, points):
+        return np.round(points).astype(int)
+
+    def current_pose_to_image(self, image_id: Union[str, int] = 'reference', points=None):
+        if points is None:
+            points = self.current_pose_to_points()
+        pixel_points = self._raw_to_pixel_points(points)
 
         canvas = np.zeros((self._image_size[1], self._image_size[0], 4), np.uint8)
 
         img = Image.fromarray(self.draw_projection_points(
-            canvas, rounded, self._pedestrian.current_pose.empty.keys()
+            canvas, pixel_points, self._pedestrian.current_pose.empty.keys()
         ), 'RGBA')
-        img.save('/outputs/carla/{:06d}_pose.png'.format(frame_no), 'PNG')
+        img.save('/outputs/carla/{:s}_pose.png'.format("{:06d}".format(image_id)
+                 if isinstance(image_id, int) else image_id), 'PNG')
 
     @staticmethod
     def draw_projection_points(frame, rounded_points, pose_keys):
