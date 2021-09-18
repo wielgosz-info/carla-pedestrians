@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import logging
-from queue import Empty, Queue
 import random
 
 import carla
@@ -125,3 +124,44 @@ class CarlaPedestriansEnv(gym.Env):
     @property
     def pedestrian(self):
         return self._pedestrian
+
+
+if __name__ == "__main__":
+    """
+    Minimal Working Example
+    """
+
+    from tqdm import tqdm
+    from pedestrians_video_2_carla.gym_carla_pedestrians.wrappers import (
+        CarlaRenderWrapper, PoseOverlayRenderWrapper)
+
+    env = gym.make('CarlaPedestrians-v0', env_id=0)
+    env = CarlaRenderWrapper(env)
+    env = PoseOverlayRenderWrapper(env)
+    env = gym.wrappers.record_video.RecordVideo(
+        env,
+        video_folder='/outputs/carla/videos',
+        episode_trigger=lambda ep_id: True  # for now, we want video from every episode
+    )
+
+    env.seed(1337)
+
+    total_episodes = 3
+    total_steps = 30
+
+    with tqdm(total=total_episodes, desc='Episode', unit='ep', position=0) as ep_bar:
+        for episode in range(total_episodes):
+            obs = env.reset(
+                age='adult',
+                gender='female',
+                initial_teleport=None,
+                length=total_steps  # we need to know how many frames to match to send 'done'
+            )
+            with tqdm(total=total_steps, desc='Frame', unit='f', position=1) as steps_bar:
+                for step in range(total_steps):
+                    action = env.action_space.sample()
+                    obs, reward, done, info = env.step(action)
+                    steps_bar.update(1)
+            ep_bar.update(1)
+
+    env.close()
