@@ -9,16 +9,16 @@ from pedestrians_video_2_carla.utils.spatial import deepcopy_transform, mul_rota
 
 
 class Pose(object):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """
         Base class for keeping and manipulating the pose.
         """
         super().__init__()
 
-        self.__structure = load_reference('structure')['structure']
+        self._structure = load_reference('structure')['structure']
 
         self.__relative_pose = OrderedDict()
-        self.__add_to_pose(self.__structure[0])
+        self.__add_to_pose(self._structure[0])
 
         self.__empty_pose = copy.deepcopy(self.__relative_pose)
 
@@ -115,7 +115,7 @@ class Pose(object):
             self.__transform_descendants(
                 absolute_pose,
                 relative_pose,
-                self.__structure[0],
+                self._structure[0],
                 carla.Transform()
             )
 

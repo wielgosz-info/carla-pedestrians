@@ -1,4 +1,3 @@
-from typing import Union
 import carla
 import numpy as np
 import torch
