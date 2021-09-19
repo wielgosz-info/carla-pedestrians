@@ -5,16 +5,14 @@ import torch
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.pose_projection import \
-    PoseProjection as CTPoseProjection
-from pedestrians_video_2_carla.walker_control.pose_projection import \
-    RGBCameraMock
+    PoseProjection
 from pytorch3d.renderer.cameras import (PerspectiveCameras,
                                         look_at_view_transform)
 from torch.functional import Tensor
 from torch.types import Device
 
 
-class PoseProjection(CTPoseProjection, torch.nn.Module):
+class P3dPoseProjection(PoseProjection, torch.nn.Module):
     def __init__(self, device: Device, pedestrian: ControlledPedestrian, camera_rgb: carla.Sensor = None, *args, **kwargs):
         self._device = device
 
@@ -62,7 +60,7 @@ class PoseProjection(CTPoseProjection, torch.nn.Module):
             y=self._pedestrian.transform.location.x,
             z=self._pedestrian.transform.location.z
         ), rotation=carla.Rotation(
-            yaw=-self._pedestrian.transform.rotation.yaw
+            yaw=self._pedestrian.transform.rotation.yaw
         ))
 
         bones = [[t.x, t.z, t.y] for t in [
@@ -88,17 +86,13 @@ class PoseProjection(CTPoseProjection, torch.nn.Module):
 
 
 if __name__ == "__main__":
-    pedestrian = ControlledPedestrian(None, 'adult', 'female')
-    ct_projection = CTPoseProjection(pedestrian, None)
-    ct_points = ct_projection.current_pose_to_points()
-    ct_projection.current_pose_to_image('reference_ct', ct_points)
-
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
         torch.cuda.set_device(device)
     else:
         device = torch.device("cpu")
 
-    p3d_projection = PoseProjection(device, pedestrian, None)
+    pedestrian = ControlledPedestrian(None, 'adult', 'female')
+    p3d_projection = P3dPoseProjection(device, pedestrian, None)
     p3d_points = p3d_projection.current_pose_to_points()
     p3d_projection.current_pose_to_image('reference_pytorch3d', p3d_points)
