@@ -22,9 +22,9 @@ class Pose(object):
 
         self.__empty_pose = copy.deepcopy(self.__relative_pose)
 
-        self.__last_rel_mod = time.time()
-        self.__last_abs_mod = None
-        self.__last_abs = None
+        self._last_rel_mod = time.time()
+        self._last_abs_mod = None
+        self._last_abs = None
 
     def __add_to_pose(self, structure: Dict[str, Any]):
         (bone_name, substructures) = list(structure.items())[0]
@@ -60,7 +60,7 @@ class Pose(object):
                 )
 
     @staticmethod
-    def __deepcopy_pose_dict(orig_pose_dict):
+    def _deepcopy_pose_dict(orig_pose_dict):
         pose_dict = OrderedDict()
         for bone_name, transform in orig_pose_dict.items():
             if transform is not None:
@@ -76,7 +76,7 @@ class Pose(object):
         memo[id(self)] = result
         for k, v in self.__dict__.items():
             if k == '_{}__relative_pose'.format(self.__class__.__name__):
-                pose_dict = self.__deepcopy_pose_dict(self.__relative_pose)
+                pose_dict = self._deepcopy_pose_dict(self.__relative_pose)
                 setattr(result, k, pose_dict)
             elif k in [
                 '_{}__last_abs'.format(self.__class__.__name__),
@@ -89,20 +89,20 @@ class Pose(object):
 
     @property
     def empty(self):
-        return self.__deepcopy_pose_dict(self.__empty_pose)
+        return self._deepcopy_pose_dict(self.__empty_pose)
 
     @property
     def relative(self):
-        return self.__deepcopy_pose_dict(self.__relative_pose)
+        return self._deepcopy_pose_dict(self.__relative_pose)
 
     @relative.setter
     def relative(self, new_pose_dict):
         self.__relative_pose.update(new_pose_dict)
-        self.__last_rel_mod = time.time()
+        self._last_rel_mod = time.time()
 
     @property
     def absolute(self):
-        if self.__last_abs_mod != self.__last_rel_mod:
+        if self._last_abs_mod != self._last_rel_mod:
             # ensure bones in absolute pose will be in the same order as they were in relative
             # this will be updated in-place
             absolute_pose = self.empty
@@ -119,10 +119,10 @@ class Pose(object):
                 carla.Transform()
             )
 
-            self.__last_abs = absolute_pose
-            self.__last_abs_mod = self.__last_rel_mod
+            self._last_abs = absolute_pose
+            self._last_abs_mod = self._last_rel_mod
 
-        return self.__deepcopy_pose_dict(self.__last_abs)
+        return self._deepcopy_pose_dict(self._last_abs)
 
     def move(self, rotations: Dict[str, carla.Rotation]):
         # use getter to ensure we have a copy of self._relative_pose
