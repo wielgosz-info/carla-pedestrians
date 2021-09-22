@@ -10,7 +10,7 @@ from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
 class ControlledPedestrian(object):
-    def __init__(self, world: carla.World = None, age: str = 'adult', gender: str = 'female', PoseCls=Pose, *args, **kwargs):
+    def __init__(self, world: carla.World = None, age: str = 'adult', gender: str = 'female', pose_cls=Pose, *args, **kwargs):
         """
         Initializes the pedestrian that keeps track of its current pose.
 
@@ -26,7 +26,7 @@ class ControlledPedestrian(object):
 
         self._age = age
         self._gender = gender
-        self._current_pose = PoseCls(**kwargs)
+        self._current_pose = pose_cls(**kwargs)
         self._current_pose.relative = self._load_reference_pose()
 
         # spawn point (may be different than actual location the pedesrian has spawned, especially Z-wise);

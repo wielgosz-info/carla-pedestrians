@@ -25,7 +25,7 @@ def pedestrian(pose_cls, device):
     """
     Returns unbound ControlledPedestrian
     """
-    return ControlledPedestrian(None, 'adult', 'female', PoseCls=pose_cls, device=device)
+    return ControlledPedestrian(None, 'adult', 'female', pose_cls=pose_cls, device=device)
 
 
 @pytest.fixture()
@@ -40,7 +40,7 @@ def carla_pedestrian(carla_world, pose_cls, device):
     """
     Returns ControlledPedestrian bound to specific CARLA world instance
     """
-    return ControlledPedestrian(carla_world, 'adult', 'female', PoseCls=pose_cls, device=device)
+    return ControlledPedestrian(carla_world, 'adult', 'female', pose_cls=pose_cls, device=device)
 
 
 @pytest.fixture

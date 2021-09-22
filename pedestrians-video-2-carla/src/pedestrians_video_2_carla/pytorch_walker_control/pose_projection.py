@@ -1,12 +1,15 @@
 import carla
 import numpy as np
 import torch
+from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.pose_projection import \
     PoseProjection
 from pytorch3d.renderer.cameras import (PerspectiveCameras,
                                         look_at_view_transform)
+from pytorch3d.transforms import euler_angles_to_matrix
+from pytorch3d.transforms.transform3d import Rotate, Translate
 from torch.functional import Tensor
 from torch.types import Device
 
@@ -53,38 +56,70 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         return cameras
 
     def current_pose_to_points(self):
-        # switch from UE world coords, axes of which are different
-        root_transform = carla.Transform(location=carla.Location(
-            x=-self._pedestrian.transform.location.y,
-            y=self._pedestrian.transform.location.x,
-            z=self._pedestrian.transform.location.z
-        ), rotation=carla.Rotation(
-            yaw=self._pedestrian.transform.rotation.yaw
-        ))
+        root_transform = self._pedestrian.transform
+        bones_len = len(self._pedestrian.current_pose.empty)
 
-        bones = [[t.x, t.z, t.y] for t in [
-            root_transform.transform(bone.location)
-            for bone in self._pedestrian.current_pose.absolute.values()
-        ]]
+        if hasattr(self._pedestrian.current_pose, 'forward'):
+            absolute = self._pedestrian.current_pose.forward(
+                torch.zeros((bones_len, 3), device=self._device))
+        else:
+            absolute = torch.tensor(
+                [(t.location.x, t.location.y, -t.location.z)
+                 for t in self._pedestrian.current_pose.absolute.values()],
+                device=self._device, dtype=torch.float32)
 
-        return self.forward(torch.Tensor(bones).to(self._device))
+        loc = torch.tensor(((
+            root_transform.location.x,
+            root_transform.location.y,
+            -root_transform.location.z
+        ), ), device=self._device, dtype=torch.float32)
 
-    def _raw_to_pixel_points(self, points):
-        return np.round(points.cpu().numpy()[..., :2]).astype(int)
+        rot = torch.tensor((
+            np.deg2rad(-root_transform.rotation.roll),
+            np.deg2rad(-root_transform.rotation.pitch),
+            np.deg2rad(-root_transform.rotation.yaw)
+        ), device=self._device, dtype=torch.float32)
 
-    def forward(self, x: Tensor):
+        p3d_points = self.forward(absolute, loc, rot)
+        return p3d_points.cpu().numpy()[..., :2]
+
+    def forward(self, x: Tensor, loc: Tensor, rot: Tensor):
         """
         Projects 3D points to 2D using predefined camera.
 
-        TODO: This method uses PyTorch3D coordinates system (right-handed, negative Z
+        This method uses PyTorch3D coordinates system (right-handed, negative Z
             and radians (-roll, -pitch, -yaw) angles when compared to CARLA).
 
-        :param x: (..., 3)
+        :param x: (..., (x, y, -z)) Tensor containing absolute pose values (as outputted by P3dPose.forward)
         :type x: torch.Tensor
-        :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3)
+        :param loc: (3,) Tensor containing pedestrian relative world transform (x, y, -z)
+        :type loc: torch.Tensor
+        :param rot: (3,) Tensor containing pedestrian relative world rotation in radians (-roll, -pitch, -yaw)
+        :type rot: torch.Tensor
+        :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3),
+            but only [..., :2] are usable.
         :rtype: torch.Tensor
         """
-        return self._camera.transform_points_screen(x)
+        p3d_2_world = torch.tensor((
+            (0., 0., 1.),
+            (-1., 0., 0.),
+            (0., -1., 0)
+        ), device=rot.device)
+
+        abs_2_world = torch.tensor((
+            (0., -1., 0.),
+            (1., 0., 0.),
+            (0., 0., 1.)
+        ), device=rot.device)
+
+        world_rot = torch.mm(euler_angles_to_matrix(rot, "XYZ"), p3d_2_world)
+        world_loc = torch.mm(loc, p3d_2_world)
+        world_x = torch.mm(x, abs_2_world)
+
+        world_pos = Rotate(world_rot).compose(
+            Translate(world_loc)).transform_points(world_x)
+        projected_x = self._camera.transform_points_screen(world_pos)
+        return projected_x
 
 
 if __name__ == "__main__":
@@ -94,7 +129,8 @@ if __name__ == "__main__":
     else:
         device = torch.device("cpu")
 
-    pedestrian = ControlledPedestrian(None, 'adult', 'female')
+    pedestrian = ControlledPedestrian(
+        None, 'adult', 'female', pose_cls=P3dPose, device=device)
     p3d_projection = P3dPoseProjection(device, pedestrian, None)
     p3d_points = p3d_projection.current_pose_to_points()
     p3d_projection.current_pose_to_image('reference_pytorch3d', p3d_points)
