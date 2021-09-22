@@ -18,8 +18,8 @@ def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
 
     base_points = base_projection.current_pose_to_points()
     p3d_points = p3d_projection.current_pose_to_points()
-    base_projection.current_pose_to_image('reference_base_1', base_points)
-    p3d_projection.current_pose_to_image('reference_pytorch3d_1', p3d_points)
+    # base_projection.current_pose_to_image('reference_base_1', base_points)
+    # p3d_projection.current_pose_to_image('reference_pytorch3d_1', p3d_points)
     assert np.allclose(base_points, p3d_points)
 
     pedestrian.teleport_by(carla.Transform(
@@ -31,8 +31,8 @@ def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
     })
     base_points = base_projection.current_pose_to_points()
     p3d_points = p3d_projection.current_pose_to_points()
-    base_projection.current_pose_to_image('reference_base_2', base_points)
-    p3d_projection.current_pose_to_image('reference_pytorch3d_2', p3d_points)
+    # base_projection.current_pose_to_image('reference_base_2', base_points)
+    # p3d_projection.current_pose_to_image('reference_pytorch3d_2', p3d_points)
     assert np.allclose(base_points, p3d_points)
 
     pedestrian.teleport_by(carla.Transform(
@@ -40,8 +40,8 @@ def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
     ))
     base_points = base_projection.current_pose_to_points()
     p3d_points = p3d_projection.current_pose_to_points()
-    base_projection.current_pose_to_image('reference_base_3', base_points)
-    p3d_projection.current_pose_to_image('reference_pytorch3d_3', p3d_points)
+    # base_projection.current_pose_to_image('reference_base_3', base_points)
+    # p3d_projection.current_pose_to_image('reference_pytorch3d_3', p3d_points)
     assert np.allclose(base_points, p3d_points)
 
     pedestrian.teleport_by(carla.Transform(
@@ -49,8 +49,8 @@ def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
     ))
     base_points = base_projection.current_pose_to_points()
     p3d_points = p3d_projection.current_pose_to_points()
-    base_projection.current_pose_to_image('reference_base_4', base_points)
-    p3d_projection.current_pose_to_image('reference_pytorch3d_4', p3d_points)
+    # base_projection.current_pose_to_image('reference_base_4', base_points)
+    # p3d_projection.current_pose_to_image('reference_pytorch3d_4', p3d_points)
     assert np.allclose(base_points, p3d_points)
 
     pedestrian.teleport_by(carla.Transform(
@@ -58,6 +58,6 @@ def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
     ))
     base_points = base_projection.current_pose_to_points()
     p3d_points = p3d_projection.current_pose_to_points()
-    base_projection.current_pose_to_image('reference_base_5', base_points)
-    p3d_projection.current_pose_to_image('reference_pytorch3d_5', p3d_points)
+    # base_projection.current_pose_to_image('reference_base_5', base_points)
+    # p3d_projection.current_pose_to_image('reference_pytorch3d_5', p3d_points)
     assert np.allclose(base_points, p3d_points)

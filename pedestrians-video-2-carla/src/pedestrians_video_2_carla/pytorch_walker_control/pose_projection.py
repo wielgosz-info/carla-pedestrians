@@ -1,6 +1,7 @@
 import carla
 import numpy as np
 import torch
+from torch._C import device
 from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
@@ -23,15 +24,15 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
     def _setup_camera(self, camera_rgb: carla.Sensor):
         # basic transform is in UE world coords, axes of which are different
         # additionally, we need to correct spawn shift error
-        cam_z_offset = camera_rgb.get_transform().location.x - \
+        distance = camera_rgb.get_transform().location.x - \
             self._pedestrian.world_transform.location.x + \
             self._pedestrian.spawn_shift.x
-        cam_y_offset = camera_rgb.get_transform().location.z - \
+        elevation = camera_rgb.get_transform().location.z - \
             self._pedestrian.world_transform.location.z + \
             self._pedestrian.spawn_shift.z
 
         R, T = look_at_view_transform(
-            eye=((0, cam_y_offset, cam_z_offset),), at=((0, cam_y_offset, 0), ))
+            eye=((distance, 0, -elevation),), at=((0, 0, -elevation),), up=((0, 0, -1),))
 
         # from CameraTransform docs/code we get:
         # focallength_px_x = (focallength_mm_x / sensor_width_mm) * image_width_px
@@ -101,20 +102,14 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         :rtype: torch.Tensor
         """
         p3d_2_world = torch.tensor((
-            (0., 0., 1.),
-            (-1., 0., 0.),
-            (0., -1., 0)
-        ), device=rot.device)
-
-        abs_2_world = torch.tensor((
             (0., -1., 0.),
             (1., 0., 0.),
             (0., 0., 1.)
         ), device=rot.device)
 
-        world_rot = torch.mm(euler_angles_to_matrix(rot, "XYZ"), p3d_2_world)
-        world_loc = torch.mm(loc, p3d_2_world)
-        world_x = torch.mm(x, abs_2_world)
+        world_rot = euler_angles_to_matrix(rot, "XYZ")
+        world_loc = loc
+        world_x = torch.mm(x, p3d_2_world)
 
         world_pos = Rotate(world_rot).compose(
             Translate(world_loc)).transform_points(world_x)
