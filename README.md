@@ -10,7 +10,7 @@ Copy `.env.template` to `.env` and adjust the variables, especially the path to 
 Extract pedestrians skeletons from video clips with [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) using container specified in `docker-compose.openpose.yml`:
 
 ```sh
-COMMIT=$(git rev-parse --short HEAD) docker-compose -f "docker-compose.openpose.yml" --env-file .env up -d --build
+docker-compose -f "docker-compose.openpose.yml" --env-file .env up -d --build
 docker exec -it carla-pedestrians_openpose_1 /bin/bash
 ```
 
@@ -26,6 +26,13 @@ The generated files will be saved in the `carla-pedestrians_outputs` Docker volu
 Magic up the `/outputs/JAAD/annotations.csv` file. Automation script for that may be coming one day.
 
 (For now) it needs to have `video`, `frame`, `x1`,`y1`, `x2`, `y2`, `id`, `action`, `gender`, `age`, and `speed` columns, where `x1`,`y1`, `x2`, `y2` define pedestrian bounding box, `id` is the pedestrian id, `action` is what the pedestrian is doing (since right now only the `walking` ones will be used) and `speed` is the car speed category (for now only `stopped` cars will be used).
+
+### Step 3
+Run the CARLA server & the container with our code (`carla-pedestrians_client_1`).
+
+```sh
+COMMIT=$(git rev-parse --short HEAD) docker-compose -f "docker-compose.yml" --env-file .env up -d --build
+```
 
 ### More steps in progress...
 

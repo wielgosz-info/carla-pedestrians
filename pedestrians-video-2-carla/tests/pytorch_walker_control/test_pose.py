@@ -53,9 +53,9 @@ def test_relative_to_absolute():
                           transforms_dict.location.y, atol=1e-5)
         assert np.isclose(absolute[bone_name].location.z,
                           transforms_dict.location.z, atol=1e-5)
-        # assert np.isclose(absolute[bone_name].rotation.pitch,
-        #                   transforms_dict.rotation.pitch, atol=1e-2)
-        # assert np.isclose(absolute[bone_name].rotation.yaw,
-        #                   transforms_dict.rotation.yaw, atol=1e-2)
-        # assert np.isclose(absolute[bone_name].rotation.roll,
-        #                   transforms_dict.rotation.roll, atol=1e-2)
+        assert np.isclose(absolute[bone_name].rotation.pitch,
+                          transforms_dict.rotation.pitch, atol=1e-2)
+        assert np.isclose(absolute[bone_name].rotation.yaw,
+                          transforms_dict.rotation.yaw, atol=1e-2)
+        assert np.isclose(absolute[bone_name].rotation.roll,
+                          transforms_dict.rotation.roll, atol=1e-2)
