@@ -7,4 +7,9 @@
     - https://docs.pytest.org/en/stable/writing_plugins.html
 """
 
-# import pytest
+import pytest
+
+pytest_plugins = [
+   "tests.fixtures.torch",
+   "tests.fixtures.walker_control",
+]
