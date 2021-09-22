@@ -4,7 +4,7 @@ from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
 
 
-def test_set_pose():
+def test_set_get_pose():
     unreal_rel_pose = load_reference('sk_female_relative.yaml')
     relative_pose = unreal_to_carla(unreal_rel_pose['transforms'])
 
@@ -14,18 +14,22 @@ def test_set_pose():
     else:
         device = torch.device("cpu")
 
+    # set
     p = P3dPose(device=device)
     p.relative = relative_pose
 
+    # get
+    relative = p.relative
+
     for bone_name, transforms_dict in relative_pose.items():
-        assert np.isclose(p.relative[bone_name].location.x, transforms_dict.location.x)
-        assert np.isclose(p.relative[bone_name].location.y, transforms_dict.location.y)
-        assert np.isclose(p.relative[bone_name].location.z, transforms_dict.location.z)
-        assert np.isclose(p.relative[bone_name].rotation.pitch,
+        assert np.isclose(relative[bone_name].location.x, transforms_dict.location.x)
+        assert np.isclose(relative[bone_name].location.y, transforms_dict.location.y)
+        assert np.isclose(relative[bone_name].location.z, transforms_dict.location.z)
+        assert np.isclose(relative[bone_name].rotation.pitch,
                           transforms_dict.rotation.pitch)
-        assert np.isclose(p.relative[bone_name].rotation.yaw,
+        assert np.isclose(relative[bone_name].rotation.yaw,
                           transforms_dict.rotation.yaw)
-        assert np.isclose(p.relative[bone_name].rotation.roll,
+        assert np.isclose(relative[bone_name].rotation.roll,
                           transforms_dict.rotation.roll)
 
 
@@ -42,8 +46,11 @@ def test_relative_to_absolute():
     else:
         device = torch.device("cpu")
 
+    # set
     p = P3dPose(device=device)
     p.relative = relative_pose
+
+    # get
     absolute = p.absolute
 
     for bone_name, transforms_dict in absolute_pose.items():

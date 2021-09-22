@@ -76,6 +76,9 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         """
         Projects 3D points to 2D using predefined camera.
 
+        TODO: This method uses PyTorch3D coordinates system (right-handed, negative Z
+            and radians (-roll, -pitch, -yaw) angles when compared to CARLA).
+
         :param x: (..., 3)
         :type x: torch.Tensor
         :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3)
