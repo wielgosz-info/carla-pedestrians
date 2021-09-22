@@ -1,7 +1,10 @@
 import numpy as np
 import torch
+import carla
+import random
 from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
+from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
 def test_set_get_pose():
@@ -66,3 +69,49 @@ def test_relative_to_absolute():
                           transforms_dict.rotation.yaw, atol=1e-2)
         assert np.isclose(absolute[bone_name].rotation.roll,
                           transforms_dict.rotation.roll, atol=1e-2)
+
+
+def test_move():
+    """
+    Tests movement calculations by comparing them with "base" Pose implementation
+    """
+
+    unreal_rel_pose = load_reference('sk_female_relative.yaml')
+    relative_pose = unreal_to_carla(unreal_rel_pose['transforms'])
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        torch.cuda.set_device(device)
+    else:
+        device = torch.device("cpu")
+
+    # set
+    p3d_pose = P3dPose(device=device)
+    p3d_pose.relative = relative_pose
+
+    base_pose = Pose()
+    base_pose.relative = relative_pose
+
+    # apply some movements
+    for _ in range(3):
+        movement = {
+            'crl_shoulder__L': carla.Rotation(yaw=random.random()*5-10, pitch=random.random()*5-10, roll=random.random()*5-10),
+            'crl_arm__L': carla.Rotation(yaw=random.random()*5-10, pitch=random.random()*5-10, roll=random.random()*5-10),
+            'crl_foreArm__L': carla.Rotation(yaw=random.random()*5-10, pitch=random.random()*5-10, roll=random.random()*5-10),
+        }
+        p3d_pose.move(movement)
+        base_pose.move(movement)
+
+        for bone_name in relative_pose.keys():
+            assert np.isclose(base_pose.relative[bone_name].location.x,
+                              p3d_pose.relative[bone_name].location.x)
+            assert np.isclose(base_pose.relative[bone_name].location.y,
+                              p3d_pose.relative[bone_name].location.y)
+            assert np.isclose(base_pose.relative[bone_name].location.z,
+                              p3d_pose.relative[bone_name].location.z)
+            assert np.isclose(base_pose.relative[bone_name].rotation.pitch,
+                              p3d_pose.relative[bone_name].rotation.pitch)
+            assert np.isclose(base_pose.relative[bone_name].rotation.yaw,
+                              p3d_pose.relative[bone_name].rotation.yaw)
+            assert np.isclose(base_pose.relative[bone_name].rotation.roll,
+                              p3d_pose.relative[bone_name].rotation.roll)

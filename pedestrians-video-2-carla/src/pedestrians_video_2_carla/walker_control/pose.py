@@ -22,7 +22,7 @@ class Pose(object):
 
         self.__empty_pose = copy.deepcopy(self.__relative_pose)
 
-        self._last_rel_mod = time.time()
+        self._last_rel_mod = time.time_ns()
         self._last_abs_mod = None
         self._last_abs = None
 
@@ -98,7 +98,7 @@ class Pose(object):
     @relative.setter
     def relative(self, new_pose_dict):
         self.__relative_pose.update(new_pose_dict)
-        self._last_rel_mod = time.time()
+        self._last_rel_mod = time.time_ns()
 
     @property
     def absolute(self):

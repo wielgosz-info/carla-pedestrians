@@ -77,6 +77,8 @@ class P3dPose(Pose, torch.nn.Module):
         This method uses PyTorch3D coordinates system (right-handed, negative Z
             and radians (-roll, -pitch, -yaw) angles when compared to CARLA).
 
+        **Important: this modifies the underlying reference tensor, so subsequent calls will yield different results!**
+
         :param x: (N, 3) tensor with the bone rotation changes.
             Order of bones needs to follow the order of keys as returned by Pose.empty.
             Angles should be in radians and follow (roll, pitch, yaw) order as opposed to
@@ -85,13 +87,11 @@ class P3dPose(Pose, torch.nn.Module):
         :return: ((N, 3), (N, 3)) tensors with the relative bone transforms (locations, rotations).
         :rtype: Tuple[Tensor, Tensor]
         """
-
-        # TODO: fix this
-
-        reference_matrix = self.__relative_p3d_rotations
         change_matrix = euler_angles_to_matrix(x, "XYZ")
 
-        self.__relative_p3d_rotations = torch.matmul(change_matrix, reference_matrix)
+        self.__relative_p3d_rotations = torch.bmm(change_matrix,
+                                                  self.__relative_p3d_rotations)
+        self._last_rel_mod = time.time_ns()
         return (self.__relative_p3d_locations, self.__relative_p3d_rotations)
 
     def __transform_descendants(self,
@@ -109,7 +109,7 @@ class P3dPose(Pose, torch.nn.Module):
 
         absolute_loc[idx] = Rotate(prev_rot).compose(
             Translate(prev_loc.unsqueeze(0))).transform_points(relative_loc[idx].unsqueeze(0))
-        absolute_rot[idx] = torch.matmul(relative_rot[idx], prev_rot)
+        absolute_rot[idx] = torch.mm(relative_rot[idx], prev_rot)
 
         if subsubstructures is not None:
             for subsubstructure in subsubstructures:
@@ -192,7 +192,7 @@ class P3dPose(Pose, torch.nn.Module):
         (self.__relative_p3d_locations,
          self.__relative_p3d_rotations) = self.__pose_to_tensors(new_pose_dict)
         # and set the timestamp
-        self._last_rel_mod = time.time()
+        self._last_rel_mod = time.time_ns()
 
     @property
     def absolute(self):
@@ -205,3 +205,21 @@ class P3dPose(Pose, torch.nn.Module):
             self._last_abs_mod = self._last_rel_mod
 
         return self._deepcopy_pose_dict(self._last_abs)
+
+    def move(self, rotations: Dict[str, carla.Rotation]):
+        # we need correct bones indexes
+        bone_names = list(self.empty.keys())
+        # and default no-change for each bone
+        changes = torch.zeros((len(bone_names), 3),
+                              device=self._device, dtype=torch.float32)
+
+        # for each defined rotation, we merge it with the current one
+        for bone_name, rotation_change in rotations.items():
+            idx = bone_names.index(bone_name)
+            changes[idx] = torch.tensor((
+                np.deg2rad(-rotation_change.roll),
+                np.deg2rad(-rotation_change.pitch),
+                np.deg2rad(-rotation_change.yaw)
+            ), device=self._device, dtype=torch.float32)
+
+        self.__move_to_relative(changes)
