@@ -58,16 +58,11 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
 
     def current_pose_to_points(self):
         root_transform = self._pedestrian.transform
-        bones_len = len(self._pedestrian.current_pose.empty)
 
-        if hasattr(self._pedestrian.current_pose, 'forward'):
-            absolute = self._pedestrian.current_pose.forward(
-                torch.zeros((bones_len, 3), device=self._device))
-        else:
-            absolute = torch.tensor(
-                [(t.location.x, t.location.y, -t.location.z)
-                 for t in self._pedestrian.current_pose.absolute.values()],
-                device=self._device, dtype=torch.float32)
+        absolute = torch.tensor(
+            [(t.location.x, t.location.y, -t.location.z)
+                for t in self._pedestrian.current_pose.absolute.values()],
+            device=self._device, dtype=torch.float32)
 
         loc = torch.tensor(((
             root_transform.location.x,
