@@ -76,7 +76,8 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
             np.deg2rad(-root_transform.rotation.yaw)
         ), device=self._device, dtype=torch.float32)
 
-        p3d_points = self.forward(absolute, loc, rot)
+        p3d_points = self.forward(absolute.unsqueeze(
+            0), loc.unsqueeze(0), rot.unsqueeze(0))[0]
         return p3d_points.cpu().numpy()[..., :2]
 
     def forward(self, x: Tensor, loc: Tensor, rot: Tensor):
@@ -86,28 +87,38 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         This method uses PyTorch3D coordinates system (right-handed, negative Z
             and radians (-roll, -pitch, -yaw) angles when compared to CARLA).
 
-        :param x: (..., (x, y, -z)) Tensor containing absolute pose values (as outputted by P3dPose.forward)
+        :param x: (N, B, 3) Tensor containing absolute pose values (as outputted by P3dPose.forward)
         :type x: torch.Tensor
-        :param loc: (3,) Tensor containing pedestrian relative world transform (x, y, -z)
+        :param loc: (N, 3) Tensor containing pedestrian relative world transform (x, y, -z)
         :type loc: torch.Tensor
-        :param rot: (3,) Tensor containing pedestrian relative world rotation in radians (-roll, -pitch, -yaw)
+        :param rot: (N, 3) Tensor containing pedestrian relative world rotation in radians (-roll, -pitch, -yaw)
         :type rot: torch.Tensor
         :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3),
             but only [..., :2] are usable.
         :rtype: torch.Tensor
         """
+        batch_size = x.shape[0]
+
+        # TODO: maybe inverse of that should be applied only in P3dPose when
+        # CARLA-compatible coords are needed and not each time during forward pose projection?
+        # P3dPose.__pose_to_tensors, P3dPose.__tensors_to_pose and P3dPose.move would have to be updated
         p3d_2_world = torch.tensor((
             (0., -1., 0.),
             (1., 0., 0.),
             (0., 0., 1.)
-        ), device=rot.device)
+        ), device=rot.device).expand((batch_size, -1, -1))
+        world_x = torch.bmm(x, p3d_2_world)
 
-        world_rot = euler_angles_to_matrix(rot, "XYZ")
-        world_loc = loc
-        world_x = torch.mm(x, p3d_2_world)
+        # TODO: how world location/rotation should be kept?
+        # maybe it would make more sense to keep it as transformation matrix all the time?
+        # or at least rotation matrix?
+        world_transform = torch.eye(4, device=self._device).reshape(
+            (1, 4, 4)).repeat((batch_size, 1, 1))
+        world_transform[:, :3, :3] = euler_angles_to_matrix(rot, "XYZ")
+        world_transform[:, 3, :3] = loc
 
-        world_pos = Rotate(world_rot).compose(
-            Translate(world_loc)).transform_points(world_x)
+        world_pos = torch.bmm(torch.nn.functional.pad(world_x, pad=(
+            0, 1, 0, 0), mode='constant', value=1), world_transform)[..., :3]
         projected_x = self._camera.transform_points_screen(world_pos)
         return projected_x
 

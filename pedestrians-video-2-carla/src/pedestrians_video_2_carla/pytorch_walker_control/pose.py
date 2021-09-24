@@ -30,10 +30,9 @@ class P3dPose(Pose, torch.nn.Module):
         :param pose: Pose as a { bone_name: carla.Transform} dict
         :type pose: OrderedDict
         :return: Pose points mapped to tuple of Tensors (locations, rotations).
-            Angles are in radians and follow (roll, pitch, yaw) order as opposed to
-            CARLA degrees and (pitch, yaw, roll) order!
+            Rotations are specified as rotation matrix.
             In general this uses PyTorch3D coordinates system (right-handed, negative Z
-            and angles when compared to CARLA).
+            and negative angles when compared to CARLA).
         :rtype: Tuple[Tensor, Tensor]
         """
 

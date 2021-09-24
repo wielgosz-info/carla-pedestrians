@@ -8,9 +8,7 @@ from pedestrians_video_2_carla.walker_control.pose_projection import \
     PoseProjection
 
 
-def test_scaling():
-    pedestrian = ControlledPedestrian(None, 'adult', 'female')
-
+def test_scaling(pedestrian):
     projection = PoseProjection(pedestrian)
     image_projection_points = projection.current_pose_to_points()
 
