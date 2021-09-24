@@ -2,7 +2,12 @@ import argparse
 import logging
 import sys
 
+import pytorch_lightning as pl
+from torch.utils.data.dataloader import DataLoader
+
 from pedestrians_video_2_carla import __version__
+from pedestrians_video_2_carla.pl_datamodules.openpose import OpenPoseDataModule
+from pedestrians_video_2_carla.pl_modules.linear import LitLinearMapper
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -84,6 +89,20 @@ def main(args):
     #     match ControlledPedestrian hip point with OpenPose hip point?
     #     feed data into Dense (rotations as euler angles in radians; world transform) + pose.forward + pose_projection.forward
     #     loss: openpose vs 2D projection; pose normalization; MSE
+
+    # data
+    dm = OpenPoseDataModule()
+
+    # if model needs to know something about the data:
+    # openpose_dm.prepare_data()
+    # openpose_dm.setup()
+
+    # model
+    model = LitLinearMapper()
+
+    # training
+    trainer = pl.Trainer(gpus=1, num_nodes=1, precision=32)
+    trainer.fit(model, datamodule=dm)
 
 
 def run():
