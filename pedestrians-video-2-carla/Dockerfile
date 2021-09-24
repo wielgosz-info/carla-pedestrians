@@ -37,11 +37,12 @@ RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86
 # Also, temporary use the pre-release version of gym, switch to gym==0.20.0 when released
 RUN pip install --no-cache-dir \
     cameratransform==1.1 \
-    https://github.com/openai/gym/archive/refs/tags/v0.20.0.zip \
+    gym==0.20.0 \
     matplotlib==3.4.3 \
     numpy==1.21.1 \
     opencv-python-headless==4.5.3.56 \
     Pillow==8.3.1 \
+    pytorch-lightning==1.4.8 \
     pyyaml==5.4.1 \
     scipy==1.7.1 \
     tqdm==4.62.2
