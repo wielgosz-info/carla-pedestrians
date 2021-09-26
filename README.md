@@ -49,7 +49,7 @@ This project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/ope
 ## Funding
 
 <div>
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/Logo Tecniospring INDUSTRY_white.JPG" alt="Tecniospring INDUSTRY" style="height: 28px;">
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/ACCIO_horizontal.PNG" alt="ACCIÓ Government of Catalonia" style="height: 40px;">
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/EU_emblem_and_funding_declaration_EN.PNG" alt="This project has received funding from the European Union's Horizon 2020 research and innovation programme under Marie Skłodowska-Curie grant agreement No. 801342 (Tecniospring INDUSTRY) and the Government of Catalonia's Agency for Business Competitiveness (ACCIÓ)." style="height: 80px;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/Logo Tecniospring INDUSTRY_white.JPG" alt="Tecniospring INDUSTRY" style="height: 28px; display: inline-block;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/ACCIO_horizontal.PNG" alt="ACCIÓ Government of Catalonia" style="height: 40px; display: inline-block;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/EU_emblem_and_funding_declaration_EN.PNG" alt="This project has received funding from the European Union's Horizon 2020 research and innovation programme under Marie Skłodowska-Curie grant agreement No. 801342 (Tecniospring INDUSTRY) and the Government of Catalonia's Agency for Business Competitiveness (ACCIÓ)." style="height: 80px; display: inline-block;">
 </div>
