@@ -45,3 +45,11 @@ Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_ca
 This project uses videos and annotations from [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/), created by Amir Rasouli, Iuliia Kotseruba, and John K. Tsotsos, to extract pedestrians movements and attributes. The videos and annotations are released under [MIT License](https://github.com/ykotseruba/JAAD/blob/JAAD_2.0/LICENSE).
 
 This project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose), created by Ginés Hidalgo, Zhe Cao, Tomas Simon, Shih-En Wei, Yaadhav Raaj, Hanbyul Joo, and Yaser Sheikh, to extract pedestrians skeletons from videos. OpenPose has its [own licensing](https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/LICENSE) (basically, academic or non-profit organization noncommercial research use only).
+
+## Funding
+
+<div style="display: flex; align-items:center; gap: 0.16cm; background: #fff; border-left: 0.16cm solid #fff; height: 2cm;">
+<img src="pedestrians-video-2-carla/docs/_static/images/logos/Logo Tecniospring INDUSTRY_white.JPG" alt="Tecniospring INDUSTRY" width="806" height="195" style="height: 35%; width: auto;">
+<img src="pedestrians-video-2-carla/docs/_static/images/logos/ACCIO_horizontal.PNG" alt="ACCIÓ Government of Catalonia" width="838" height="123" style="height: 52%; width: auto;">
+<img src="pedestrians-video-2-carla/docs/_static/images/logos/EU_emblem_and_funding_declaration_EN.PNG" alt="This project has received funding from the European Union's Horizon 2020 research and innovation programme under Marie Skłodowska-Curie grant agreement No. 801342 (Tecniospring INDUSTRY) and the Government of Catalonia's Agency for Business Competitiveness (ACCIÓ)." width="877" height="169" style="height: 100%; width: auto;">
+</div>
