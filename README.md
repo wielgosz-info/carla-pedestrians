@@ -49,7 +49,7 @@ This project uses [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/ope
 ## Funding
 
 <div>
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/Logo Tecniospring INDUSTRY_white.JPG" alt="Tecniospring INDUSTRY" width="806" height="195" style="height: 0.7cm; width: auto; vertical-align:middle;">
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/ACCIO_horizontal.PNG" alt="ACCIÓ Government of Catalonia" width="838" height="123" style="height: 1.04cm; width: auto; vertical-align:middle;">
-    <img src="pedestrians-video-2-carla/docs/_static/images/logos/EU_emblem_and_funding_declaration_EN.PNG" alt="This project has received funding from the European Union's Horizon 2020 research and innovation programme under Marie Skłodowska-Curie grant agreement No. 801342 (Tecniospring INDUSTRY) and the Government of Catalonia's Agency for Business Competitiveness (ACCIÓ)." width="877" height="169" style="height: 2cm; width: auto; vertical-align:middle;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/Logo Tecniospring INDUSTRY_white.JPG" alt="Tecniospring INDUSTRY" style="height: 0.7cm;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/ACCIO_horizontal.PNG" alt="ACCIÓ Government of Catalonia" style="height: 1.04cm;">
+    <img src="pedestrians-video-2-carla/docs/_static/images/logos/EU_emblem_and_funding_declaration_EN.PNG" alt="This project has received funding from the European Union's Horizon 2020 research and innovation programme under Marie Skłodowska-Curie grant agreement No. 801342 (Tecniospring INDUSTRY) and the Government of Catalonia's Agency for Business Competitiveness (ACCIÓ)." style="height: 2cm;">
 </div>
