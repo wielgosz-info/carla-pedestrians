@@ -77,7 +77,7 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         ), device=self._device, dtype=torch.float32)
 
         p3d_points = self.forward(absolute.unsqueeze(
-            0), loc.unsqueeze(0), rot.unsqueeze(0))[0]
+            0), loc.unsqueeze(0), euler_angles_to_matrix(rot.unsqueeze(0), "XYZ"))[0]
         return p3d_points.cpu().numpy()[..., :2]
 
     def forward(self, x: Tensor, loc: Tensor, rot: Tensor):
@@ -89,9 +89,9 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
 
         :param x: (N, B, 3) Tensor containing absolute pose values (as outputted by P3dPose.forward)
         :type x: torch.Tensor
-        :param loc: (N, 3) Tensor containing pedestrian relative world transform (x, y, -z)
+        :param loc: (N, 3) Tensor containing pedestrian relative world location (x, y, -z)
         :type loc: torch.Tensor
-        :param rot: (N, 3) Tensor containing pedestrian relative world rotation in radians (-roll, -pitch, -yaw)
+        :param rot: (N, 3, 3) Tensor containing pedestrian relative world rotation as rotation matrix
         :type rot: torch.Tensor
         :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3),
             but only [..., :2] are usable.
@@ -114,7 +114,7 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         # or at least rotation matrix?
         world_transform = torch.eye(4, device=self._device).reshape(
             (1, 4, 4)).repeat((batch_size, 1, 1))
-        world_transform[:, :3, :3] = euler_angles_to_matrix(rot, "XYZ")
+        world_transform[:, :3, :3] = rot
         world_transform[:, 3, :3] = loc
 
         world_pos = torch.bmm(torch.nn.functional.pad(world_x, pad=(

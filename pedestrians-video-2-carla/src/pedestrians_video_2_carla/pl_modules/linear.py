@@ -25,7 +25,13 @@ class LitLinearMapper(LitBaseMapper):
 
     def training_step(self, train_batch, batch_idx):
         pose_change = self.forward(train_batch)
-        projected_pose = self._pose_projection(pose_change)
+        projected_pose = self._pose_projection(
+            pose_change,
+            torch.zeros((*train_batch.shape[:2], 3),
+                        self.device),  # no world loc change
+            torch.zeros((*train_batch.shape[:2], 3),
+                        self.device),  # no world rot change
+        )
 
         loss = F.mse_loss(projected_pose, train_batch)
         self.log('train_loss', loss)
@@ -33,7 +39,11 @@ class LitLinearMapper(LitBaseMapper):
 
     def validation_step(self, val_batch, batch_idx):
         pose_change = self.forward(val_batch)
-        projected_pose = self._pose_projection(pose_change)
+        projected_pose = self._pose_projection(
+            pose_change,
+            torch.zeros((*val_batch.shape[:2], 3), self.device),  # no world loc change
+            torch.zeros((*val_batch.shape[:2], 3), self.device),  # no world rot change
+        )
 
         loss = F.mse_loss(projected_pose, val_batch)
         self.log('val_loss', loss)

@@ -84,7 +84,8 @@ def test_batch(device):
     locations = torch.empty((batch_size, bones_amount, 3), device=device)
     rotations = torch.empty((batch_size, bones_amount, 3, 3), device=device)
     world_loc = torch.zeros((batch_size, 3), device=device)
-    world_rot = torch.zeros((batch_size, 3), device=device)
+    world_rot = torch.eye(3, device=device).reshape(
+        (1, 3, 3)).repeat((batch_size, 1, 1))
     for i in range(batch_size):
         (loc, rot) = p3d_pose.tensors  # 'tensors' is cloning, so each call returns a copy
         locations[i] = loc
