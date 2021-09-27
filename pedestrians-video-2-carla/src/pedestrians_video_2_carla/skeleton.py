@@ -3,10 +3,9 @@ import logging
 import sys
 
 import pytorch_lightning as pl
-from torch.utils.data.dataloader import DataLoader
 
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.pl_datamodules.openpose import OpenPoseDataModule
+from pedestrians_video_2_carla.pl_datamodules.jaad_openpose import JAADOpenPoseDataModule
 from pedestrians_video_2_carla.pl_modules.linear import LitLinearMapper
 
 __author__ = "Maciej Wielgosz"
@@ -91,7 +90,7 @@ def main(args):
     #     loss: openpose vs 2D projection; pose normalization; MSE
 
     # data
-    dm = OpenPoseDataModule()
+    dm = JAADOpenPoseDataModule()
 
     # if model needs to know something about the data:
     # openpose_dm.prepare_data()
