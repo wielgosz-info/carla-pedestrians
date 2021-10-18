@@ -1,16 +1,18 @@
+from typing import Union
 import torch
 from torch import nn
 from torch.nn import functional as F
 
 from pedestrians_video_2_carla.pl_modules.base import LitBaseMapper
+from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
 
 
 class LitLinearMapper(LitBaseMapper):
-    def __init__(self):
+    def __init__(self, points: Union[BODY_25, COCO] = BODY_25):
         super().__init__()
 
         self.pose_linear = nn.Linear(
-            26 * 2,  # OpenPose mapped to CARLA points; what to do about NaNs?
+            len(points) * 3,  # OpenPose (x,y,confidence) points
             # bones rotations (euler angles; radians; roll, pitch, yaw) to get into the required position
             26 * 3
         )
@@ -23,27 +25,26 @@ class LitLinearMapper(LitBaseMapper):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
 
-    def training_step(self, train_batch, batch_idx):
-        pose_change = self.forward(train_batch)
+    def training_step(self, batch, batch_idx):
+        return self.__step(batch, 'train')
+
+    def validation_step(self, batch, batch_idx):
+        return self.__step(batch, 'val')
+
+    def test_step(self, batch, batch_idx):
+        return self.__step(batch, 'test')
+
+    def __step(self, batch, stage):
+        (_, _, frames) = batch
+        pose_change = self.forward(frames)
         projected_pose = self._pose_projection(
             pose_change,
-            torch.zeros((*train_batch.shape[:2], 3),
+            torch.zeros((*frames.shape[:2], 3),
                         self.device),  # no world loc change
-            torch.zeros((*train_batch.shape[:2], 3),
+            torch.zeros((*frames.shape[:2], 3),
                         self.device),  # no world rot change
         )
 
-        loss = F.mse_loss(projected_pose, train_batch)
-        self.log('train_loss', loss)
+        loss = F.mse_loss(projected_pose, frames)
+        self.log('{}_loss'.format(stage), loss)
         return loss
-
-    def validation_step(self, val_batch, batch_idx):
-        pose_change = self.forward(val_batch)
-        projected_pose = self._pose_projection(
-            pose_change,
-            torch.zeros((*val_batch.shape[:2], 3), self.device),  # no world loc change
-            torch.zeros((*val_batch.shape[:2], 3), self.device),  # no world rot change
-        )
-
-        loss = F.mse_loss(projected_pose, val_batch)
-        self.log('val_loss', loss)

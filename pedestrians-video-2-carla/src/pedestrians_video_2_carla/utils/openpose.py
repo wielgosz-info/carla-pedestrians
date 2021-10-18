@@ -2,9 +2,61 @@ import glob
 import json
 import os
 from collections import OrderedDict
-from typing import List, Pattern
+from enum import Enum
+from typing import List, Pattern, Union
 
 import numpy as np
+import torch
+from torch.functional import Tensor
+
+
+class BODY_25(Enum):
+    head__C = 0
+    neck__C = 1
+    arm__R = 2
+    foreArm__R = 3
+    hand__R = 4
+    arm__L = 5
+    foreArm__L = 6
+    hand__L = 7
+    hips__C = 8
+    thigh__R = 9
+    leg__R = 10
+    foot__R = 11
+    thigh__L = 12
+    leg__L = 13
+    foot__L = 14
+    eye__R = 15
+    eye__L = 16
+    ear__R = 17
+    ear_L = 18
+    toe__L = 19
+    toeEnd__L = 20
+    heel_L = 21
+    toe__R = 22
+    toeEnd__R = 23
+    heel_R = 24
+
+
+class COCO(Enum):
+    head__C = 0
+    neck__C = 1
+    arm__R = 2
+    foreArm__R = 3
+    hand__R = 4
+    arm__L = 5
+    foreArm__L = 6
+    hand__L = 7
+    thigh__R = 8
+    leg__R = 9
+    foot__R = 10
+    thigh__L = 11
+    leg__L = 12
+    foot__L = 13
+    eye__R = 14
+    eye__L = 15
+    ear__R = 16
+    ear_L = 17
 
 
 def load_openpose(path: str, frame_no_regexp: Pattern = None, frame_no_as_int=False):
@@ -69,7 +121,7 @@ def load_openpose(path: str, frame_no_regexp: Pattern = None, frame_no_as_int=Fa
 
 def openpose_to_projection_points(keypoints_2d: List[float], empty_pose: OrderedDict) -> np.ndarray:
     """
-    Converts list of points from OpenPose JSON output into image-space coordinates.
+    Converts list of points from OpenPose BODY_25 JSON output into image-space coordinates.
 
     :param keypoints_2d: List of keypoints in OpenPose format
         `[x0,y0,confidence0, x1,y1,confidence1, ..., x24,y24,confidence24]`
@@ -85,66 +137,65 @@ def openpose_to_projection_points(keypoints_2d: List[float], empty_pose: Ordered
     # we then will get empty_pose.values() to ensure the points are in correct order
     empty_pose['crl_root'] = [np.NaN, np.NaN]
     # No. 8 is actually the point between thighs in OpenPose, so lower than CARLA one
-    empty_pose['crl_hips__C'] = points[8, :2]
+    empty_pose['crl_hips__C'] = points[BODY_25.hips__C.value, :2]
     empty_pose['crl_spine__C'] = [np.NaN, np.NaN]
     empty_pose['crl_spine01__C'] = [np.NaN, np.NaN]
     empty_pose['crl_shoulder__L'] = [np.NaN, np.NaN]
-    empty_pose['crl_arm__L'] = points[5, :2]
-    empty_pose['crl_foreArm__L'] = points[6, :2]
-    empty_pose['crl_hand__L'] = points[7, :2]
+    empty_pose['crl_arm__L'] = points[BODY_25.arm__L.value, :2]
+    empty_pose['crl_foreArm__L'] = points[BODY_25.foreArm__L.value, :2]
+    empty_pose['crl_hand__L'] = points[BODY_25.hand__L.value, :2]
     # No. 1 is actually the point between shoulders in OpenPose, so lower than CARLA one
-    empty_pose['crl_neck__C'] = points[1, :2]
-    empty_pose['crl_Head__C'] = points[0, :2]
+    empty_pose['crl_neck__C'] = points[BODY_25.neck__C.value, :2]
+    empty_pose['crl_Head__C'] = points[BODY_25.head__C.value, :2]
     empty_pose['crl_shoulder__R'] = [np.NaN, np.NaN]
-    empty_pose['crl_arm__R'] = points[2, :2]
-    empty_pose['crl_foreArm__R'] = points[3, :2]
-    empty_pose['crl_hand__R'] = points[4, :2]
-    empty_pose['crl_eye__L'] = points[16, :2]
-    empty_pose['crl_eye__R'] = points[15, :2]
-    empty_pose['crl_thigh__R'] = points[9, :2]
-    empty_pose['crl_leg__R'] = points[10, :2]
-    empty_pose['crl_foot__R'] = points[11, :2]
-    empty_pose['crl_toe__R'] = points[22, :2]
-    empty_pose['crl_toeEnd__R'] = points[23, :2]
-    empty_pose['crl_thigh__L'] = points[12, :2]
-    empty_pose['crl_leg__L'] = points[13, :2]
-    empty_pose['crl_foot__L'] = points[14, :2]
-    empty_pose['crl_toe__L'] = points[19, :2]
-    empty_pose['crl_toeEnd__L'] = points[20, :2]
+    empty_pose['crl_arm__R'] = points[BODY_25.arm__R.value, :2]
+    empty_pose['crl_foreArm__R'] = points[BODY_25.foreArm__R.value, :2]
+    empty_pose['crl_hand__R'] = points[BODY_25.hand__R.value, :2]
+    empty_pose['crl_eye__L'] = points[BODY_25.eye__L.value, :2]
+    empty_pose['crl_eye__R'] = points[BODY_25.eye__R.value, :2]
+    empty_pose['crl_thigh__R'] = points[BODY_25.thigh__R.value, :2]
+    empty_pose['crl_leg__R'] = points[BODY_25.leg__R.value, :2]
+    empty_pose['crl_foot__R'] = points[BODY_25.foot__R.value, :2]
+    empty_pose['crl_toe__R'] = points[BODY_25.toe__R.value, :2]
+    empty_pose['crl_toeEnd__R'] = points[BODY_25.toeEnd__R.value, :2]
+    empty_pose['crl_thigh__L'] = points[BODY_25.thigh__L.value, :2]
+    empty_pose['crl_leg__L'] = points[BODY_25.leg__L.value, :2]
+    empty_pose['crl_foot__L'] = points[BODY_25.foot__L.value, :2]
+    empty_pose['crl_toe__L'] = points[BODY_25.toe__L.value, :2]
+    empty_pose['crl_toeEnd__L'] = points[BODY_25.toeEnd__L.value, :2]
 
     return np.array(list(empty_pose.values()))
 
 
-def alternative_hips_neck(original_points: np.ndarray, empty_pose: OrderedDict) -> np.ndarray:
+def alternative_hips_neck(original_points: Union[np.ndarray, Tensor], empty_pose: OrderedDict) -> Union[np.ndarray, Tensor]:
     """
     Modifies the copy of original projection points with alternative calculations
     for hips and neck points. Hips are calculated as a mean between thighs, and
     nec is calculated as a mean between shoulders.
 
     :param original_points: Pose points projected to 2D
-    :type original_points: np.ndarray
+    :type original_points: Union[np.ndarray, Tensor]
     :param empty_pose: `Pose().empty` to ensure we modify correct points
     :type empty_pose: OrderedDict
     :return: Pose points projected to 2D with hips and neck points modified
-    :rtype: np.ndarray
+    :rtype: Union[np.ndarray, Tensor]
     """
-    projection_points = np.copy(original_points)
+    if isinstance(original_points, Tensor):
+        projection_points = torch.clone(original_points)
+    else:
+        projection_points = np.copy(original_points)
 
     bone_names = list(empty_pose.keys())
     hips_idx = bone_names.index('crl_hips__C')
     thighR_idx = bone_names.index('crl_thigh__R')
     thighL_idx = bone_names.index('crl_thigh__L')
-    projection_points[hips_idx] = np.mean(
-        [projection_points[thighR_idx], projection_points[thighL_idx]],
-        axis=0
-    )
+    projection_points[hips_idx] = projection_points[[
+        thighR_idx, thighL_idx]].mean(axis=0)
 
     neck_idx = bone_names.index('crl_neck__C')
     shoulderR_idx = bone_names.index('crl_shoulder__R')
     shoulderL_idx = bone_names.index('crl_shoulder__L')
-    projection_points[neck_idx] = np.mean(
-        [projection_points[shoulderR_idx], projection_points[shoulderL_idx]],
-        axis=0
-    )
+    projection_points[neck_idx] = projection_points[[
+        shoulderR_idx, shoulderL_idx]].mean(axis=0)
 
     return projection_points, (hips_idx, neck_idx)

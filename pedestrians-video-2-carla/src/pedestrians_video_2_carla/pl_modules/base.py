@@ -20,21 +20,24 @@ class LitBaseMapper(pl.LightningModule):
     def _on_batch_start(self, batch, batch_idx, dataloader_idx):
         # TODO: is it OK if all of those are set as class fields instead of being passed through during forward?
 
+        (ages, genders, frames) = batch
+        batch_size = len(frames)
+
         # create pedestrian object for each clip in batch
         self.__pedestrians = [
             ControlledPedestrian(world=None, age=age, gender=gender,
                                  pose_cls=P3dPose, device=self.device)
-            for (age, gender, _) in batch
+            for (age, gender) in zip(ages, genders)
         ]
         # only create one - we're assuming that camera is setup in the same for way for each pedestrian
         self.__pose_projection = P3dPoseProjection(
             device=self.device, pedestrian=self.__pedestrians[0])
         # TODO: handle initial world transform matching instead of setting all zeros?
-        (_, _, pose_2d) = batch[0]
+
         self.__world_locations = torch.zeros(
-            (len(batch), 3), device=self.device)
+            (batch_size, 3), device=self.device)
         self.__world_rotations = torch.eye(3, device=self._device).reshape(
-            (1, 3, 3)).repeat((len(batch), 1, 1))
+            (1, 3, 3)).repeat((batch_size, 1, 1))
 
     def _pose_projection(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor, world_rot_change_batch: Tensor):
         """

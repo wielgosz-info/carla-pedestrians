@@ -100,7 +100,7 @@ def main(args):
     model = LitLinearMapper()
 
     # training
-    trainer = pl.Trainer(gpus=1, num_nodes=1, precision=16)
+    trainer = pl.Trainer(gpus=1, num_nodes=1)
     trainer.fit(model, datamodule=dm)
 
 

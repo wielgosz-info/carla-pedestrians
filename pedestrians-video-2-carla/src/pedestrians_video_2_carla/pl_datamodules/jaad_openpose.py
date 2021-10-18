@@ -2,10 +2,14 @@ import os
 import pandas
 import math
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 from pandas.core.frame import DataFrame
 from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning import LightningDataModule
+
+from pedestrians_video_2_carla.pytorch_data.openpose_dataset import OpenPoseDataset
+from pedestrians_video_2_carla.pytorch_data.transforms import HipsNeckNormalize
+from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
 
 DATA_DIR = os.path.join('/outputs', 'JAAD')
 DF_ISIN = {
@@ -35,7 +39,9 @@ class JAADOpenPoseDataModule(LightningDataModule):
                  df_usecols=DF_USECOLS,
                  df_isin: Optional[Dict] = DF_ISIN,
                  clip_length: Optional[int] = 30,
-                 clip_offset: Optional[int] = 10):
+                 clip_offset: Optional[int] = 10,
+                 batch_size: int = 64,
+                 points: Union[BODY_25, COCO] = BODY_25):
         super().__init__()
 
         self.data_dir = data_dir
@@ -46,6 +52,10 @@ class JAADOpenPoseDataModule(LightningDataModule):
         self.clip_length = clip_length
         self.clip_offset = clip_offset
 
+        self.batch_size = batch_size
+
+        self.points = points
+
         if not os.path.exists(os.path.join(self.data_dir, 'subsets')):
             os.mkdir(os.path.join(self.data_dir, 'subsets'))
         self.subsets_dir = os.path.join(
@@ -54,6 +64,8 @@ class JAADOpenPoseDataModule(LightningDataModule):
 
     def prepare_data(self) -> None:
         # this is only called on one GPU, do not use self.something assignments
+
+        # TODO: one day use JAAD annotations directly
         annotations_df: DataFrame = pandas.read_csv(
             self.annotations_filepath,
             usecols=self.annotations_usecols,
@@ -77,16 +89,15 @@ class JAADOpenPoseDataModule(LightningDataModule):
         # drop clips that are too short for sure
         frame_counts = frame_counts[frame_counts.frame_count >= self.clip_length]
 
-        clips = DataFrame([], columns=DF_USECOLS+['clip']
-                          ).set_index(['video', 'id', 'clip', 'frame'])
+        clips = []
 
         # handle continuous clips first
         for idx in frame_counts[frame_counts.frame_count_eq_diff == True].index:
             video = annotations_df.loc[idx]
             ci = 0
             while (ci*self.clip_offset + self.clip_length) <= frame_counts.loc[idx].frame_count:
-                clips = clips.append(video.iloc[ci * self.clip_offset:ci *
-                                                self.clip_offset + self.clip_length].reset_index()[self.annotations_usecols].assign(clip=ci).set_index(['video', 'id', 'clip', 'frame']))
+                clips.append(video.iloc[ci * self.clip_offset:ci *
+                                        self.clip_offset + self.clip_length].reset_index()[self.annotations_usecols].assign(clip=ci))
                 ci += 1
 
         # then try to extract from non-continuos
@@ -103,9 +114,12 @@ class JAADOpenPoseDataModule(LightningDataModule):
             ci = 0  # continuous for all clips
             for (fmin, fmax) in zip(frame_min, frame_max):
                 while (ci*self.clip_offset + self.clip_length + fmin) <= fmax:
-                    clips = clips.append(video.loc[video.frame >= ci*self.clip_offset + self.clip_length + fmin][:self.clip_length].reset_index()[
-                                         self.annotations_usecols].assign(clip=ci).set_index(['video', 'id', 'clip', 'frame']))
+                    clips.append(video.loc[video.frame >= ci*self.clip_offset + fmin][:self.clip_length].reset_index()[
+                        self.annotations_usecols].assign(clip=ci))
                     ci += 1
+
+        clips = pandas.concat(clips).set_index(['video', 'id', 'clip', 'frame'])
+        clips.sort_index(inplace=True)
 
         # aaaand finally we have what we need in "clips" to create our dataset
         # how many clips do we have?
@@ -153,13 +167,43 @@ class JAADOpenPoseDataModule(LightningDataModule):
             clips_set.drop(['clips_count', 'clips_cumsum'], inplace=True, axis=1)
             clips_set.to_csv(os.path.join(self.subsets_dir, '{:s}.csv'.format(name)))
 
-    # def setup(self, stage: Optional[str] = None) -> None:
+    def setup(self, stage: Optional[str] = None) -> None:
+        if stage == "fit" or stage is None:
+            self.train_set = OpenPoseDataset(
+                self.data_dir,
+                os.path.join(self.subsets_dir, 'train.csv'),
+                points=self.points,
+                transform=HipsNeckNormalize(self.points)
+            )
+            self.val_set = OpenPoseDataset(
+                self.data_dir,
+                os.path.join(self.subsets_dir, 'val.csv'),
+                points=self.points,
+                transform=HipsNeckNormalize(self.points)
+            )
 
-    #     if stage == "fit" or stage is None:
-    #         # prepare train and val
+        if stage == "test" or stage is None:
+            self.test_set = OpenPoseDataset(
+                self.data_dir,
+                os.path.join(self.subsets_dir, 'test.csv'),
+                points=self.points,
+                transform=HipsNeckNormalize(self.points)
+            )
 
-    #     if stage == "test" or stage is None:
-    #         # prepare test
+    def __dataloader(self, dataset, shuffle=False):
+        return DataLoader(
+            dataset=dataset,
+            batch_size=self.batch_size,
+            num_workers=os.cpu_count(),
+            pin_memory=True,
+            shuffle=shuffle
+        )
 
     def train_dataloader(self):
-        return DataLoader()
+        return self.__dataloader(self.train_set, shuffle=True)
+
+    def val_dataloader(self):
+        return self.__dataloader(self.val_set)
+
+    def test_dataloader(self):
+        return self.__dataloader(self.test_set)
