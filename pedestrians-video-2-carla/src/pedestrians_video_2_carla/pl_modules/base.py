@@ -53,7 +53,7 @@ class LitBaseMapper(pl.LightningModule):
         :return: [description]
         :rtype: [type]
         """
-        original_shape = pose_change_batch.shape
+        (batch_size, clip_length, points, features) = pose_change_batch.shape
 
         # TODO: switch batch and clip length dimensions?
         if pose_change_batch.ndim < 4:
@@ -65,20 +65,24 @@ class LitBaseMapper(pl.LightningModule):
             for p in self.__pedestrians
         ])
 
+        prev_relative_loc = torch.stack(prev_relative_loc)
+        prev_relative_rot = torch.stack(prev_relative_rot)
+
         # get subsequent poses calculated
         # naively for now
         # TODO: wouldn't it be better if P3dPose and P3PoseProjection were directly sequence-aware?
         # so that we only get in the initial loc/rot and a sequence of changes
-        absolute_loc = torch.empty_like(prev_relative_loc)
+        absolute_loc = torch.empty(
+            (batch_size, clip_length, points, features), device=pose_change_batch.device)
         pose: P3dPose = self.__pedestrians[0].current_pose
-        for i in range(original_shape[1]):
+        for i in range(clip_length):
             (absolute_loc[:, i], _, prev_relative_rot) = pose.forward(
                 pose_change_batch[:, i], prev_relative_loc, prev_relative_rot)
 
         world_rot_matrix_change_batch = euler_angles_to_matrix(
             world_rot_change_batch, "XYZ")
         projections = torch.empty_like(absolute_loc)
-        for i in range(original_shape[1]):
+        for i in range(clip_length):
             self.__world_rotations = torch.bmm(
                 self.__world_rotations,
                 world_rot_matrix_change_batch[:, i]
@@ -89,7 +93,7 @@ class LitBaseMapper(pl.LightningModule):
                 self.__world_locations,
                 self.__world_rotations
             )
-        return projections.reshape((*original_shape[:3], 3))
+        return projections.reshape((batch_size, clip_length, points, 3))
 
     def on_train_batch_start(self, batch, batch_idx, dataloader_idx):
         self._on_batch_start(batch, batch_idx, dataloader_idx)

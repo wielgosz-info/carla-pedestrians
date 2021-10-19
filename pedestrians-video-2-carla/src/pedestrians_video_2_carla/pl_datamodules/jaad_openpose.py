@@ -8,7 +8,7 @@ from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning import LightningDataModule
 
 from pedestrians_video_2_carla.pytorch_data.openpose_dataset import OpenPoseDataset
-from pedestrians_video_2_carla.pytorch_data.transforms import HipsNeckNormalize
+from pedestrians_video_2_carla.pytorch_data.transforms import OpenPoseHipsNeckNormalize
 from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
 
 DATA_DIR = os.path.join('/outputs', 'JAAD')
@@ -40,7 +40,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
                  df_isin: Optional[Dict] = DF_ISIN,
                  clip_length: Optional[int] = 30,
                  clip_offset: Optional[int] = 10,
-                 batch_size: int = 64,
+                 batch_size: int = 32,
                  points: Union[BODY_25, COCO] = BODY_25):
         super().__init__()
 
@@ -173,13 +173,13 @@ class JAADOpenPoseDataModule(LightningDataModule):
                 self.data_dir,
                 os.path.join(self.subsets_dir, 'train.csv'),
                 points=self.points,
-                transform=HipsNeckNormalize(self.points)
+                transform=OpenPoseHipsNeckNormalize(self.points)
             )
             self.val_set = OpenPoseDataset(
                 self.data_dir,
                 os.path.join(self.subsets_dir, 'val.csv'),
                 points=self.points,
-                transform=HipsNeckNormalize(self.points)
+                transform=OpenPoseHipsNeckNormalize(self.points)
             )
 
         if stage == "test" or stage is None:
@@ -187,7 +187,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
                 self.data_dir,
                 os.path.join(self.subsets_dir, 'test.csv'),
                 points=self.points,
-                transform=HipsNeckNormalize(self.points)
+                transform=OpenPoseHipsNeckNormalize(self.points)
             )
 
     def __dataloader(self, dataset, shuffle=False):

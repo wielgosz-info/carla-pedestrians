@@ -58,7 +58,7 @@ class OpenPoseDataset(Dataset):
                         'x1', 'y1', 'x2', 'y2']].to_numpy().reshape((2, 2))
                     frames.append(self.__select_best_candidate(candidates, gt_bbox))
 
-        torch_frames = torch.tensor(frames)
+        torch_frames = torch.tensor(frames, dtype=torch.float32)
 
         if self.transform is not None:
             torch_frames = self.transform(torch_frames)

@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.html \
-    torch==1.9.0+cu111 \
-    torchvision==0.10.0+cu111 \
-    torchaudio==0.9.0
+    torch==1.9.1+cu111 \
+    torchvision==0.10.1+cu111 \
+    torchaudio==0.9.1
 
 # separate some utility/development requirements, since they will change much more often than PyTorch ones
 RUN pip install --no-cache-dir \
@@ -43,7 +43,7 @@ RUN pip install --no-cache-dir \
     opencv-python-headless==4.5.3.56 \
     pandas==1.3.3 \
     Pillow==8.3.1 \
-    pytorch-lightning==1.4.8 \
+    pytorch-lightning==1.4.9 \
     pyyaml==5.4.1 \
     scipy==1.7.1 \
     tqdm==4.62.2
@@ -51,7 +51,7 @@ RUN pip install --no-cache-dir \
 # PyTorch3D
 # Python, CUDA and PyTorch versions specified in URL must match
 RUN pip install --no-cache-dir \
-    -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu111_pyt190/download.html \
+    -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu111_pyt191/download.html \
     pytorch3d
 
 # Copy client files so that we can do editable pip install
