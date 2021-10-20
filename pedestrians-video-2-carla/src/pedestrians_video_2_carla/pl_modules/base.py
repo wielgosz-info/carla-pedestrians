@@ -162,9 +162,7 @@ class LitBaseMapper(pl.LightningModule):
         )
 
         self.log('{}_loss'.format(stage), loss)
-
-        if stage != 'train':
-            self._log_videos(projected_pose, batch, batch_idx, stage)
+        self._log_videos(projected_pose, batch, batch_idx, stage)
 
         return loss
 
@@ -176,9 +174,9 @@ class LitBaseMapper(pl.LightningModule):
 
         # TODO: allow to specify how many videos from each batch should be created
         max_videos = 1
-        videos_dir = os.path.join(self.logger.log_dir, 'videos')
+        videos_dir = os.path.join(self.logger.log_dir, 'videos', stage)
         if not os.path.exists(videos_dir):
-            os.mkdir(videos_dir)
+            os.makedirs(videos_dir)
 
         (frames, ages, genders, video_ids, pedestrian_ids, clip_ids) = batch
 
