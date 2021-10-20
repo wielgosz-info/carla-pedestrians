@@ -1,21 +1,28 @@
 
-from typing import List
-from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
-import torch
-from torch import nn
-from torch.functional import Tensor
-from torch.nn import functional as F
-import pytorch_lightning as pl
-from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import P3dPoseProjection
+from typing import Union
 
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
+import pytorch_lightning as pl
+import torch
+from pedestrians_video_2_carla.pytorch_helpers.lossess import ProjectionLoss
 from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
+from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import \
+    P3dPoseProjection
+from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
+    ControlledPedestrian
+from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
+from torch.functional import Tensor
 
 
 class LitBaseMapper(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25, **kwargs):
         super().__init__()
         self.__pedestrians = []
+        self.criterion = ProjectionLoss(
+            self.pose_projection,
+            input_nodes,
+            **kwargs
+        )
 
     def _on_batch_start(self, batch, batch_idx, dataloader_idx):
         # TODO: is it OK if all of those are set as class fields instead of being passed through during forward?
@@ -118,4 +125,15 @@ class LitBaseMapper(pl.LightningModule):
         return self._step(batch, batch_idx, batch_idx, 'test')
 
     def _step(self, batch, batch_idx, stage):
-        raise NotImplementedError()
+        (_, _, frames) = batch
+
+        pose_change = self.forward(frames.to(self.device))
+
+        loss = self.criterion(
+            pose_change,
+            frames
+        )
+
+        self.log('{}_loss'.format(stage), loss)
+
+        return loss

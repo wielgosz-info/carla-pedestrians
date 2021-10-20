@@ -7,11 +7,11 @@ from pedestrians_video_2_carla.pytorch_helpers.transforms import CarlaHipsNeckNo
 
 
 class ProjectionLoss(nn.Module):
-    def __init__(self, pose_projection_func, points: Union[BODY_25, COCO] = BODY_25, criterion=None, projection_transform=None) -> None:
+    def __init__(self, pose_projection_func, input_nodes: Union[BODY_25, COCO] = BODY_25, criterion=None, projection_transform=None, **kwargs) -> None:
         super().__init__()
 
         self.pose_projection = pose_projection_func
-        self.__points = points
+        self.__points = input_nodes
 
         if criterion is None:
             criterion = nn.MSELoss(reduction='mean')
