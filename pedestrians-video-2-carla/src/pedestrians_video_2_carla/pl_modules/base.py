@@ -162,11 +162,11 @@ class LitBaseMapper(pl.LightningModule):
         )
 
         self.log('{}_loss'.format(stage), loss)
-        self._log_videos(projected_pose, batch, stage)
+        self._log_videos(projected_pose, batch, batch_idx, stage)
 
         return loss
 
-    def _log_videos(self, projected_pose: Tensor, batch: Tuple, stage: str):
+    def _log_videos(self, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str):
         # TODO: this or at least the for loop should probably live in a separate helper
         if self.current_epoch % 20 > 0:
             # we only want to log every n-th epoch
@@ -221,7 +221,7 @@ class LitBaseMapper(pl.LightningModule):
                 # align them next to each other vertically
                 img = np.concatenate((openpose_img, projection_img), axis=0)
                 # TODO: add thin white border to separate groups from each other?
-                video.append(torch.tensor(img[..., 0:3]))  # H,W,C
+                video.append(torch.tensor(img[..., 0:3]))  # H,W,C; drop alpha
             video = torch.stack(video)  # T,H,W,C
             torchvision.io.write_video(
                 os.path.join(videos_dir,
@@ -239,5 +239,5 @@ class LitBaseMapper(pl.LightningModule):
         videos = torch.stack(videos).permute(0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
 
         if stage != 'train':
-            tb.add_video('{}_gt_and_projection_points'.format(stage),
-                        videos, self.global_step, fps=30.0)
+            tb.add_video('{}_{:0>2d}_gt_and_projection_points'.format(stage, batch_idx),
+                         videos, self.global_step, fps=30.0)
