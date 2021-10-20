@@ -80,7 +80,7 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
             0), loc.unsqueeze(0), euler_angles_to_matrix(rot.unsqueeze(0), "XYZ"))[0]
         return p3d_points.cpu().numpy()[..., :2]
 
-    def forward(self, x: Tensor, loc: Tensor, rot: Tensor):
+    def forward(self, x: Tensor, loc: Tensor, rot: Tensor) -> Tensor:
         """
         Projects 3D points to 2D using predefined camera.
 

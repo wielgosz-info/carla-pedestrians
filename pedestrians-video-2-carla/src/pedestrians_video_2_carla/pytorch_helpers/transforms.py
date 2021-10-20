@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Callable, Union
 
 import torch
 from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
@@ -7,73 +7,104 @@ from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
 from torch.functional import Tensor
 
 
-class HipsNeckNormalize(object):
-    """
-    Normalize each sample so that hips x,y = 0,0 and distance between hips & neck == 1.
-    """
-
-    def __init__(self, input_nodes: Enum, near_zero: float = 1e-5) -> None:
+class HipsNeckExtractor(object):
+    def __init__(self, input_nodes: Enum) -> None:
         self.input_nodes = input_nodes
-        self.__near_zero = near_zero
 
-    def __call__(self, sample: Tensor, *args: Any, **kwds: Any) -> Any:
-        hips = self._get_hips_point(sample)
-        neck = self._get_neck_point(sample)
-        dist = torch.linalg.vector_norm(neck - hips, dim=-1)
-
-        sample[..., 0:2] = (sample[..., 0:2] -
-                            torch.unsqueeze(hips, -2)) / dist[(..., ) + (None, ) * 2]
-
-        num_sample = torch.nan_to_num(sample, nan=0, posinf=0, neginf=0)
-
-        # if confidence is 0, we will assume the point overlaps with hips
-        # so that values that were originally 0,0 (not detected)
-        # do not skew the values range
-        num_sample[..., 0:2] = num_sample[..., 0:2].where(
-            num_sample[..., 2:] >= self.__near_zero, torch.tensor(0.0, device=num_sample.device))
-
-        return num_sample
-
-    def _get_hips_point(self, sample: Tensor):
+    def get_hips_point(self, sample: Tensor) -> Tensor:
         raise NotImplementedError()
 
-    def _get_neck_point(self, sample: Tensor):
+    def get_neck_point(self, sample: Tensor) -> Tensor:
         raise NotImplementedError()
 
 
-class OpenPoseHipsNeckNormalize(HipsNeckNormalize):
-    """
-    Normalize each sample containing OpenPose keypoints so that hips x,y = 0,0 and distance between hips & neck == 1.
-    """
-
+class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
     def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25) -> None:
         super().__init__(input_nodes)
 
-    def _get_hips_point(self, sample: Tensor):
+    def get_hips_point(self, sample: Tensor) -> Tensor:
         try:
             return sample[..., self.input_nodes.hips__C.value, 0:2]
         except AttributeError:
             # since COCO does not have hips point, we're using mean of tights
             return sample[..., [self.input_nodes.thigh__L.value, self.input_nodes.thigh__R.value], 0:2].mean(axis=-2)
 
-    def _get_neck_point(self, sample: Tensor):
+    def get_neck_point(self, sample: Tensor) -> Tensor:
         return sample[..., self.input_nodes.neck__C.value, 0:2]
 
 
-class CarlaHipsNeckNormalize(HipsNeckNormalize):
-    """
-    Normalize each sample containing CARLA skeleton so that hips x,y = 0,0 and distance between hips & neck == 1.
-    """
-
+class CarlaHipsNeckExtractor(HipsNeckExtractor):
     def __init__(self, input_nodes: CARLA_SKELETON = CARLA_SKELETON) -> None:
         super().__init__(input_nodes)
 
-    def _get_hips_point(self, sample: Tensor):
+    def get_hips_point(self, sample: Tensor) -> Tensor:
         # Hips point projected from CARLA is a bit higher than Open pose one
         # so use a point between tights as a reference instead
         return sample[..., [self.input_nodes.crl_thigh__L.value, self.input_nodes.crl_thigh__R.value], 0:2].mean(axis=-2)
 
-    def _get_neck_point(self, sample: Tensor):
+    def get_neck_point(self, sample: Tensor) -> Tensor:
         # Hips point projected from CARLA is a bit higher than Open pose one
         # so use a point between shoulders as a reference instead
         return sample[..., [self.input_nodes.crl_shoulder__L.value, self.input_nodes.crl_shoulder__R.value], 0:2].mean(axis=-2)
+
+
+class HipsNeckNormalize(object):
+    """
+    Normalize each sample so that hips x,y = 0,0 and distance between hips & neck == 1.
+    """
+
+    def __init__(self, extractor: HipsNeckExtractor, near_zero: float = 1e-5) -> None:
+        self.extractor = extractor
+        self.__near_zero = near_zero
+
+    def __call__(self, sample: Tensor, *args: Any, **kwds: Any) -> Tensor:
+        hips = self.extractor.get_hips_point(sample)
+        neck = self.extractor.get_neck_point(sample)
+        dist = torch.linalg.vector_norm(neck - hips, dim=-1)
+
+        normalized_sample = torch.empty_like(sample)
+        normalized_sample[..., 0:2] = (sample[..., 0:2] -
+                                       torch.unsqueeze(hips, -2)) / dist[(..., ) + (None, ) * 2]
+        normalized_sample[..., 2] = sample[..., 2]
+
+        normalized_sample = torch.nan_to_num(
+            normalized_sample, nan=0, posinf=0, neginf=0)
+
+        # if confidence is 0, we will assume the point overlaps with hips
+        # so that values that were originally 0,0 (not detected)
+        # do not skew the values range
+        normalized_sample[..., 0:2] = normalized_sample[..., 0:2].where(
+            normalized_sample[..., 2:] >= self.__near_zero, torch.tensor(0.0, device=normalized_sample.device))
+
+        return normalized_sample
+
+
+class OpenPoseHipsNeckNormalize(HipsNeckNormalize):
+    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25) -> None:
+        super().__init__(OpenPoseHipsNeckExtractor(input_nodes))
+
+
+class CarlaHipsNeckNormalize(HipsNeckNormalize):
+    def __init__(self, input_nodes: CARLA_SKELETON = CARLA_SKELETON) -> None:
+        super().__init__(CarlaHipsNeckExtractor(input_nodes))
+
+
+class HipsNeckDeNormalize(object):
+    """
+    Denormalize each sample based on distance between hips & neck and hips position.
+    """
+
+    def __call__(self, sample: Tensor, dist: Tensor, hips: Tensor, *args: Any, **kwds: Any) -> Tensor:
+        denormalized_sample = torch.empty_like(sample)
+        denormalized_sample[..., 0:2] = (
+            sample[..., 0:2] * dist[(..., ) + (None, ) * 2]) + torch.unsqueeze(hips, -2)
+        denormalized_sample[..., 2] = sample[..., 2]
+
+        return denormalized_sample
+
+    def from_projection(self, extractor: HipsNeckExtractor, projected_pose: Tensor) -> Callable:
+        hips = extractor.get_hips_point(projected_pose)
+        neck = extractor.get_neck_point(projected_pose)
+        dist = torch.linalg.vector_norm(neck - hips, dim=-1)
+
+        return lambda sample: self(sample, dist, hips)

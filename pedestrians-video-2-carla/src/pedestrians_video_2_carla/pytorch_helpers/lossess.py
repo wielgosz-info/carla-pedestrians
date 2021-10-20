@@ -11,7 +11,7 @@ class ProjectionLoss(nn.Module):
         super().__init__()
 
         self.pose_projection = pose_projection_func
-        self.__points = input_nodes
+        self.input_nodes = input_nodes
 
         if criterion is None:
             criterion = nn.MSELoss(reduction='mean')
@@ -31,7 +31,7 @@ class ProjectionLoss(nn.Module):
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        if type(self.__points) == COCO:
+        if type(self.input_nodes) == COCO:
             mappings = COMMON_NODES['CARLA_2_COCO']
         else:  # default
             mappings = COMMON_NODES['CARLA_2_BODY_25']
@@ -47,4 +47,4 @@ class ProjectionLoss(nn.Module):
             common_openpose
         )
 
-        return loss
+        return (loss, projected_pose, normalized_projection)

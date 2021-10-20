@@ -39,6 +39,7 @@ RUN pip install --no-cache-dir \
     cameratransform==1.1 \
     gym==0.20.0 \
     matplotlib==3.4.3 \
+    moviepy==1.0.3 \
     numpy==1.21.1 \
     opencv-python-headless==4.5.3.56 \
     pandas==1.3.3 \

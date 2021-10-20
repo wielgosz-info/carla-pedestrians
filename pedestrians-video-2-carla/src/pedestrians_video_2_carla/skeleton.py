@@ -28,7 +28,8 @@ def parse_args(args):
     Returns:
       :obj:`argparse.Namespace`: command line parameters namespace
     """
-    parser = argparse.ArgumentParser(description="Just a Fibonacci demonstration")
+    parser = argparse.ArgumentParser(
+        description="Map pedestrians movements from videos to CARLA")
     parser.add_argument(
         "--version",
         action="version",
@@ -78,17 +79,6 @@ def main(args):
     args = parse_args(args)
     setup_logging(args.loglevel)
 
-    # create OpenPose data loader (stopped car + age/gender + group_size=1); normalization?
-    # FUTURE: match dataset pedestrian ID with OpenPose
-    # FUTURE?: create data loader wrapper, that will feed model with: openpose, t-1 world position, t-1 absolute position, t-1 2D projection
-
-    # until learning/max epochs:
-    #   for each clip:
-    #     create ControlledPedestrian instance with P3dPose and P3dPoseProjection instance
-    #     match ControlledPedestrian hip point with OpenPose hip point?
-    #     feed data into Dense (rotations as euler angles in radians; world transform) + pose.forward + pose_projection.forward
-    #     loss: openpose vs 2D projection; pose normalization; MSE
-
     # data
     dm = JAADOpenPoseDataModule()
 
@@ -100,8 +90,11 @@ def main(args):
     model = LitLinearMapper()
 
     # training
-    trainer = pl.Trainer(gpus=1, log_every_n_steps=1)
+    trainer = pl.Trainer(gpus=1, log_every_n_steps=1, max_epochs=200)
     trainer.fit(model, datamodule=dm)
+
+    # testing
+    trainer.test(datamodule=dm)
 
 
 def run():

@@ -2,6 +2,8 @@ from collections import OrderedDict
 import numpy as np
 import gym
 
+from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
+
 
 class NumpyToDictActionWrapper(gym.ActionWrapper):
     """
@@ -27,8 +29,7 @@ class NumpyToDictActionWrapper(gym.ActionWrapper):
                 'rotation': action[1, 1:2]  # skip pitch, yaw, skip roll
             },
             'update_pose': dict(zip(
-                ['crl_root', 'crl_hips__C', 'crl_spine__C', 'crl_spine01__C', 'crl_shoulder__L', 'crl_arm__L', 'crl_foreArm__L', 'crl_hand__L', 'crl_neck__C', 'crl_Head__C', 'crl_eye__L', 'crl_eye__R', 'crl_shoulder__R',
-                    'crl_arm__R', 'crl_foreArm__R', 'crl_hand__R', 'crl_thigh__R', 'crl_leg__R', 'crl_foot__R', 'crl_toe__R', 'crl_toeEnd__R', 'crl_thigh__L', 'crl_leg__L', 'crl_foot__L', 'crl_toe__L', 'crl_toeEnd__L'],
+                [k.name for k in CARLA_SKELETON],
                 action[2:, :]  # [pitch, yaw, roll] * 26
             ))
         })

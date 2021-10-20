@@ -63,7 +63,7 @@ class OpenPoseDataset(Dataset):
         if self.transform is not None:
             torch_frames = self.transform(torch_frames)
 
-        return (pedestrian_info.iloc[0]['age'], pedestrian_info.iloc[0]['gender'], torch_frames)
+        return (torch_frames, pedestrian_info.iloc[0]['age'], pedestrian_info.iloc[0]['gender'], video_id, pedestrian_id, clip_id)
 
     def __select_best_candidate(self, candidates: List[np.ndarray], gt_bbox: np.ndarray, near_zero: float = 1e-5) -> np.ndarray:
         """

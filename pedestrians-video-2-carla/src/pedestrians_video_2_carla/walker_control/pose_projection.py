@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Union
+from typing import Union, Tuple
 
 import cameratransform as ct
 import carla
@@ -12,31 +12,94 @@ from PIL import Image, ImageDraw
 # try to match OpenPose color scheme for easier visual comparison
 POSE_COLORS = {
     'crl_root': (128, 128, 128, 128),
+    #
+
     'crl_hips__C': (255, 0, 0, 192),
+    'hips__C': (255, 0, 0, 192),
+
     'crl_spine__C': (255, 0, 0, 128),
+    #
+
     'crl_spine01__C': (255, 0, 0, 128),
+    #
+
     'crl_shoulder__L': (170, 255, 0, 128),
+    #
+
     'crl_arm__L': (170, 255, 0, 255),
+    'arm__L': (170, 255, 0, 255),
+
     'crl_foreArm__L': (85, 255, 0, 255),
+    'foreArm__L': (85, 255, 0, 255),
+
     'crl_hand__L': (0, 255, 0, 255),
+    'hand__L': (0, 255, 0, 255),
+
     'crl_neck__C': (255, 0, 0, 192),
+    'neck__C': (255, 0, 0, 192),
+
     'crl_Head__C': (255, 0, 85, 255),
+    'head__C': (255, 0, 85, 255),
+
     'crl_shoulder__R': (255, 85, 0, 128),
+    #
+
     'crl_arm__R': (255, 85, 0, 255),
+    'arm__R': (255, 85, 0, 255),
+
     'crl_foreArm__R': (255, 170, 0, 255),
+    'foreArm__R': (255, 170, 0, 255),
+
     'crl_hand__R': (255, 255, 0, 255),
+    'hand__R': (255, 255, 0, 255),
+
     'crl_eye__L': (170, 0, 255, 255),
+    'eye__L': (170, 0, 255, 255),
+
     'crl_eye__R': (255, 0, 170, 255),
+    'eye__R': (255, 0, 170, 255),
+
+    #
+    'ear__L': (170, 0, 255, 128),
+
+    #
+    'ear__R': (255, 0, 170, 128),
+
     'crl_thigh__R': (0, 255, 85, 255),
+    'thigh__R': (0, 255, 85, 255),
+
     'crl_leg__R': (0, 255, 170, 255),
+    'leg__R': (0, 255, 170, 255),
+
     'crl_foot__R': (0, 255, 255, 255),
+    'foot__R': (0, 255, 255, 255),
+
     'crl_toe__R': (0, 255, 255, 255),
+    'toe__R': (0, 255, 255, 255),
+
     'crl_toeEnd__R': (0, 255, 255, 255),
+    'toeEnd__R': (0, 255, 255, 255),
+
+    #
+    'heel__R': (0, 255, 255, 128),
+
     'crl_thigh__L': (0, 170, 255, 255),
+    'thigh__L': (0, 170, 255, 255),
+
     'crl_leg__L': (0, 85, 255, 255),
+    'leg__L': (0, 85, 255, 255),
+
     'crl_foot__L': (0, 0, 255, 255),
+    'foot__L': (0, 0, 255, 255),
+
     'crl_toe__L': (0, 0, 255, 255),
+    'toe__L': (0, 0, 255, 255),
+
     'crl_toeEnd__L': (0, 0, 255, 255),
+    'toeEnd__L': (0, 0, 255, 255),
+
+    #
+    'heel__L': (0, 0, 255, 128),
 }
 
 
@@ -75,6 +138,16 @@ class PoseProjection(object):
             int(camera_rgb.attributes['image_size_y'])
         )
         self._camera = self._setup_camera(camera_rgb)
+
+    @property
+    def image_size(self) -> Tuple:
+        """
+        Returns projection image size.
+
+        :return: (width, height)
+        :rtype: Tuple
+        """
+        return self._image_size
 
     def _setup_camera(self, camera_rgb: carla.Sensor):
         # basic transform is in UE world coords, axes of which are different

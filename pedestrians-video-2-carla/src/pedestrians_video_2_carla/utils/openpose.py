@@ -31,13 +31,13 @@ class BODY_25(Enum):
     eye__R = 15
     eye__L = 16
     ear__R = 17
-    ear_L = 18
+    ear__L = 18
     toe__L = 19
     toeEnd__L = 20
-    heel_L = 21
+    heel__L = 21
     toe__R = 22
     toeEnd__R = 23
-    heel_R = 24
+    heel__R = 24
 
 
 class COCO(Enum):
@@ -58,7 +58,7 @@ class COCO(Enum):
     eye__R = 14
     eye__L = 15
     ear__R = 16
-    ear_L = 17
+    ear__L = 17
 
 
 # TODO: add weights?
