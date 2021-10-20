@@ -36,6 +36,7 @@ RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86
 # However, we want to leverage the cache, so we're going to specify at least basic ones with versions here
 # Also, temporary use the pre-release version of gym, switch to gym==0.20.0 when released
 RUN pip install --no-cache-dir \
+    av==8.0.3 \
     cameratransform==1.1 \
     gym==0.20.0 \
     matplotlib==3.4.3 \

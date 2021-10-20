@@ -1,12 +1,14 @@
 
 from typing import Tuple, Union
-import numpy as np
-import torchvision
+import os
 
+import numpy as np
 import pytorch_lightning as pl
 import torch
+import torchvision
 from pedestrians_video_2_carla.pytorch_helpers.lossess import ProjectionLoss
-from pedestrians_video_2_carla.pytorch_helpers.transforms import HipsNeckDeNormalize
+from pedestrians_video_2_carla.pytorch_helpers.transforms import \
+    HipsNeckDeNormalize
 from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import \
     P3dPoseProjection
@@ -147,7 +149,7 @@ class LitBaseMapper(pl.LightningModule):
         return self._step(batch, batch_idx, 'val')
 
     def test_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, batch_idx, 'test')
+        return self._step(batch, batch_idx, 'test')
 
     def _step(self, batch, batch_idx, stage):
         (frames, *_) = batch
@@ -174,6 +176,9 @@ class LitBaseMapper(pl.LightningModule):
 
         # TODO: allow to specify how many videos from each batch should be created
         max_videos = 1
+        videos_dir = os.path.join(self.logger.log_dir, 'videos')
+        if not os.path.exists(videos_dir):
+            os.mkdir(videos_dir)
 
         (frames, ages, genders, video_ids, pedestrian_ids, clip_ids) = batch
 
@@ -217,15 +222,22 @@ class LitBaseMapper(pl.LightningModule):
                 # align them next to each other vertically
                 img = np.concatenate((openpose_img, projection_img), axis=0)
                 # TODO: add thin white border to separate groups from each other?
-                video.append(img)  # H,W,C
+                video.append(torch.tensor(img[..., 0:3]))  # H,W,C
             video = torch.stack(video)  # T,H,W,C
             torchvision.io.write_video(
-                '{}-{}-{0>2d}'.format(video_id, pedestrian_id, clip_id),
-                video
+                os.path.join(videos_dir,
+                             '{}-{}-{:0>2d}-ep{:0>4d}.mp4'.format(
+                                 video_id,
+                                 pedestrian_id,
+                                 clip_id,
+                                 self.current_epoch
+                             )),
+                video,
+                fps=30.0
             )
             videos.append(video)
 
-        videos=torch.tensor(videos).permute((0, 1, 4, 2, 3))  # B,T,H,W,C -> B,T,C,H,W
+        videos = torch.stack(videos).permute(0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
 
         tb.add_video('{}_gt_and_projection_points'.format(stage),
                      videos, self.current_epoch, fps=30.0)

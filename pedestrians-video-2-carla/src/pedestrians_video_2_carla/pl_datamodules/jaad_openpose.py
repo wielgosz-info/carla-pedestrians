@@ -64,13 +64,9 @@ class JAADOpenPoseDataModule(LightningDataModule):
             self.data_dir, 'subsets', self.__settings_digest)
 
         self.__needs_preparation = False
-        if not os.path.exists(os.path.join(self.data_dir, 'subsets', self.__settings_digest)):
+        if not os.path.exists(self.__subsets_dir):
             self.__needs_preparation = True
-
-        if self.__needs_preparation:
-            if not os.path.exists(os.path.join(self.data_dir, 'subsets')):
-                os.mkdir(os.path.join(self.data_dir, 'subsets'))
-            os.mkdir(self.__subsets_dir)
+            os.makedirs(self.__subsets_dir)
 
     def prepare_data(self) -> None:
         # this is only called on one GPU, do not use self.something assignments
