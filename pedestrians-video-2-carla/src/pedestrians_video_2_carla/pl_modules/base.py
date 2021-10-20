@@ -162,13 +162,14 @@ class LitBaseMapper(pl.LightningModule):
         )
 
         self.log('{}_loss'.format(stage), loss)
-        self._log_videos(projected_pose, batch, batch_idx, stage)
+        self._log_videos(projected_pose, batch, stage)
 
         return loss
 
-    def _log_videos(self, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str):
-        if batch_idx > 0 or self.current_epoch % 5 > 0:
-            # we only want to log from the first batch and every 5th epoch
+    def _log_videos(self, projected_pose: Tensor, batch: Tuple, stage: str):
+        # TODO: this or at least the for loop should probably live in a separate helper
+        if self.current_epoch % 20 > 0:
+            # we only want to log every n-th epoch
             # TODO: make this configurable
             return
 
@@ -237,5 +238,6 @@ class LitBaseMapper(pl.LightningModule):
 
         videos = torch.stack(videos).permute(0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
 
-        tb.add_video('{}_gt_and_projection_points'.format(stage),
-                     videos, self.current_epoch, fps=30.0)
+        if stage != 'train':
+            tb.add_video('{}_gt_and_projection_points'.format(stage),
+                        videos, self.global_step, fps=30.0)
