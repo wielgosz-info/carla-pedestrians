@@ -39,7 +39,7 @@ class LitBaseMapper(pl.LightningModule):
         self.__world_rotations = torch.eye(3, device=self._device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
 
-    def _pose_projection(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor, world_rot_change_batch: Tensor):
+    def pose_projection(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor, world_rot_change_batch: Tensor):
         """
         Handles calculation of the pose projection.
 
@@ -107,3 +107,15 @@ class LitBaseMapper(pl.LightningModule):
     def predict_step(self, batch, batch_idx, dataloader_idx):
         self._on_batch_start(batch, batch_idx, dataloader_idx)
         return self(batch)
+
+    def training_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, 'train')
+
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, 'val')
+
+    def test_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, batch_idx, 'test')
+
+    def _step(self, batch, batch_idx, stage):
+        raise NotImplementedError()

@@ -13,8 +13,9 @@ class HipsNeckNormalize(object):
     Normalize each sample so that hips x,y = 0,0 and distance between hips & neck == 1.
     """
 
-    def __init__(self, points: Enum) -> None:
+    def __init__(self, points: Enum, near_zero: float = 1e-5) -> None:
         self.points = points
+        self.__near_zero = near_zero
 
     def __call__(self, sample: Tensor, *args: Any, **kwds: Any) -> Any:
         hips = self._get_hips_point(sample)
@@ -24,7 +25,15 @@ class HipsNeckNormalize(object):
         sample[..., 0:2] = (sample[..., 0:2] -
                             torch.unsqueeze(hips, -2)) / dist[(..., ) + (None, ) * 2]
 
-        return torch.nan_to_num(sample)
+        num_sample = torch.nan_to_num(sample, nan=0, posinf=0, neginf=0)
+
+        # if confidence is 0, we will assume the point overlaps with hips
+        # so that values that were originally 0,0 (not detected)
+        # do not skew the values range
+        num_sample[..., 0:2] = num_sample[..., 0:2].where(
+            num_sample[..., 2:] >= self.__near_zero, torch.tensor(0.0, device=num_sample.device))
+
+        return num_sample
 
     def _get_hips_point(self, sample: Tensor):
         raise NotImplementedError()

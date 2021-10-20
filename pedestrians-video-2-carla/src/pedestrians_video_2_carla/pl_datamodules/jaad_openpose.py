@@ -1,15 +1,17 @@
-import os
-import pandas
+import hashlib
 import math
-import uuid
+import os
 from typing import Dict, Optional, Union
-from pandas.core.frame import DataFrame
-from torch.utils.data.dataloader import DataLoader
-from pytorch_lightning import LightningDataModule
 
-from pedestrians_video_2_carla.pytorch_data.openpose_dataset import OpenPoseDataset
-from pedestrians_video_2_carla.pytorch_data.transforms import OpenPoseHipsNeckNormalize
+import pandas
+from pandas.core.frame import DataFrame
+from pedestrians_video_2_carla.pl_datamodules.openpose_dataset import \
+    OpenPoseDataset
+from pedestrians_video_2_carla.pytorch_helpers.transforms import \
+    OpenPoseHipsNeckNormalize
 from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
+from pytorch_lightning import LightningDataModule
+from torch.utils.data.dataloader import DataLoader
 
 DATA_DIR = os.path.join('/outputs', 'JAAD')
 DF_ISIN = {
@@ -40,7 +42,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
                  df_isin: Optional[Dict] = DF_ISIN,
                  clip_length: Optional[int] = 30,
                  clip_offset: Optional[int] = 10,
-                 batch_size: int = 32,
+                 batch_size: int = 64,
                  points: Union[BODY_25, COCO] = BODY_25):
         super().__init__()
 
@@ -56,14 +58,26 @@ class JAADOpenPoseDataModule(LightningDataModule):
 
         self.points = points
 
-        if not os.path.exists(os.path.join(self.data_dir, 'subsets')):
-            os.mkdir(os.path.join(self.data_dir, 'subsets'))
-        self.subsets_dir = os.path.join(
-            self.data_dir, 'subsets', str(uuid.uuid4()))
-        os.mkdir(self.subsets_dir)
+        self.__settings_digest = hashlib.md5(
+            (str(df_usecols)+str(df_isin)).encode()).hexdigest()
+        self.__subsets_dir = os.path.join(
+            self.data_dir, 'subsets', self.__settings_digest)
+
+        self.__needs_preparation = False
+        if not os.path.exists(os.path.join(self.data_dir, 'subsets', self.__settings_digest)):
+            self.__needs_preparation = True
+
+        if self.__needs_preparation:
+            if not os.path.exists(os.path.join(self.data_dir, 'subsets')):
+                os.mkdir(os.path.join(self.data_dir, 'subsets'))
+            os.mkdir(self.__subsets_dir)
 
     def prepare_data(self) -> None:
         # this is only called on one GPU, do not use self.something assignments
+
+        if not self.__needs_preparation:
+            # we already have datasset prepared for this combination of settings
+            return
 
         # TODO: one day use JAAD annotations directly
         annotations_df: DataFrame = pandas.read_csv(
@@ -165,19 +179,19 @@ class JAADOpenPoseDataModule(LightningDataModule):
         for (i, name) in enumerate(names):
             clips_set = clips.join(pandas.concat(sets[i]), how='right')
             clips_set.drop(['clips_count', 'clips_cumsum'], inplace=True, axis=1)
-            clips_set.to_csv(os.path.join(self.subsets_dir, '{:s}.csv'.format(name)))
+            clips_set.to_csv(os.path.join(self.__subsets_dir, '{:s}.csv'.format(name)))
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
             self.train_set = OpenPoseDataset(
                 self.data_dir,
-                os.path.join(self.subsets_dir, 'train.csv'),
+                os.path.join(self.__subsets_dir, 'train.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
             )
             self.val_set = OpenPoseDataset(
                 self.data_dir,
-                os.path.join(self.subsets_dir, 'val.csv'),
+                os.path.join(self.__subsets_dir, 'val.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
             )
@@ -185,7 +199,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
         if stage == "test" or stage is None:
             self.test_set = OpenPoseDataset(
                 self.data_dir,
-                os.path.join(self.subsets_dir, 'test.csv'),
+                os.path.join(self.__subsets_dir, 'test.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
             )
