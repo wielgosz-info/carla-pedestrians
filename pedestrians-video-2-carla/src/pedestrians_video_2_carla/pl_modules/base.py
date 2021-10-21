@@ -1,6 +1,11 @@
 
+from collections import OrderedDict
+import copy
+from queue import Empty, Queue
 from typing import Tuple, Union
 import os
+import PIL
+import carla
 
 import numpy as np
 import pytorch_lightning as pl
@@ -13,6 +18,8 @@ from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
 from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import \
     P3dPoseProjection
 from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.utils.setup import setup_camera, setup_client_and_world
+from pedestrians_video_2_carla.utils.destroy import destroy
 from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
@@ -162,11 +169,11 @@ class LitBaseMapper(pl.LightningModule):
         )
 
         self.log('{}_loss'.format(stage), loss)
-        self._log_videos(projected_pose, batch, batch_idx, stage)
+        self._log_videos(pose_change, projected_pose, batch, batch_idx, stage)
 
         return loss
 
-    def _log_videos(self, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str):
+    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str):
         # TODO: this or at least the for loop should probably live in a separate helper
         if self.current_epoch % 20 > 0:
             # we only want to log every n-th epoch
@@ -182,6 +189,9 @@ class LitBaseMapper(pl.LightningModule):
         (frames, ages, genders, video_ids, pedestrian_ids, clip_ids) = batch
 
         tb = self.logger.experiment
+        fps = 30.0
+        concatenation_axis = 1  # 0-vertically, 1-horizontally, TODO: 2-square
+        rendered_videos = min(max_videos, len(frames))
 
         # de-normalize OpenPose & align it with projection
         openpose = self.__denormalizer(frames)[..., 0:2].round().int().cpu().numpy()
@@ -193,6 +203,9 @@ class LitBaseMapper(pl.LightningModule):
         projection_keys = [
             k.name for k in self.criterion.projection_transform.extractor.input_nodes]
 
+        # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
+        client, world = setup_client_and_world(fps=fps)
+
         # for every clip in batch
         # for every sequence frame in clip
         # draw video frame
@@ -201,14 +214,28 @@ class LitBaseMapper(pl.LightningModule):
         # TODO: add rendering from CARLA
         # TODO: draw bones and not only dots?
         videos = []
-        for clip_idx in range(min(max_videos, len(openpose))):
+        for clip_idx in range(rendered_videos):
             video = []
             openpose_clip = openpose[clip_idx]
             projection_clip = projection[clip_idx]
             video_id = video_ids[clip_idx]
             pedestrian_id = pedestrian_ids[clip_idx]
             clip_id = clip_ids[clip_idx]
-            for (openpose_frame, projection_frame) in zip(openpose_clip, projection_clip):
+
+            # easiest way to get (sparse) rendering is to re-calculate all pose changes
+            pose_changes_clip = pose_change[clip_idx]
+            bound_pedestrian: ControlledPedestrian = copy.deepcopy(
+                self.__pedestrians[clip_idx])
+            bound_pedestrian.bind(world)
+            camera_queue = Queue()
+            camera_rgb = setup_camera(
+                world, camera_queue, bound_pedestrian)
+            (prev_relative_loc, prev_relative_rot) = bound_pedestrian.current_pose.tensors
+            # P3dPose.forward expects batches, so
+            prev_relative_loc = prev_relative_loc.unsqueeze(0)
+            prev_relative_rot = prev_relative_rot.unsqueeze(0)
+
+            for fi, (openpose_frame, projection_frame, pose_change_frame) in enumerate(zip(openpose_clip, projection_clip, pose_changes_clip)):
                 openpose_canvas = np.zeros((image_size[1], image_size[0], 4), np.uint8)
                 openpose_img = self.__pose_projection.draw_projection_points(
                     openpose_canvas, openpose_frame, openpose_keys)
@@ -218,10 +245,63 @@ class LitBaseMapper(pl.LightningModule):
                 projection_img = self.__pose_projection.draw_projection_points(
                     projection_canvas, projection_frame, projection_keys)
 
-                # align them next to each other vertically
-                img = np.concatenate((openpose_img, projection_img), axis=0)
+                # align them next to each other
+                rgba_points_img = torch.tensor(np.concatenate(
+                    (openpose_img, projection_img), axis=concatenation_axis))
+                # blend alpha; TODO: alternatively overlap with clip/rendering?
+                # points_img = ((rgba_points_img[..., 0:3] * torch.tensor([255], dtype=torch.float32)) /
+                #               rgba_points_img[..., 3:4]).round().type(torch.uint8)
+                # drop alpha
+                points_img = rgba_points_img[..., 0:3]
+
+                # get render frame from CARLA
+                (_, _, prev_relative_rot) = bound_pedestrian.current_pose.forward(
+                    pose_change_frame.detach().unsqueeze(0), prev_relative_loc, prev_relative_rot)
+
+                bound_pedestrian.current_pose.tensors = (
+                    prev_relative_loc[0], prev_relative_rot[0])
+                bound_pedestrian.apply_pose()
+
+                # TODO: teleport when implemented
+
+                world_frame = world.tick()
+
+                frames = []
+                sensor_data = None
+
+                carla_img = torch.zeros((*image_size, 3), dtype=torch.uint8)
+                if world_frame:
+                    # drain the sensor queue
+                    try:
+                        while (sensor_data is None) or sensor_data.frame < world_frame:
+                            sensor_data = camera_queue.get(True, 1.0)
+                            frames.append(sensor_data)
+                    except Empty:
+                        pass
+
+                    if len(frames):
+                        data = frames[-1]
+                        data.convert(carla.ColorConverter.Raw)
+                        img = PIL.Image.frombuffer('RGBA', (data.width, data.height),
+                                                   data.raw_data, "raw", 'RGBA', 0, 1)  # load
+                        img = img.convert('RGB')  # drop alpha
+                        # the data is actually in BGR format, so switch channels
+                        carla_img = torch.tensor(
+                            np.array(img)[..., ::-1].copy(), dtype=torch.uint8)
+                # end get render frame from CARLA
+
+                # concatenate image from CARLA with others
+                img = torch.cat((points_img, carla_img), dim=concatenation_axis)
+
                 # TODO: add thin white border to separate groups from each other?
-                video.append(torch.tensor(img[..., 0:3]))  # H,W,C; drop alpha
+
+                video.append(img)  # H,W,C
+
+            camera_rgb.stop()
+            camera_rgb.destroy()
+
+            # TODO: also destroy pedesstrian + increase spawn tries to be at least rendered_videos + 10
+
             video = torch.stack(video)  # T,H,W,C
             torchvision.io.write_video(
                 os.path.join(videos_dir,
@@ -232,12 +312,16 @@ class LitBaseMapper(pl.LightningModule):
                                  self.current_epoch
                              )),
                 video,
-                fps=30.0
+                fps=fps
             )
             videos.append(video)
 
-        videos = torch.stack(videos).permute(0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
+        # close connection to carla as needed - TODO: should this be in (logging) epoch end?
+        if (client is not None) and (world is not None):
+            destroy(client, world)
 
         if stage != 'train':
+            videos = torch.stack(videos).permute(
+                0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
             tb.add_video('{}_{:0>2d}_gt_and_projection_points'.format(stage, batch_idx),
-                         videos, self.global_step, fps=30.0)
+                         videos, self.global_step, fps=fps)

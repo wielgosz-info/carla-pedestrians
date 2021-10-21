@@ -1,12 +1,13 @@
 import carla
 
 
-def destroy(client, world, sensor_list):
+def destroy(client, world, sensor_dict=None):
     all_actors = world.get_actors()
 
-    for sensor in sensor_list.values():
-        sensor.stop()
-        sensor.destroy()
+    if sensor_dict is not None:
+        for sensor in sensor_dict.values():
+            sensor.stop()
+            sensor.destroy()
 
     for controller in all_actors.filter('controller.*.*'):
         controller.stop()

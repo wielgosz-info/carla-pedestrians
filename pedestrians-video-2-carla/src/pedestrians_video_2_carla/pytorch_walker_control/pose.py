@@ -263,3 +263,11 @@ class P3dPose(Pose, torch.nn.Module):
             self.__relative_p3d_locations.detach().clone(),
             self.__relative_p3d_rotations.detach().clone(),
         )
+
+    @tensors.setter
+    def tensors(self, tensors: Tuple[Tensor, Tensor]):
+        # update our reference Tensors
+        (self.__relative_p3d_locations,
+         self.__relative_p3d_rotations) = tensors
+        # and set the timestamp
+        self._last_rel_mod = time.time_ns()

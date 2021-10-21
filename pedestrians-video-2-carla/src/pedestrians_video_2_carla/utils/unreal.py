@@ -54,8 +54,6 @@ def load_reference(type: str) -> Dict[str, Any]:
         filename = {
             "adult_female": 'sk_female_relative.yaml',
             "adult_male": 'sk_male_relative.yaml',
-            "senior_female": 'sk_female_relative.yaml',  # there are no separate models for this
-            "senior_male": 'sk_male_relative.yaml',  # there are no separate models for this
             "child_female": 'sk_girl_relative.yaml',
             "child_male": 'sk_kid_relative.yaml',
             "structure": 'structure.yaml',

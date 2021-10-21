@@ -36,6 +36,9 @@ class OpenPoseDataset(Dataset):
         clips_idx = self.indices[idx]
         pedestrian_info = self.clips.loc[clips_idx].reset_index().sort_values('frame')
 
+        # there is no 'senior' in CARLA - replace with adult; TODO: should be done in JAAD before saving sets?
+        pedestrian_info['age'] = pedestrian_info['age'].replace('senior', 'adult')
+
         (video_id, pedestrian_id, clip_id) = clips_idx
         start_frame = pedestrian_info.iloc[0]['frame']
         stop_frame = pedestrian_info.iloc[-1]['frame']
