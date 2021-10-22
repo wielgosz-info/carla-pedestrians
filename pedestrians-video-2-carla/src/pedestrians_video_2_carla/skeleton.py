@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.pl_datamodules.jaad_openpose import JAADOpenPoseDataModule
-from pedestrians_video_2_carla.pl_modules.linear import LitLinearMapper
+from pedestrians_video_2_carla.pl_modules import *
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -87,7 +87,7 @@ def main(args):
     # openpose_dm.setup()
 
     # model
-    model = LitLinearMapper()
+    model = LitLSTMMapper()
 
     # training
     trainer = pl.Trainer(gpus=1, log_every_n_steps=1, max_epochs=2000)

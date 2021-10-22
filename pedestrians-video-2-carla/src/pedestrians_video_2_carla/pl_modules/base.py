@@ -105,5 +105,5 @@ class LitBaseMapper(pl.LightningModule):
         if stage != 'train':
             videos = torch.stack(videos).permute(
                 0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
-            tb.add_video('{}_{:0>2d}_gt_and_projection_points'.format(stage, batch_idx),
+            tb.add_video('{}_{:0>2d}_render'.format(stage, batch_idx),
                          videos, self.global_step, fps=fps)
