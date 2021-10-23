@@ -102,7 +102,7 @@ class LitBaseMapper(pl.LightningModule):
                 fps=fps
             )
 
-        if stage != 'train':
+        if stage != 'train' and len(videos):
             videos = torch.stack(videos).permute(
                 0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
             tb.add_video('{}_{:0>2d}_render'.format(stage, batch_idx),

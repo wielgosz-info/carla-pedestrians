@@ -191,6 +191,8 @@ class ProjectionModule(nn.Module):
         :return: [description]
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
+        return ([], [])  # disable all rendering for now
+
         # TODO: optimize & refactor
         (frames, ages, genders, video_ids, pedestrian_ids, clip_ids) = batch
 
