@@ -5,6 +5,7 @@ from enum import Enum
 from queue import Empty, Queue
 from typing import List, Tuple, Union
 import logging
+import warnings
 
 import carla
 import numpy as np
@@ -52,7 +53,9 @@ class Renderer(object):
         :return: List with size N of black clips (L, height, width, channels)
         :rtype: List[np.ndarray]
         """
-        return [self.alpha_behavior(np.zeros((frames.shape[1], image_size[1], image_size[0], 4)))] * frames.shape[0]
+        rendered_videos = min(self._max_videos, len(frames))
+        for _ in range(rendered_videos):
+            yield self.alpha_behavior(np.zeros((frames.shape[1], image_size[1], image_size[0], 4)))
 
     def alpha_behavior(self, rgba_frames: np.ndarray) -> np.ndarray:
         if self._alpha == AlphaBehavior.drop:
@@ -70,15 +73,11 @@ class PointsRenderer(Renderer):
 
     def render(self, frames: Tensor, image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
         rendered_videos = min(self._max_videos, len(frames))
-        videos = []
-
         cpu_frames = frames[..., 0:2].round().int().cpu().numpy()
 
         for clip_idx in range(rendered_videos):
             video = self.render_clip(cpu_frames[clip_idx], image_size)
-            videos.append(video)
-
-        return videos
+            yield video
 
     def render_clip(self, openpose_clip: np.ndarray, image_size: Tuple[int, int]) -> np.ndarray:
         video = []
@@ -106,13 +105,10 @@ class CarlaRenderer(Renderer):
 
     def render(self, pose_change: Tensor, ages: List[str], genders: List[str], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
         rendered_videos = min(self._max_videos, len(pose_change))
-        videos = []
 
         # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
         client, world = setup_client_and_world(fps=self.__fps)
 
-        # TODO: this way of handling it is inefficient:
-        # all pedestrians should be spawned at the same time, then advanced one frame and so on
         for clip_idx in range(rendered_videos):
             video = self.render_clip(
                 pose_change[clip_idx],
@@ -122,13 +118,11 @@ class CarlaRenderer(Renderer):
                 world,
                 rendered_videos
             )
-            videos.append(video)
+            yield video
 
         # close connection to carla as needed - TODO: should this be in (logging) epoch end?
         if (client is not None) and (world is not None):
             destroy(client, world)
-
-        return videos
 
     def render_clip(self, pose_changes_clip, age, gender, image_size, world, rendered_videos):
         # easiest way to get (sparse) rendering is to re-calculate all pose changes
@@ -214,8 +208,9 @@ class SourceRenderer(Renderer):
         self.__annotations.sort_index(inplace=True)
 
     def render(self, video_ids: List[str], pedestrian_ids: List[str], clip_ids: List[int], frame_ids: Tuple[List[int], List[int]], stage: str = 'test', image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+
         rendered_videos = min(self._max_videos, len(video_ids))
-        videos = []
 
         for clip_idx in range(rendered_videos):
             video = self.render_clip(
@@ -226,9 +221,7 @@ class SourceRenderer(Renderer):
                 int(frame_ids[1][clip_idx]),
                 image_size
             )
-            videos.append(video)
-
-        return videos
+            yield video
 
     def render_clip(self, video_id, pedestrian_id, clip_id, frame_start, frame_stop, image_size):
         (canvas_width, canvas_height) = image_size

@@ -80,21 +80,27 @@ def main(args):
     setup_logging(args.loglevel)
 
     # data
-    dm = JAADOpenPoseDataModule()
+    batch_size = 64
+    clip_length = 30
+    clip_offset = 10
+    dm = JAADOpenPoseDataModule(batch_size=batch_size,
+                                clip_length=clip_length,
+                                clip_offset=clip_offset)
 
     # if model needs to know something about the data:
     # openpose_dm.prepare_data()
     # openpose_dm.setup()
 
     # model
-    model = LitLSTMMapper()
+    model = LitLSTMMapper(clip_length=clip_length)
 
     # training
-    trainer = pl.Trainer(log_every_n_steps=1, max_epochs=200)
-    trainer.fit(model, datamodule=dm)
+    trainer = pl.Trainer(log_every_n_steps=20, max_epochs=200)
+    trainer.fit(model=model, datamodule=dm)
 
     # testing
-    # trainer.test(datamodule=dm)
+    # trainer.test(model=model, datamodule=dm,
+    #              ckpt_path='best')
 
 
 def run():

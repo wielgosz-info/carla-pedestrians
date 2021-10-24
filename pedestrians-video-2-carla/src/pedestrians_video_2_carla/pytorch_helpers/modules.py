@@ -1,8 +1,7 @@
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, Iterator, Tuple, Union
 
 import numpy as np
 import torch
-from numpy.lib.utils import source
 from pedestrians_video_2_carla.pytorch_helpers.renderers import (
     CarlaRenderer, MergingMethod, PointsRenderer, Renderer, SourceRenderer)
 from pedestrians_video_2_carla.pytorch_helpers.transforms import (
@@ -27,7 +26,7 @@ class ProjectionModule(nn.Module):
                  projection_transform=None,
                  max_videos=1,
                  fps=30.0,
-                 merging_method: MergingMethod = MergingMethod.horizontal,
+                 merging_method: MergingMethod = MergingMethod.square,
                  enabled_renderers: Dict[str, bool] = None,
                  data_dir=None,
                  **kwargs
@@ -214,7 +213,7 @@ class ProjectionModule(nn.Module):
                projected_pose: Tensor,
                pose_change: Tensor,
                stage: str
-               ) -> Tuple[List[Tensor], Tuple[str]]:
+               ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
         """
         Prepares video data. **It doesn't save anything!**
 
@@ -278,8 +277,7 @@ class ProjectionModule(nn.Module):
 
         name_parts = zip(video_ids, pedestrian_ids, clip_ids)
 
-        videos = []
-        for (input_vid, projection_vid, carla_vid, source_vid) in zip(input_videos, projection_videos, carla_videos, source_videos):
+        for (input_vid, projection_vid, carla_vid, source_vid, parts) in zip(input_videos, projection_videos, carla_videos, source_videos, name_parts):
             if self.__merging_method.value < 2:
                 merged_vid = torch.tensor(np.concatenate(
                     [a for a in (source_vid, input_vid, projection_vid,
@@ -293,6 +291,4 @@ class ProjectionModule(nn.Module):
                         np.concatenate((carla_vid, projection_vid), axis=2)
                     ), axis=1)
                 )
-            videos.append(merged_vid)
-
-        return videos, name_parts
+            yield merged_vid, parts

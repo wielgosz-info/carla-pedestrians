@@ -24,6 +24,7 @@ class LitBaseMapper(pl.LightningModule):
             input_nodes,
             output_nodes,
             fps=self.__fps,
+            max_videos=64,
             enabled_renderers={
                 'source': True,
                 'input': True,
@@ -80,21 +81,21 @@ class LitBaseMapper(pl.LightningModule):
         return loss
 
     def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str, log_to_tb: bool = False):
-        if stage == 'train' or self.current_epoch % 20 != 0:
-            # never log during training
+        if stage == 'train':
+            # never log videos during training
+            return
+
+        if self.global_step % self.trainer.log_every_n_steps != 0:
             return
 
         videos_dir = os.path.join(self.logger.log_dir, 'videos', stage)
         if not os.path.exists(videos_dir):
             os.makedirs(videos_dir)
 
-        (videos, name_parts) = self.projection.render(batch,
-                                                      projected_pose,
-                                                      pose_change,
-                                                      stage)
-
-        # TODO: parallelize?
-        for vid, name in zip(videos, name_parts):
+        for vid_idx, (vid, name) in enumerate(self.projection.render(batch,
+                                                                     projected_pose,
+                                                                     pose_change,
+                                                                     stage)):
             torchvision.io.write_video(
                 os.path.join(videos_dir,
                              '{}-{}-{:0>2d}-ep{:0>4d}.mp4'.format(
@@ -105,9 +106,9 @@ class LitBaseMapper(pl.LightningModule):
                 fps=self.__fps
             )
 
-        if log_to_tb and len(videos):
-            tb = self.logger.experiment
-            videos = torch.stack(videos).permute(
-                0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
-            tb.add_video('{}_{:0>2d}_render'.format(stage, batch_idx),
-                         videos, self.global_step, fps=self.__fps)
+            if log_to_tb:
+                tb = self.logger.experiment
+                vid = vid.permute(
+                    0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
+                tb.add_video('{}_{:0>2d}_{}_render'.format(stage, batch_idx, vid_idx),
+                             vid, self.global_step, fps=self.__fps)

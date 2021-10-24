@@ -88,6 +88,9 @@ class JAADOpenPoseDataModule(LightningDataModule):
         annotations_df = annotations_df[filtering_results]
         annotations_df.sort_index(inplace=True)
 
+        # There is no 'senior' in CARLA, so replace with 'adult'
+        annotations_df['age'] = annotations_df['age'].replace('senior', 'adult')
+
         frame_counts = annotations_df.groupby(['video', 'id']).agg(
             frame_count=pandas.NamedAgg(column="frame", aggfunc="count"),
             frame_min=pandas.NamedAgg(column="frame", aggfunc="min"),
@@ -204,7 +207,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
         return DataLoader(
             dataset=dataset,
             batch_size=self.batch_size,
-            num_workers=os.cpu_count(),
+            num_workers=0,  # os.cpu_count(),
             pin_memory=True,
             shuffle=shuffle
         )

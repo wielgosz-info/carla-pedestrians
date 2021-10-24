@@ -48,6 +48,7 @@ RUN pip install --no-cache-dir \
     pims==0.5 \
     pytorch-lightning==1.4.9 \
     pyyaml==5.4.1 \
+    scikit-image==0.18.3 \
     scipy==1.7.1 \
     tqdm==4.62.2
 
