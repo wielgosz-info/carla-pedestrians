@@ -90,7 +90,7 @@ def main(args):
     model = LitLSTMMapper()
 
     # training
-    trainer = pl.Trainer(log_every_n_steps=1, max_epochs=2000)
+    trainer = pl.Trainer(log_every_n_steps=1, max_epochs=200)
     trainer.fit(model, datamodule=dm)
 
     # testing

@@ -45,6 +45,7 @@ RUN pip install --no-cache-dir \
     opencv-python-headless==4.5.3.56 \
     pandas==1.3.3 \
     Pillow==8.3.1 \
+    pims==0.5 \
     pytorch-lightning==1.4.9 \
     pyyaml==5.4.1 \
     scipy==1.7.1 \

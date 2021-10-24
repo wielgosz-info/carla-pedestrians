@@ -10,7 +10,7 @@ from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
 class ControlledPedestrian(object):
-    def __init__(self, world: carla.World = None, age: str = 'adult', gender: str = 'female', pose_cls=Pose, *args, **kwargs):
+    def __init__(self, world: carla.World = None, age: str = 'adult', gender: str = 'female', pose_cls=Pose, max_spawn_tries=10, *args, **kwargs):
         """
         Initializes the pedestrian that keeps track of its current pose.
 
@@ -36,6 +36,7 @@ class ControlledPedestrian(object):
         self._walker = None
         self._initial_transform = carla.Transform()
         self._world_transform = carla.Transform()
+        self._max_spawn_tries = max_spawn_tries
 
         if world is not None:
             self.bind(world, True)
@@ -96,7 +97,7 @@ class ControlledPedestrian(object):
 
         walker = None
         tries = 0
-        while walker is None and tries < 10:
+        while walker is None and tries < self._max_spawn_tries:
             tries += 1
             walker_loc = self._world.get_random_location_from_navigation()
             walker = self._world.try_spawn_actor(walker_bp, carla.Transform(walker_loc))
@@ -201,6 +202,10 @@ class ControlledPedestrian(object):
     @ property
     def gender(self) -> str:
         return self._gender
+
+    @ property
+    def walker(self) -> carla.Actor:
+        return self._walker
 
     @ property
     def world_transform(self) -> carla.Transform:

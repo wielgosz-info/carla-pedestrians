@@ -41,10 +41,10 @@ class OpenPoseDataset(Dataset):
 
         (video_id, pedestrian_id, clip_id) = clips_idx
         start_frame = pedestrian_info.iloc[0]['frame']
-        stop_frame = pedestrian_info.iloc[-1]['frame']
+        stop_frame = pedestrian_info.iloc[-1]['frame'] + 1
         frames = []
 
-        for i, f in enumerate(range(start_frame, stop_frame+1, 1)):
+        for i, f in enumerate(range(start_frame, stop_frame, 1)):
             with open(os.path.join(self.data_dir, video_id, '{:s}_{:0>12d}_keypoints.json'.format(
                 video_id,
                 f
@@ -66,7 +66,7 @@ class OpenPoseDataset(Dataset):
         if self.transform is not None:
             torch_frames = self.transform(torch_frames)
 
-        return (torch_frames, pedestrian_info.iloc[0]['age'], pedestrian_info.iloc[0]['gender'], video_id, pedestrian_id, clip_id)
+        return (torch_frames, pedestrian_info.iloc[0]['age'], pedestrian_info.iloc[0]['gender'], video_id, pedestrian_id, clip_id, (start_frame, stop_frame))
 
     def __select_best_candidate(self, candidates: List[np.ndarray], gt_bbox: np.ndarray, near_zero: float = 1e-5) -> np.ndarray:
         """

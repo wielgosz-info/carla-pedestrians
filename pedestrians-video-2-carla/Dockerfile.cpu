@@ -1,3 +1,6 @@
+# TODO: merge in CPU-only version into basic Dockerfile utilizing multi-stage builds
+# utilizing pattern from https://stackoverflow.com/a/60820156/16438094
+# otherwise it will get unmanageable with new requirements/updates
 FROM ubuntu:20.04
 
 ENV TZ=Europe/Warsaw
@@ -50,6 +53,7 @@ RUN pip install --no-cache-dir \
     opencv-python-headless==4.5.3.56 \
     pandas==1.3.3 \
     Pillow==8.3.1 \
+    pims==0.5 \
     pytorch-lightning==1.4.9 \
     pyyaml==5.4.1 \
     scipy==1.7.1 \

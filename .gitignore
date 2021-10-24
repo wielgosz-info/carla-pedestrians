@@ -136,3 +136,5 @@ lightning_logs/
 
 # Checkpoints
 *.pt
+
+.DS_Store

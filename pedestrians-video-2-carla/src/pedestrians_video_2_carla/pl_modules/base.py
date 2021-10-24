@@ -17,10 +17,20 @@ class LitBaseMapper(pl.LightningModule):
     def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25, output_nodes=CARLA_SKELETON, **kwargs):
         super().__init__()
 
+        self.__fps = 30.0
+
         # default layers
         self.projection = ProjectionModule(
             input_nodes,
             output_nodes,
+            fps=self.__fps,
+            enabled_renderers={
+                'source': True,
+                'input': True,
+                'projection': True,
+                'carla': False
+            },
+            data_dir=os.path.join('/datasets', 'JAAD'),  # TODO: get it from datamodule
             **kwargs
         )
         self.criterion = nn.MSELoss(reduction='mean')
@@ -69,26 +79,19 @@ class LitBaseMapper(pl.LightningModule):
 
         return loss
 
-    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str):
-        if self.current_epoch % 20 > 0:
-            # we only want to log every n-th epoch
-            # TODO: make this configurable
+    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str, log_to_tb: bool = False):
+        if stage == 'train' or self.current_epoch % 20 != 0:
+            # never log during training
             return
 
-        # TODO: allow to specify how many videos from each batch should be created
-        max_videos = 1
         videos_dir = os.path.join(self.logger.log_dir, 'videos', stage)
         if not os.path.exists(videos_dir):
             os.makedirs(videos_dir)
 
-        tb = self.logger.experiment
-        fps = 30.0
-
         (videos, name_parts) = self.projection.render(batch,
                                                       projected_pose,
                                                       pose_change,
-                                                      max_videos,
-                                                      fps)
+                                                      stage)
 
         # TODO: parallelize?
         for vid, name in zip(videos, name_parts):
@@ -99,11 +102,12 @@ class LitBaseMapper(pl.LightningModule):
                                  self.current_epoch
                              )),
                 vid,
-                fps=fps
+                fps=self.__fps
             )
 
-        if stage != 'train' and len(videos):
+        if log_to_tb and len(videos):
+            tb = self.logger.experiment
             videos = torch.stack(videos).permute(
                 0, 1, 4, 2, 3)  # B,T,H,W,C -> B,T,C,H,W
             tb.add_video('{}_{:0>2d}_render'.format(stage, batch_idx),
-                         videos, self.global_step, fps=fps)
+                         videos, self.global_step, fps=self.__fps)
