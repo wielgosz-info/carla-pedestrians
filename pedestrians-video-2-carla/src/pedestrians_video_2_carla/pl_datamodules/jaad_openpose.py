@@ -59,7 +59,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
         self.points = points
 
         self.__settings_digest = hashlib.md5(
-            (str(df_usecols)+str(df_isin)).encode()).hexdigest()
+            (str(df_usecols)+str(df_isin)+str(clip_length)+str(clip_offset)).encode()).hexdigest()
         self.__subsets_dir = os.path.join(
             self.data_dir, 'subsets', self.__settings_digest)
 

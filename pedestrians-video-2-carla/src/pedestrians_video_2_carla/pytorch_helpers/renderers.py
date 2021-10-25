@@ -259,8 +259,8 @@ class SourceRenderer(Renderer):
                 frame_y_max = int(min(clip_height, y_center[idx]+half_height))
                 frame_width = frame_x_max - frame_x_min
                 frame_height = frame_y_max - frame_y_min
-                canvas_x_shift = int(math.floor((canvas_width - frame_width) / 2))
-                canvas_y_shift = int(math.floor((canvas_height - frame_height) / 2))
+                canvas_x_shift = max(0, half_width-x_center[idx])
+                canvas_y_shift = max(0, half_height-y_center[idx])
                 canvas[idx, canvas_y_shift:canvas_y_shift+frame_height, canvas_x_shift:canvas_x_shift +
                        frame_width] = clip[idx][frame_y_min:frame_y_max, frame_x_min:frame_x_max]
 

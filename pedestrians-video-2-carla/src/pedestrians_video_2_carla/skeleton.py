@@ -81,7 +81,7 @@ def main(args):
 
     # data
     batch_size = 64
-    clip_length = 30
+    clip_length = 60
     clip_offset = 10
     dm = JAADOpenPoseDataModule(batch_size=batch_size,
                                 clip_length=clip_length,
@@ -95,7 +95,7 @@ def main(args):
     model = LitLSTMMapper(clip_length=clip_length)
 
     # training
-    trainer = pl.Trainer(log_every_n_steps=20, max_epochs=200)
+    trainer = pl.Trainer(log_every_n_steps=210, max_epochs=210)
     trainer.fit(model=model, datamodule=dm)
 
     # testing
