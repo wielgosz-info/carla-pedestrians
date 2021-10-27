@@ -92,15 +92,20 @@ def main(args):
     # openpose_dm.setup()
 
     # model
-    model = LitLSTMMapper(clip_length=clip_length)
+    model = LitLSTMMapper(clip_length=clip_length, log_videos_every_n_epochs=21, enabled_renderers={
+        'source': True,
+        'input': True,
+        'projection': True,
+        'carla': True
+    })
 
     # training
-    trainer = pl.Trainer(log_every_n_steps=210, max_epochs=210)
-    trainer.fit(model=model, datamodule=dm)
+    trainer = pl.Trainer(log_every_n_steps=3, max_epochs=210)
+    # trainer.fit(model=model, datamodule=dm)
 
     # testing
-    # trainer.test(model=model, datamodule=dm,
-    #              ckpt_path='best')
+    trainer.test(model=model, datamodule=dm,
+                 ckpt_path='best')
 
 
 def run():

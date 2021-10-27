@@ -14,10 +14,11 @@ from torch.functional import Tensor
 
 
 class LitBaseMapper(pl.LightningModule):
-    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25, output_nodes=CARLA_SKELETON, **kwargs):
+    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25, output_nodes=CARLA_SKELETON, log_videos_every_n_epochs=10, enabled_renderers=None, **kwargs):
         super().__init__()
 
         self.__fps = 30.0
+        self.__log_videos_every_n_epochs = log_videos_every_n_epochs
 
         # default layers
         self.projection = ProjectionModule(
@@ -25,12 +26,7 @@ class LitBaseMapper(pl.LightningModule):
             output_nodes,
             fps=self.__fps,
             max_videos=64,
-            enabled_renderers={
-                'source': True,
-                'input': True,
-                'projection': True,
-                'carla': False
-            },
+            enabled_renderers=enabled_renderers,
             data_dir=os.path.join('/datasets', 'JAAD'),  # TODO: get it from datamodule
             **kwargs
         )
@@ -85,7 +81,7 @@ class LitBaseMapper(pl.LightningModule):
             # never log videos during training
             return
 
-        if self.global_step % self.trainer.log_every_n_steps != 0:
+        if self.current_epoch % self.__log_videos_every_n_epochs != 0:
             return
 
         videos_dir = os.path.join(self.logger.log_dir, 'videos', stage)

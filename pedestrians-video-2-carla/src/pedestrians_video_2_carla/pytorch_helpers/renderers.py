@@ -127,7 +127,7 @@ class CarlaRenderer(Renderer):
     def render_clip(self, pose_changes_clip, age, gender, image_size, world, rendered_videos):
         # easiest way to get (sparse) rendering is to re-calculate all pose changes
         bound_pedestrian = ControlledPedestrian(
-            world, age, gender, P3dPose, max_spawn_tries=10+rendered_videos)
+            world, age, gender, P3dPose, max_spawn_tries=10+rendered_videos, device=pose_changes_clip.device)
         camera_queue = Queue()
         camera_rgb = setup_camera(
             world, camera_queue, bound_pedestrian)
@@ -138,8 +138,8 @@ class CarlaRenderer(Renderer):
 
         video = []
         for pose_change_frame in pose_changes_clip:
-            frame = self.render_frame(pose_change_frame, prev_relative_loc, prev_relative_rot,
-                                      image_size, world, bound_pedestrian, camera_queue)
+            (frame, prev_relative_rot) = self.render_frame(pose_change_frame, prev_relative_loc, prev_relative_rot,
+                                                           image_size, world, bound_pedestrian, camera_queue)
             video.append(frame)
 
         camera_rgb.stop()
@@ -147,7 +147,7 @@ class CarlaRenderer(Renderer):
 
         bound_pedestrian.walker.destroy()
 
-        return video
+        return torch.stack(video, dim=0)
 
     def render_frame(self,
                      pose_change_frame: Tensor,
@@ -172,7 +172,7 @@ class CarlaRenderer(Renderer):
         frames = []
         sensor_data = None
 
-        carla_img = torch.zeros((*image_size, 3), dtype=torch.uint8)
+        carla_img = torch.zeros((image_size[1], image_size[0], 3), dtype=torch.uint8)
         if world_frame:
             # drain the sensor queue
             try:
@@ -193,7 +193,7 @@ class CarlaRenderer(Renderer):
                 carla_img = torch.tensor(
                     np.array(img)[..., ::-1].copy(), dtype=torch.uint8)
 
-        return carla_img
+        return (carla_img, prev_relative_rot)
 
 
 class SourceRenderer(Renderer):
