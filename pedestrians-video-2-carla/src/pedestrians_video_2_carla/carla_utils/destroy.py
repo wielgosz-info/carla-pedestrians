@@ -1,7 +1,7 @@
 import carla
 
 
-def destroy(client, world, sensor_dict=None):
+def destroy_client_and_world(client, world, sensor_dict=None):
     all_actors = world.get_actors()
 
     if sensor_dict is not None:

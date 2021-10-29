@@ -2,9 +2,10 @@ from enum import Enum
 from typing import Any, Callable, Union
 
 import torch
-from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
-from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
 from torch.functional import Tensor
+
+from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
 
 
 class HipsNeckExtractor(object):

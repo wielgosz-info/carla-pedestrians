@@ -33,7 +33,7 @@ def scipy_to_carla_rotation(rotation: Rotation) -> carla.Rotation:
     )
 
 
-def mul_rotations(reference_rotation: carla.Rotation, local_rotation: carla.Rotation) -> carla.Rotation:
+def mul_carla_rotations(reference_rotation: carla.Rotation, local_rotation: carla.Rotation) -> carla.Rotation:
     """
     Multiplies two carla.Rotation objects by converting them to scipy.spatial.transform.Rotation
     and then converting the result back (since carla.Rotation API doesn't offer that option).

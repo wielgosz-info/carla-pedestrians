@@ -1,13 +1,13 @@
 import pytest
 
-from pedestrians_video_2_carla.utils.destroy import destroy
-from pedestrians_video_2_carla.utils.setup import setup_client_and_world
-from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
+from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
+from pedestrians_video_2_carla.carla_utils.setup import setup_client_and_world
+from pedestrians_video_2_carla.skeletons.reference.load import load_reference, unreal_to_carla
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.pose import Pose
-from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
+from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
-from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import P3dPoseProjection
+from pedestrians_video_2_carla.walker_control.torch.pose_projection import P3dPoseProjection
 
 
 @pytest.fixture(params=[Pose, P3dPose])
@@ -32,7 +32,7 @@ def pedestrian(pose_cls, device):
 def carla_world():
     client, world = setup_client_and_world()
     yield world
-    destroy(client, world, {})
+    destroy_client_and_world(client, world, {})
 
 
 @pytest.fixture

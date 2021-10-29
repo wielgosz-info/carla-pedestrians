@@ -5,10 +5,10 @@ from typing import Tuple, Union
 import pytorch_lightning as pl
 import torch
 import torchvision
-from pedestrians_video_2_carla.pytorch_helpers.modules import ProjectionModule
+from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
 
-from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
-from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
 from torch import nn
 from torch.functional import Tensor
 
@@ -27,7 +27,8 @@ class LitBaseMapper(pl.LightningModule):
             fps=self.__fps,
             max_videos=64,
             enabled_renderers=enabled_renderers,
-            data_dir=os.path.join('/datasets', 'JAAD'),  # TODO: get it from datamodule
+            # TODO: get it from datamodule
+            data_dir=os.path.join('/datasets', 'JAAD', 'videos'),
             **kwargs
         )
         self.criterion = nn.MSELoss(reduction='mean')

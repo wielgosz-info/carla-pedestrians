@@ -1,15 +1,15 @@
-from typing import List
+from typing import List, Union
 import pandas
 import numpy as np
 import json
 import os
 import torch
 from torch.utils.data import Dataset
-from pedestrians_video_2_carla.utils.openpose import BODY_25
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
 
 
 class OpenPoseDataset(Dataset):
-    def __init__(self, data_dir, set_info_file, points=BODY_25, transform=None) -> None:
+    def __init__(self, data_dir, set_info_file, points: Union[BODY_25, COCO] = BODY_25, transform=None) -> None:
         self.data_dir = data_dir
 
         self.clips = pandas.read_csv(set_info_file)

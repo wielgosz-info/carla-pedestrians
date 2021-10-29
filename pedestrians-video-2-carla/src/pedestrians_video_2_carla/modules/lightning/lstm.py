@@ -1,8 +1,7 @@
 import torch
 from torch import nn
-from torch.functional import Tensor
 
-from pedestrians_video_2_carla.pl_modules.base import LitBaseMapper
+from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
 class LitLSTMMapper(LitBaseMapper):

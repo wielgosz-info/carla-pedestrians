@@ -7,8 +7,8 @@ import carla
 import numpy as np
 import torch
 
-from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
-from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import \
+from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
+from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
     P3dPoseProjection
 from pedestrians_video_2_carla.walker_control.pose_projection import \
     PoseProjection

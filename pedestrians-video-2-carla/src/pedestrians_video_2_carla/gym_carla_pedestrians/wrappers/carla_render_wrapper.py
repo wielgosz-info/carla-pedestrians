@@ -1,3 +1,5 @@
+# TODO: rewrite to reuse CarlaRenderer from pedestrians_video_2_carla.renderers.carla_renderer
+
 import copy
 import logging
 from collections import OrderedDict
@@ -8,9 +10,8 @@ import carla
 import gym
 import PIL
 import numpy as np
-from pedestrians_video_2_carla.utils.destroy import destroy
-from pedestrians_video_2_carla.utils.setup import (setup_camera,
-                                                   setup_client_and_world)
+from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
+from pedestrians_video_2_carla.carla_utils.setup import *
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 
@@ -39,7 +40,7 @@ class CarlaRenderWrapper(gym.Wrapper):
         super().close()
 
         if (self._client is not None) and (self._world is not None) and (self._sensor_dict is not None):
-            destroy(self._client, self._world, self._sensor_dict)
+            destroy_client_and_world(self._client, self._world, self._sensor_dict)
 
     def reset(self, **kwargs) -> Any:
         self.close()

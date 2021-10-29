@@ -5,8 +5,8 @@ import sys
 import pytorch_lightning as pl
 
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.pl_datamodules.jaad_openpose import JAADOpenPoseDataModule
-from pedestrians_video_2_carla.pl_modules import *
+from pedestrians_video_2_carla.data.datamodules import *
+from pedestrians_video_2_carla.modules.lightning import *
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -100,12 +100,12 @@ def main(args):
     })
 
     # training
-    trainer = pl.Trainer(log_every_n_steps=3, max_epochs=210)
+    trainer = pl.Trainer(gpus=1, log_every_n_steps=3, max_epochs=210)
     # trainer.fit(model=model, datamodule=dm)
 
     # testing
     trainer.test(model=model, datamodule=dm,
-                 ckpt_path='best')
+                 ckpt_path='/app/lightning_logs/version_0/checkpoints/epoch=361-step=1809.ckpt')
 
 
 def run():

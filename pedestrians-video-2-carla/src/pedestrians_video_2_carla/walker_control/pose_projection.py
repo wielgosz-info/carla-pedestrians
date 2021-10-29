@@ -4,7 +4,7 @@ from typing import Union, Tuple
 import cameratransform as ct
 import carla
 import numpy as np
-from pedestrians_video_2_carla.utils.setup import get_camera_transform
+from pedestrians_video_2_carla.carla_utils.setup import get_camera_transform
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from PIL import Image, ImageDraw
@@ -246,8 +246,8 @@ if __name__ == "__main__":
     from collections import OrderedDict
     from queue import Empty, Queue
 
-    from pedestrians_video_2_carla.utils.destroy import destroy
-    from pedestrians_video_2_carla.utils.setup import *
+    from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
+    from pedestrians_video_2_carla.carla_utils.setup import *
     from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
         ControlledPedestrian
 
@@ -289,4 +289,4 @@ if __name__ == "__main__":
             'crl_foreArm__L': carla.Rotation(pitch=-6)
         })
 
-    destroy(client, world, sensor_dict)
+    destroy_client_and_world(client, world, sensor_dict)

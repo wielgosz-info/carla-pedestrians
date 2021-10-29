@@ -2,7 +2,7 @@ import carla
 import numpy as np
 import torch
 from torch._C import device
-from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
+from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.pose_projection import \
@@ -10,7 +10,6 @@ from pedestrians_video_2_carla.walker_control.pose_projection import \
 from pytorch3d.renderer.cameras import (PerspectiveCameras,
                                         look_at_view_transform)
 from pytorch3d.transforms import euler_angles_to_matrix
-from pytorch3d.transforms.transform3d import Rotate, Translate
 from torch.functional import Tensor
 from torch.types import Device
 

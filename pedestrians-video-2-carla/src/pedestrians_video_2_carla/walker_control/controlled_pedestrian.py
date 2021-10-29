@@ -1,11 +1,11 @@
 from collections import OrderedDict
 import copy
 import random
-from typing import Dict, Tuple, Any
+from typing import Dict
 import carla
-from pedestrians_video_2_carla.utils.spatial import deepcopy_location, deepcopy_transform
+from pedestrians_video_2_carla.carla_utils.spatial import deepcopy_location, deepcopy_transform
 
-from pedestrians_video_2_carla.utils.unreal import load_reference, unreal_to_carla
+from pedestrians_video_2_carla.skeletons.reference.load import load_reference, unreal_to_carla
 from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
@@ -264,8 +264,8 @@ if __name__ == "__main__":
     from queue import Queue, Empty
     from collections import OrderedDict
 
-    from pedestrians_video_2_carla.utils.destroy import destroy
-    from pedestrians_video_2_carla.utils.setup import *
+    from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
+    from pedestrians_video_2_carla.carla_utils.setup import *
 
     client, world = setup_client_and_world()
     pedestrian = ControlledPedestrian(world, 'adult', 'female')
@@ -306,4 +306,4 @@ if __name__ == "__main__":
             'crl_foreArm__L': carla.Rotation(pitch=-random.random()*15)
         })
 
-    destroy(client, world, sensor_dict)
+    destroy_client_and_world(client, world, sensor_dict)

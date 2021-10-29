@@ -4,8 +4,8 @@ import carla
 import time
 from collections import OrderedDict
 
-from pedestrians_video_2_carla.utils.unreal import load_reference
-from pedestrians_video_2_carla.utils.spatial import deepcopy_transform, mul_rotations
+from pedestrians_video_2_carla.skeletons.reference.load import load_reference
+from pedestrians_video_2_carla.carla_utils.spatial import deepcopy_transform, mul_carla_rotations
 
 
 class Pose(object):
@@ -47,7 +47,7 @@ class Pose(object):
         # since it seems to be modified in place
         absolute_pose[bone_name] = carla.Transform(
             location=prev_transform.transform(relative_pose[bone_name].location),
-            rotation=mul_rotations(
+            rotation=mul_carla_rotations(
                 prev_transform.rotation, relative_pose[bone_name].rotation)
         )
         if subsubstructures is not None:
@@ -130,7 +130,7 @@ class Pose(object):
 
         # for each defined rotation, we merge it with the current one
         for bone_name, rotation_change in rotations.items():
-            new_pose[bone_name].rotation = mul_rotations(
+            new_pose[bone_name].rotation = mul_carla_rotations(
                 new_pose[bone_name].rotation, rotation_change)
 
         self.relative = new_pose

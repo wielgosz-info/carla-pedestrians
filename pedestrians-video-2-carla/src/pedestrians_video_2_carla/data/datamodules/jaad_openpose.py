@@ -5,11 +5,11 @@ from typing import Dict, Optional, Union
 
 import pandas
 from pandas.core.frame import DataFrame
-from pedestrians_video_2_carla.pl_datamodules.openpose_dataset import \
+from pedestrians_video_2_carla.data.datasets.openpose_dataset import \
     OpenPoseDataset
-from pedestrians_video_2_carla.pytorch_helpers.transforms import \
+from pedestrians_video_2_carla.transforms.hips_neck import \
     OpenPoseHipsNeckNormalize
-from pedestrians_video_2_carla.utils.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 

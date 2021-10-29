@@ -2,7 +2,7 @@ from collections import OrderedDict
 import numpy as np
 import gym
 
-from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
 
 
 class NumpyToDictActionWrapper(gym.ActionWrapper):

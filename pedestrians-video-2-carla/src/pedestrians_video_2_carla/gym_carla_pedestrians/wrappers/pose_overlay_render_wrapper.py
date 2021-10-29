@@ -1,3 +1,5 @@
+# TODO: reuse PointsRenderer from pedestrians_video_2_carla.renderers.points_renderer
+
 from typing import Any, Dict, List, Tuple
 import gym
 import numpy as np

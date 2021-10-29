@@ -1,20 +1,24 @@
 from typing import Dict, Iterator, Tuple, Union
 
 import numpy as np
-import torch
-from pedestrians_video_2_carla.pytorch_helpers.renderers import (
-    CarlaRenderer, MergingMethod, PointsRenderer, Renderer, SourceRenderer)
-from pedestrians_video_2_carla.pytorch_helpers.transforms import (
+from pedestrians_video_2_carla.renderers import MergingMethod
+from pedestrians_video_2_carla.renderers.carla_renderer import CarlaRenderer
+from pedestrians_video_2_carla.renderers.points_renderer import PointsRenderer
+from pedestrians_video_2_carla.renderers.renderer import Renderer
+from pedestrians_video_2_carla.renderers.source_renderer import SourceRenderer
+from pedestrians_video_2_carla.skeletons.points import MAPPINGS
+from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckNormalize, HipsNeckDeNormalize)
-from pedestrians_video_2_carla.pytorch_walker_control.pose import P3dPose
-from pedestrians_video_2_carla.pytorch_walker_control.pose_projection import \
-    P3dPoseProjection
-from pedestrians_video_2_carla.utils.openpose import (BODY_25, COCO,
-                                                      COMMON_NODES)
-from pedestrians_video_2_carla.utils.unreal import CARLA_SKELETON
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
+from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
+from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
+    P3dPoseProjection
 from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
+
+import torch
 from torch import nn
 from torch.functional import Tensor
 
@@ -195,13 +199,13 @@ class ProjectionModule(nn.Module):
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        if type(self.input_nodes) == COCO:
-            mappings = COMMON_NODES['CARLA_2_COCO']
-        else:  # default
-            mappings = COMMON_NODES['CARLA_2_BODY_25']
-
-        (carla_indices, openpose_indices) = zip(
-            *[(c.value, o.value) for (c, o) in mappings])
+        if type(self.input_nodes) == CARLA_SKELETON:
+            carla_indices = slice(None)
+            openpose_indices = slice(None)
+        else:
+            mappings = MAPPINGS[self.input_nodes]
+            (carla_indices, openpose_indices) = zip(
+                *[(c.value, o.value) for (c, o) in mappings])
 
         common_projection = normalized_projection[..., carla_indices, 0:2]
         common_openpose = targets[..., openpose_indices, 0:2]
