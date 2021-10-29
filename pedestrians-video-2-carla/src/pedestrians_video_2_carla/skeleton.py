@@ -7,6 +7,7 @@ import pytorch_lightning as pl
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.data.datamodules import *
 from pedestrians_video_2_carla.modules.lightning import *
+from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -83,29 +84,34 @@ def main(args):
     batch_size = 64
     clip_length = 60
     clip_offset = 10
-    dm = JAADOpenPoseDataModule(batch_size=batch_size,
-                                clip_length=clip_length,
-                                clip_offset=clip_offset)
+    dm = Carla2D3DDataModule(batch_size=batch_size,
+                             clip_length=clip_length)
 
     # if model needs to know something about the data:
     # openpose_dm.prepare_data()
     # openpose_dm.setup()
 
     # model
-    model = LitLSTMMapper(clip_length=clip_length, log_videos_every_n_epochs=21, enabled_renderers={
-        'source': True,
-        'input': True,
-        'projection': True,
-        'carla': True
-    })
+    model = LitLSTMMapper(clip_length=clip_length, log_videos_every_n_epochs=21,
+                          input_nodes=CARLA_SKELETON,
+                          enabled_renderers={
+                              'source': False,
+                              'input': True,
+                              'projection': True,
+                              'carla': False
+                          })
 
     # training
-    trainer = pl.Trainer(gpus=1, log_every_n_steps=3, max_epochs=210)
-    # trainer.fit(model=model, datamodule=dm)
+    trainer = pl.Trainer(gpus=1,
+                         log_every_n_steps=3,
+                         max_epochs=210,
+                         check_val_every_n_epoch=3,
+                         limit_val_batches=64)
+    trainer.fit(model=model, datamodule=dm)
 
     # testing
-    trainer.test(model=model, datamodule=dm,
-                 ckpt_path='/app/lightning_logs/version_0/checkpoints/epoch=361-step=1809.ckpt')
+    # trainer.test(model=model, datamodule=dm,
+    #              ckpt_path='/app/lightning_logs/version_0/checkpoints/epoch=361-step=1809.ckpt')
 
 
 def run():

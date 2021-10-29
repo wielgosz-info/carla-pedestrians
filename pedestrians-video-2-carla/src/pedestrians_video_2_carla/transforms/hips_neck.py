@@ -5,7 +5,7 @@ import torch
 from torch.functional import Tensor
 
 from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
 
 
 class HipsNeckExtractor(object):
@@ -20,7 +20,7 @@ class HipsNeckExtractor(object):
 
 
 class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
-    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25) -> None:
+    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON) -> None:
         super().__init__(input_nodes)
 
     def get_hips_point(self, sample: Tensor) -> Tensor:
@@ -81,7 +81,7 @@ class HipsNeckNormalize(object):
 
 
 class OpenPoseHipsNeckNormalize(HipsNeckNormalize):
-    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25) -> None:
+    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON) -> None:
         super().__init__(OpenPoseHipsNeckExtractor(input_nodes))
 
 

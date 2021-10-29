@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import warnings
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 import numpy as np
 import pandas as pd
@@ -12,28 +12,26 @@ from pedestrians_video_2_carla.renderers.renderer import Renderer
 
 
 class SourceRenderer(Renderer):
-    def __init__(self, data_dir: str, **kwargs) -> None:
+    def __init__(self, data_dir: str, set_filepath, **kwargs) -> None:
         super().__init__(**kwargs)
 
         self.__data_dir = data_dir
-        # TODO: figure somewhat better how to get this or (better) use the dumped dataset files
-        self.__annotations = pd.read_csv(
-            os.path.join('/outputs', 'JAAD', 'annotations.csv'))
+        self.__annotations = pd.read_csv(set_filepath)
         self.__annotations.set_index(['video', 'id'], inplace=True)
         self.__annotations.sort_index(inplace=True)
 
-    def render(self, video_ids: List[str], pedestrian_ids: List[str], clip_ids: List[int], frame_ids: Tuple[List[int], List[int]], stage: str = 'test', image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
+    def render(self, meta: List[Dict[str, Any]], stage: str = 'test', image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        rendered_videos = min(self._max_videos, len(video_ids))
+        rendered_videos = min(self._max_videos, len(meta))
 
         for clip_idx in range(rendered_videos):
             video = self.render_clip(
-                video_ids[clip_idx],
-                pedestrian_ids[clip_idx],
-                int(clip_ids[clip_idx]),
-                int(frame_ids[0][clip_idx]),
-                int(frame_ids[1][clip_idx]),
+                meta[clip_idx]['video_id'],
+                meta[clip_idx]['pedestrian_id'],
+                meta[clip_idx]['clip_id'],
+                meta[clip_idx]['frame_id'][0],
+                meta[clip_idx]['frame_ids'][1],
                 image_size
             )
             yield video

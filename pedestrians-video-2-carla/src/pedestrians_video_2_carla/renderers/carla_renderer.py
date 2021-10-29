@@ -1,6 +1,6 @@
 import logging
 from queue import Empty, Queue
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import carla
 import numpy as np
@@ -20,7 +20,7 @@ class CarlaRenderer(Renderer):
         super().__init__(**kwargs)
         self.__fps = 30.0
 
-    def render(self, pose_change: Tensor, ages: List[str], genders: List[str], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
+    def render(self, pose_change: Tensor, meta: List[Dict[str, Any]], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
         rendered_videos = min(self._max_videos, len(pose_change))
 
         # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
@@ -29,8 +29,8 @@ class CarlaRenderer(Renderer):
         for clip_idx in range(rendered_videos):
             video = self.render_clip(
                 pose_change[clip_idx],
-                ages[clip_idx],
-                genders[clip_idx],
+                meta[clip_idx]['age'],
+                meta[clip_idx]['gender'],
                 image_size,
                 world,
                 rendered_videos

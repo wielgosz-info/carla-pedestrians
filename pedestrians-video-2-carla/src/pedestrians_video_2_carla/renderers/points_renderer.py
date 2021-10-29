@@ -6,13 +6,13 @@ from typing import List, Tuple
 from torch.functional import Tensor
 import numpy as np
 
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
 from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
 from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
 
 
 class PointsRenderer(Renderer):
-    def __init__(self, input_nodes: Union[BODY_25, COCO, CARLA_SKELETON] = CARLA_SKELETON, **kwargs) -> None:
+    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON, CARLA_SKELETON] = CARLA_SKELETON, **kwargs) -> None:
         super().__init__(**kwargs)
         self.__keys = [k.name for k in input_nodes]
 

@@ -7,14 +7,15 @@ import torch
 import torchvision
 from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
 
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
 from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
 from torch import nn
 from torch.functional import Tensor
+from pedestrians_video_2_carla.data import DATASETS_BASE, OUTPUTS_BASE
 
 
 class LitBaseMapper(pl.LightningModule):
-    def __init__(self, input_nodes: Union[BODY_25, COCO] = BODY_25, output_nodes=CARLA_SKELETON, log_videos_every_n_epochs=10, enabled_renderers=None, **kwargs):
+    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON, CARLA_SKELETON] = BODY_25_SKELETON, output_nodes=CARLA_SKELETON, log_videos_every_n_epochs=10, enabled_renderers=None, **kwargs):
         super().__init__()
 
         self.__fps = 30.0
@@ -28,7 +29,9 @@ class LitBaseMapper(pl.LightningModule):
             max_videos=64,
             enabled_renderers=enabled_renderers,
             # TODO: get it from datamodule
-            data_dir=os.path.join('/datasets', 'JAAD', 'videos'),
+            data_dir=os.path.join(DATASETS_BASE, 'JAAD', 'videos'),
+            # here should be the appropriate train/val/test set filepath
+            set_filepath=os.path.join(OUTPUTS_BASE, 'JAAD', 'annotations.csv'),
             **kwargs
         )
         self.criterion = nn.MSELoss(reduction='mean')
@@ -63,13 +66,13 @@ class LitBaseMapper(pl.LightningModule):
 
         pose_change = self.forward(frames.to(self.device))
 
-        (common_openpose, common_projection, projected_pose, _) = self.projection(
+        (common_input, common_projection, projected_pose, _) = self.projection(
             pose_change,
             frames
         )
         loss = self.criterion(
             common_projection,
-            common_openpose
+            common_input
         )
 
         self.log('{}_loss'.format(stage), loss)
@@ -89,15 +92,15 @@ class LitBaseMapper(pl.LightningModule):
         if not os.path.exists(videos_dir):
             os.makedirs(videos_dir)
 
-        for vid_idx, (vid, name) in enumerate(self.projection.render(batch,
+        for vid_idx, (vid, meta) in enumerate(self.projection.render(batch,
                                                                      projected_pose,
                                                                      pose_change,
                                                                      stage)):
             torchvision.io.write_video(
                 os.path.join(videos_dir,
-                             '{}-{}-{:0>2d}-ep{:0>4d}.mp4'.format(
-                                 *name,
-                                 self.current_epoch
+                             '{video_id}-{pedestrian_id}-{clip_id:0>2d}-ep{epoch:0>4d}.mp4'.format(
+                                 **meta,
+                                 epoch=self.current_epoch
                              )),
                 vid,
                 fps=self.__fps

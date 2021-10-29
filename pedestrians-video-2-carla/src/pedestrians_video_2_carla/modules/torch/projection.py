@@ -8,7 +8,7 @@ from pedestrians_video_2_carla.renderers.renderer import Renderer
 from pedestrians_video_2_carla.renderers.source_renderer import SourceRenderer
 from pedestrians_video_2_carla.skeletons.points import MAPPINGS
 from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckNormalize, HipsNeckDeNormalize)
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
@@ -25,7 +25,8 @@ from torch.functional import Tensor
 
 class ProjectionModule(nn.Module):
     def __init__(self,
-                 input_nodes: Union[BODY_25, COCO] = BODY_25,
+                 input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON,
+                                    CARLA_SKELETON] = BODY_25_SKELETON,
                  output_nodes: CARLA_SKELETON = CARLA_SKELETON,
                  projection_transform=None,
                  max_videos=1,
@@ -33,6 +34,7 @@ class ProjectionModule(nn.Module):
                  merging_method: MergingMethod = MergingMethod.square,
                  enabled_renderers: Dict[str, bool] = None,
                  data_dir=None,
+                 set_filepath=None,
                  **kwargs
                  ) -> None:
         super().__init__()
@@ -70,6 +72,7 @@ class ProjectionModule(nn.Module):
         self.__zeros_renderer = Renderer(max_videos=self.__max_videos)
         self.__source_renderer = SourceRenderer(
             data_dir=data_dir,
+            set_filepath=set_filepath,
             max_videos=max_videos
         ) if self.__enabled_renderers['source'] else None
         self.__input_renderer = PointsRenderer(
@@ -86,14 +89,14 @@ class ProjectionModule(nn.Module):
         ) if self.__enabled_renderers['carla'] else None
 
     def on_batch_start(self, batch, batch_idx, dataloader_idx):
-        (frames, ages, genders, *_) = batch
+        (frames, _, meta) = batch
         batch_size = len(frames)
 
         # create pedestrian object for each clip in batch
         self.__pedestrians = [
-            ControlledPedestrian(world=None, age=age, gender=gender,
+            ControlledPedestrian(world=None, age=meta['age'][idx], gender=meta['gender'][idx],
                                  pose_cls=P3dPose, device=frames.device)
-            for (age, gender) in zip(ages, genders)
+            for idx in range(batch_size)
         ]
         # only create one - we're assuming that camera is setup in the same for way for each pedestrian
         self.__pose_projection = P3dPoseProjection(
@@ -127,7 +130,7 @@ class ProjectionModule(nn.Module):
             ).unsqueeze(1)
         )
 
-    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor, world_rot_change_batch: Tensor):
+    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tensor:
         """
         Handles calculation of the pose projection.
 
@@ -147,6 +150,14 @@ class ProjectionModule(nn.Module):
         if pose_change_batch.ndim < 4:
             raise RuntimeError(
                 'Pose changes should have shape of (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles)')
+
+        if world_loc_change_batch is None:
+            world_loc_change_batch = torch.zeros((*pose_change_batch.shape[:2], 3),
+                                                 device=pose_change_batch.device)  # no world loc change
+
+        if world_rot_change_batch is None:
+            world_rot_change_batch = torch.zeros((*pose_change_batch.shape[:2], 3),
+                                                 device=pose_change_batch.device)  # no world rot change
 
         (prev_relative_loc, prev_relative_rot) = zip(*[
             p.current_pose.tensors
@@ -184,14 +195,6 @@ class ProjectionModule(nn.Module):
         return projections.reshape((batch_size, clip_length, points, 3))
 
     def forward(self, pose_inputs, targets, world_loc_inputs=None, world_rot_inputs=None):
-        if world_loc_inputs is None:
-            world_loc_inputs = torch.zeros((*pose_inputs.shape[:2], 3),
-                                           device=pose_inputs.device)  # no world loc change
-
-        if world_rot_inputs is None:
-            world_rot_inputs = torch.zeros((*pose_inputs.shape[:2], 3),
-                                           device=pose_inputs.device)  # no world rot change
-
         projected_pose = self.project_pose(
             pose_inputs,
             world_loc_inputs,
@@ -199,18 +202,18 @@ class ProjectionModule(nn.Module):
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        if type(self.input_nodes) == CARLA_SKELETON:
+        if self.input_nodes == CARLA_SKELETON:
             carla_indices = slice(None)
-            openpose_indices = slice(None)
+            input_indices = slice(None)
         else:
             mappings = MAPPINGS[self.input_nodes]
-            (carla_indices, openpose_indices) = zip(
+            (carla_indices, input_indices) = zip(
                 *[(c.value, o.value) for (c, o) in mappings])
 
         common_projection = normalized_projection[..., carla_indices, 0:2]
-        common_openpose = targets[..., openpose_indices, 0:2]
+        common_input = targets[..., input_indices, 0:2]
 
-        return (common_openpose, common_projection, projected_pose, normalized_projection)
+        return (common_input, common_projection, projected_pose, normalized_projection)
 
     def render(self,
                batch: Tensor,
@@ -233,15 +236,14 @@ class ProjectionModule(nn.Module):
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
 
-        (frames, ages, genders, video_ids, pedestrian_ids, clip_ids, frame_ids) = batch
+        (frames, _, meta) = batch
         image_size = self.__pose_projection.image_size
 
         denormalized_frames = self.__denormalizer(frames)
 
         source_videos = None
         if self.__source_renderer is not None:
-            source_videos = self.__source_renderer.render(
-                video_ids, pedestrian_ids, clip_ids, frame_ids, stage, image_size)
+            source_videos = self.__source_renderer.render(meta, stage, image_size)
 
         input_videos = None
         if self.__input_renderer is not None:
@@ -256,7 +258,7 @@ class ProjectionModule(nn.Module):
         carla_videos = None
         if self.__carla_renderer is not None:
             carla_videos = self.__carla_renderer.render(
-                pose_change, ages, genders, image_size
+                pose_change, meta, image_size
             )
 
         if self.__merging_method == MergingMethod.square:
@@ -279,9 +281,7 @@ class ProjectionModule(nn.Module):
             carla_videos = [None] * \
                 rendered_videos if carla_videos is None else carla_videos
 
-        name_parts = zip(video_ids, pedestrian_ids, clip_ids)
-
-        for (input_vid, projection_vid, carla_vid, source_vid, parts) in zip(input_videos, projection_videos, carla_videos, source_videos, name_parts):
+        for vid_idx, (input_vid, projection_vid, carla_vid, source_vid) in enumerate(zip(input_videos, projection_videos, carla_videos, source_videos)):
             if self.__merging_method.value < 2:
                 merged_vid = torch.tensor(np.concatenate(
                     [a for a in (source_vid, input_vid, projection_vid,
@@ -295,4 +295,10 @@ class ProjectionModule(nn.Module):
                         np.concatenate((carla_vid, projection_vid), axis=2)
                     ), axis=1)
                 )
-            yield merged_vid, parts
+            vid_meta = {
+                'video_id': 'video_{:0>4d}'.format(vid_idx),
+                'pedestrian_id': 0,
+                'clip_id': 0
+            }
+            vid_meta.update({k: v[vid_idx] for k, v in meta.items()})
+            yield merged_vid, vid_meta

@@ -5,15 +5,16 @@ from typing import Dict, Optional, Union
 
 import pandas
 from pandas.core.frame import DataFrame
+from pedestrians_video_2_carla.data import OUTPUTS_BASE
 from pedestrians_video_2_carla.data.datasets.openpose_dataset import \
     OpenPoseDataset
 from pedestrians_video_2_carla.transforms.hips_neck import \
     OpenPoseHipsNeckNormalize
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25, COCO
+from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
 from pytorch_lightning import LightningDataModule
 from torch.utils.data.dataloader import DataLoader
 
-DATA_DIR = os.path.join('/outputs', 'JAAD')
+OUTPUTS_DIR = os.path.join(OUTPUTS_BASE, 'JAAD')
 DF_ISIN = {
     'action': ['walking'],
     'speed': ['stopped'],
@@ -37,17 +38,17 @@ DF_USECOLS = [
 
 class JAADOpenPoseDataModule(LightningDataModule):
     def __init__(self,
-                 data_dir: Optional[str] = DATA_DIR,
+                 outputs_dir: Optional[str] = OUTPUTS_DIR,
                  df_usecols=DF_USECOLS,
                  df_isin: Optional[Dict] = DF_ISIN,
                  clip_length: Optional[int] = 30,
                  clip_offset: Optional[int] = 10,
                  batch_size: int = 64,
-                 points: Union[BODY_25, COCO] = BODY_25):
+                 points: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON):
         super().__init__()
 
-        self.data_dir = data_dir
-        self.annotations_filepath = os.path.join(self.data_dir, 'annotations.csv')
+        self.outputs_dir = outputs_dir
+        self.annotations_filepath = os.path.join(self.outputs_dir, 'annotations.csv')
         self.annotations_usecols = df_usecols
         self.annotations_filters = df_isin
 
@@ -61,7 +62,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
         self.__settings_digest = hashlib.md5(
             (str(df_usecols)+str(df_isin)+str(clip_length)+str(clip_offset)).encode()).hexdigest()
         self.__subsets_dir = os.path.join(
-            self.data_dir, 'subsets', self.__settings_digest)
+            self.outputs_dir, 'subsets', self.__settings_digest)
 
         self.__needs_preparation = False
         if not os.path.exists(self.__subsets_dir):
@@ -183,13 +184,13 @@ class JAADOpenPoseDataModule(LightningDataModule):
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
             self.train_set = OpenPoseDataset(
-                self.data_dir,
+                self.outputs_dir,
                 os.path.join(self.__subsets_dir, 'train.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
             )
             self.val_set = OpenPoseDataset(
-                self.data_dir,
+                self.outputs_dir,
                 os.path.join(self.__subsets_dir, 'val.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
@@ -197,7 +198,7 @@ class JAADOpenPoseDataModule(LightningDataModule):
 
         if stage == "test" or stage is None:
             self.test_set = OpenPoseDataset(
-                self.data_dir,
+                self.outputs_dir,
                 os.path.join(self.__subsets_dir, 'test.csv'),
                 points=self.points,
                 transform=OpenPoseHipsNeckNormalize(self.points)
