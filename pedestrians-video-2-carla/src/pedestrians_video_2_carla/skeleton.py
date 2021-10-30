@@ -106,11 +106,11 @@ def main(args):
                                             log_every_n_steps=3,
                                             max_epochs=210,
                                             check_val_every_n_epoch=3)
-    # trainer.fit(model=model, datamodule=dm)
+    trainer.fit(model=model, datamodule=dm)
 
     # testing
-    trainer.test(model=model, datamodule=dm,
-                 ckpt_path='/app/lightning_logs/version_2/checkpoints/epoch=209-step=6719.ckpt')
+    # trainer.test(model=model, datamodule=dm,
+    #              ckpt_path='/app/lightning_logs/version_2/checkpoints/epoch=209-step=6719.ckpt')
 
 
 def run():

@@ -46,9 +46,9 @@ class LitBaseMapper(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
         parser.add_argument(
-            '--input-nodes', type=get_skeleton_type_by_name, default='BODY_25_SKELETON')
+            '--input_nodes', type=get_skeleton_type_by_name, default='BODY_25_SKELETON')
         parser.add_argument(
-            '--output-nodes', type=get_skeleton_type_by_name, default='CARLA_SKELETON')
+            '--output_nodes', type=get_skeleton_type_by_name, default='CARLA_SKELETON')
         return parent_parser
 
     def _on_batch_start(self, batch, batch_idx, dataloader_idx):

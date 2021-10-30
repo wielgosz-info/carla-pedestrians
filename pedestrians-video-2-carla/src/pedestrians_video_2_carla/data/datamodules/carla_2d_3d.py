@@ -55,15 +55,15 @@ class Carla2D3DDataModule(LightningDataModule):
     @staticmethod
     def add_data_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("Carla2D3D Data Module")
-        parser.add_argument("--outputs-dir", type=str, default=OUTPUTS_DIR,
+        parser.add_argument("--outputs_dir", type=str, default=OUTPUTS_DIR,
                             help="Output directory for the dataset")
-        parser.add_argument("--clip-length", type=int, default=30,
+        parser.add_argument("--clip_length", type=int, default=30,
                             help="Length of the clips")
-        parser.add_argument("--batch-size", type=int, default=64,
+        parser.add_argument("--batch_size", type=int, default=64,
                             help="Batch size")
-        parser.add_argument("--random-changes-each-frame", type=int, default=3,
+        parser.add_argument("--random_changes_each_frame", type=int, default=3,
                             help="Number of nodes that will be randomly changed in each frame")
-        parser.add_argument("--max-change-in-deg", type=int, default=5,
+        parser.add_argument("--max_change_in_deg", type=int, default=5,
                             help="Max random change in degrees")
         # input nodes are saved in the model hyperparameters
         return parent_parser

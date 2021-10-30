@@ -87,11 +87,10 @@ class JAADOpenPoseDataModule(LightningDataModule):
     @staticmethod
     def add_data_specific_args(parent_parser):
         parser = parent_parser.add_argument_group('JAAD OpenPose Data Module')
-        parser.add_argument('--outputs-dir', type=str, default=OUTPUTS_DIR)
-        parser.add_argument('--clip-length', type=int, default=30)
-        parser.add_argument('--clip-offset', type=int, default=10)
-        parser.add_argument('--batch-size', type=int, default=64)
-        # input nodes are saved in the model hyperparameters
+        parser.add_argument('--outputs_dir', type=str, default=OUTPUTS_DIR)
+        parser.add_argument('--clip_length', type=int, default=30)
+        parser.add_argument('--clip_offset', type=int, default=10)
+        parser.add_argument('--batch_size', type=int, default=64)
         return parent_parser
 
     def prepare_data(self) -> None:
