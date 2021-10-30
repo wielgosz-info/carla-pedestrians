@@ -1,13 +1,16 @@
 import argparse
 import logging
 import sys
+import os
 
 import pytorch_lightning as pl
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 from pedestrians_video_2_carla import __version__
+from pedestrians_video_2_carla.loggers.pedestrian_logger import PedestrianLogger
 from pedestrians_video_2_carla.data.datamodules import *
 from pedestrians_video_2_carla.modules.lightning import *
-from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -88,8 +91,8 @@ def main(args):
     dm = Carla2D3DDataModule(**dict_args)
 
     # if model needs to know something about the data:
-    # openpose_dm.prepare_data()
-    # openpose_dm.setup()
+    # dm.prepare_data()
+    # dm.setup()
 
     # model
     model = LitLSTMMapper(**dict_args,
@@ -101,11 +104,29 @@ def main(args):
                               'carla': False
                           })
 
+    # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
+    tb_logger = TensorBoardLogger(
+        'lightning_logs',
+        name=model.__class__.__name__
+    )
+    pedestrian_logger = PedestrianLogger(
+        save_dir=os.path.join(tb_logger.log_dir, 'videos'),
+        name=tb_logger.name,
+        version=tb_logger.version
+    )
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
+        monitor="val_loss",
+        save_top_k=1
+    )
+
     # training
-    trainer = pl.Trainer.from_argparse_args(args,
-                                            log_every_n_steps=3,
-                                            max_epochs=210,
-                                            check_val_every_n_epoch=3)
+    trainer = pl.Trainer.from_argparse_args(args, logger=[
+        tb_logger,
+        pedestrian_logger,
+    ], callbacks=[
+        checkpoint_callback
+    ])
     trainer.fit(model=model, datamodule=dm)
 
     # testing

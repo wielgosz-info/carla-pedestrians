@@ -1,6 +1,16 @@
 from pytorch_lightning.utilities import rank_zero_only
 from pytorch_lightning.loggers import LightningLoggerBase
 from pytorch_lightning.loggers.base import rank_zero_experiment
+import os
+
+
+class PedestrianWriter(object):
+    def __init__(self, log_dir, log_every_n_epochs=10, fps=30.0, max_videos=10, **kwargs) -> None:
+        self._log_dir = log_dir
+
+        self._log_every_n_epochs = log_every_n_epochs
+        self._fps = fps
+        self._max_videos = max_videos
 
 
 class PedestrianLogger(LightningLoggerBase):
@@ -8,57 +18,50 @@ class PedestrianLogger(LightningLoggerBase):
     Logger for video output.
     """
 
-    def __init__(self, save_dir, log_every_n_epochs=10, fps=30.0, max_videos=10):
+    def __init__(self, save_dir, name, version, **kwargs):
         """
         Initialize PedestrianLogger.
 
         Args:
-            save_dir (str): directory to save videos
+            save_dir (str): directory to save videos. Usually you get this from TensorBoardLogger.log_dir + 'videos'.
             log_every_n_epochs (int): interval in epochs to save videos
             fps (int): frames per second of video
             max_videos (int): maximum number of videos from the single batch to save
         """
-        self.save_dir = save_dir
-        self.log_every_n_epochs = log_every_n_epochs
-        self.fps = fps
-        self.max_videos = max_videos
+        super().__init__(**kwargs)
+
+        self._save_dir = save_dir
+        self._name = name
+        self._version = version
+        self._kwargs = kwargs
+
+        if not os.path.exists(self._save_dir):
+            os.makedirs(self._save_dir)
 
     @property
-    def name(self):
-        return "PedestrianLogger"
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def version(self) -> int:
+        return self._version
 
     @property
     @rank_zero_experiment
     def experiment(self):
-        # Return the experiment object associated with this logger.
-        pass
+        if self._experiment is None:
+            self._experiment = PedestrianWriter(log_dir=self._save_dir, **self._kwargs)
 
-    @property
-    def version(self):
-        # Return the experiment version, int or str.
-        return "0.1"
+        return self._experiment
 
     @rank_zero_only
     def log_hyperparams(self, params):
-        # params is an argparse.Namespace
-        # your code to record hyperparameters goes here
+        # we do not log any hyperparams
         pass
 
     @rank_zero_only
     def log_metrics(self, metrics, step):
         # metrics is a dictionary of metric names and values
         # your code to record metrics goes here
-        pass
-
-    @rank_zero_only
-    def save(self):
-        # Optional. Any code necessary to save logger data goes here
-        # If you implement this, remember to call `super().save()`
-        # at the start of the method (important for aggregation of metrics)
-        super().save()
-
-    @rank_zero_only
-    def finalize(self, status):
-        # Optional. Any code that needs to be run after training
-        # finishes goes here
+        # if aggregating, this will be called every n steps and whenever checkpoint is saved
         pass

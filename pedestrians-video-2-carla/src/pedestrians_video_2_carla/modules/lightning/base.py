@@ -103,7 +103,7 @@ class LitBaseMapper(pl.LightningModule):
         if self.current_epoch % self.__log_videos_every_n_epochs != 0:
             return
 
-        videos_dir = os.path.join(self.logger.log_dir, 'videos', stage)
+        videos_dir = os.path.join(self.logger[0].log_dir, 'm-videos', stage)
         if not os.path.exists(videos_dir):
             os.makedirs(videos_dir)
 
