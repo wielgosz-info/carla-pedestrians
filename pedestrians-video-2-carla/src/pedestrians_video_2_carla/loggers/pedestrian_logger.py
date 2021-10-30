@@ -12,6 +12,9 @@ class PedestrianWriter(object):
         self._fps = fps
         self._max_videos = max_videos
 
+    def log_videos(self, batch, projected_pose, pose_change, vid_callback, **kwargs):
+        pass
+
 
 class PedestrianLogger(LightningLoggerBase):
     """

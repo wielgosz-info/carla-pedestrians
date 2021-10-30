@@ -96,6 +96,19 @@ class LitBaseMapper(pl.LightningModule):
         return loss
 
     def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str, log_to_tb: bool = False):
+        if log_to_tb:
+            def vid_callback(vid, vid_idx, fps):
+                vid = vid.permute(
+                    0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
+                self.logger[0].experiment.add_video(
+                    '{}_{:0>2d}_{}_render'.format(stage, batch_idx, vid_idx),
+                    vid, self.global_step, fps=fps)
+        else:
+            vid_callback = None
+
+        self.logger[1].experiment.log_videos(
+            batch, projected_pose, pose_change, vid_callback)
+
         if stage == 'train':
             # never log videos during training
             return
@@ -122,7 +135,7 @@ class LitBaseMapper(pl.LightningModule):
             )
 
             if log_to_tb:
-                tb = self.logger.experiment
+                tb = self.logger[0].experiment
                 vid = vid.permute(
                     0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
                 tb.add_video('{}_{:0>2d}_{}_render'.format(stage, batch_idx, vid_idx),
