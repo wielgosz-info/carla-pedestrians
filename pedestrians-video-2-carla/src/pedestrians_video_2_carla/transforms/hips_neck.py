@@ -4,8 +4,8 @@ from typing import Any, Callable, Union
 import torch
 from torch.functional import Tensor
 
-from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
 
 
 class HipsNeckExtractor(object):

@@ -5,7 +5,7 @@ import json
 import os
 import torch
 from torch.utils.data import Dataset
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
 
 
 class OpenPoseDataset(Dataset):
@@ -63,8 +63,14 @@ class OpenPoseDataset(Dataset):
         if self.transform is not None:
             torch_frames = self.transform(torch_frames)
 
-        # TODO: return data as (inputs, targets, meta_dict) instead of huge flat tuple
-        return (torch_frames, pedestrian_info.iloc[0]['age'], pedestrian_info.iloc[0]['gender'], video_id, pedestrian_id, clip_id, (start_frame, stop_frame))
+        return (torch_frames, None, {
+            'age': pedestrian_info.iloc[0]['age'],
+            'gender': pedestrian_info.iloc[0]['gender'],
+            'video_id': video_id,
+            'pedestrian_id': pedestrian_id,
+            'clip_id': clip_id,
+            'frame_id': (start_frame, stop_frame)
+        })
 
     def __select_best_candidate(self, candidates: List[np.ndarray], gt_bbox: np.ndarray, near_zero: float = 1e-5) -> np.ndarray:
         """

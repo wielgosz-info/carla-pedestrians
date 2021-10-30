@@ -31,7 +31,7 @@ class SourceRenderer(Renderer):
                 meta[clip_idx]['pedestrian_id'],
                 meta[clip_idx]['clip_id'],
                 meta[clip_idx]['frame_id'][0],
-                meta[clip_idx]['frame_ids'][1],
+                meta[clip_idx]['frame_id'][1],
                 image_size
             )
             yield video

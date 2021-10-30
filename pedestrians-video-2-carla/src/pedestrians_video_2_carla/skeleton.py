@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.data.datamodules import *
 from pedestrians_video_2_carla.modules.lightning import *
-from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -19,18 +19,13 @@ __license__ = "MIT"
 # executable/script.
 
 
-def parse_args(args):
-    """Parse command line parameters
-
-    Args:
-      args (List[str]): command line parameters as list of strings
-          (for example  ``["--help"]``).
-
-    Returns:
-      :obj:`argparse.Namespace`: command line parameters namespace
+def add_program_args():
+    """
+    Add program-level command line parameters
     """
     parser = argparse.ArgumentParser(
-        description="Map pedestrians movements from videos to CARLA")
+        description="Map pedestrians movements from videos to CARLA"
+    )
     parser.add_argument(
         "--version",
         action="version",
@@ -52,7 +47,7 @@ def parse_args(args):
         action="store_const",
         const=logging.DEBUG,
     )
-    return parser.parse_args(args)
+    return parser
 
 
 def setup_logging(loglevel):
@@ -77,23 +72,28 @@ def main(args):
       args (List[str]): command line parameters as list of strings
           (for example  ``["--verbose"]``).
     """
-    args = parse_args(args)
+
+    parser = add_program_args()
+    parser = pl.Trainer.add_argparse_args(parser)
+
+    parser = Carla2D3DDataModule.add_data_specific_args(parser)
+    parser = LitLSTMMapper.add_model_specific_args(parser)
+
+    args = parser.parse_args(args)
     setup_logging(args.loglevel)
 
+    dict_args = vars(args)
+
     # data
-    batch_size = 64
-    clip_length = 60
-    clip_offset = 10
-    dm = Carla2D3DDataModule(batch_size=batch_size,
-                             clip_length=clip_length)
+    dm = Carla2D3DDataModule(**dict_args)
 
     # if model needs to know something about the data:
     # openpose_dm.prepare_data()
     # openpose_dm.setup()
 
     # model
-    model = LitLSTMMapper(clip_length=clip_length, log_videos_every_n_epochs=21,
-                          input_nodes=CARLA_SKELETON,
+    model = LitLSTMMapper(**dict_args,
+                          log_videos_every_n_epochs=21,
                           enabled_renderers={
                               'source': False,
                               'input': True,
@@ -102,16 +102,15 @@ def main(args):
                           })
 
     # training
-    trainer = pl.Trainer(gpus=1,
-                         log_every_n_steps=3,
-                         max_epochs=210,
-                         check_val_every_n_epoch=3,
-                         limit_val_batches=64)
-    trainer.fit(model=model, datamodule=dm)
+    trainer = pl.Trainer.from_argparse_args(args,
+                                            log_every_n_steps=3,
+                                            max_epochs=210,
+                                            check_val_every_n_epoch=3)
+    # trainer.fit(model=model, datamodule=dm)
 
     # testing
-    # trainer.test(model=model, datamodule=dm,
-    #              ckpt_path='/app/lightning_logs/version_0/checkpoints/epoch=361-step=1809.ckpt')
+    trainer.test(model=model, datamodule=dm,
+                 ckpt_path='/app/lightning_logs/version_2/checkpoints/epoch=209-step=6719.ckpt')
 
 
 def run():

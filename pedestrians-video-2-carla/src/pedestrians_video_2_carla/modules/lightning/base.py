@@ -6,9 +6,10 @@ import pytorch_lightning as pl
 import torch
 import torchvision
 from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
+from pedestrians_video_2_carla.skeletons.nodes import SKELETONS, get_skeleton_name_by_type, get_skeleton_type_by_name
 
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
-from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from torch import nn
 from torch.functional import Tensor
 from pedestrians_video_2_carla.data import DATASETS_BASE, OUTPUTS_BASE
@@ -35,6 +36,20 @@ class LitBaseMapper(pl.LightningModule):
             **kwargs
         )
         self.criterion = nn.MSELoss(reduction='mean')
+
+        self.save_hyperparameters({
+            'input_nodes': get_skeleton_name_by_type(input_nodes),
+            'output_nodes': get_skeleton_name_by_type(output_nodes),
+        })
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
+        parser.add_argument(
+            '--input-nodes', type=get_skeleton_type_by_name, default='BODY_25_SKELETON')
+        parser.add_argument(
+            '--output-nodes', type=get_skeleton_type_by_name, default='CARLA_SKELETON')
+        return parent_parser
 
     def _on_batch_start(self, batch, batch_idx, dataloader_idx):
         self.projection.on_batch_start(batch, batch_idx, dataloader_idx)

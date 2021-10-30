@@ -6,9 +6,10 @@ from pedestrians_video_2_carla.renderers.carla_renderer import CarlaRenderer
 from pedestrians_video_2_carla.renderers.points_renderer import PointsRenderer
 from pedestrians_video_2_carla.renderers.renderer import Renderer
 from pedestrians_video_2_carla.renderers.source_renderer import SourceRenderer
-from pedestrians_video_2_carla.skeletons.points import MAPPINGS
-from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import (
+    BODY_25_SKELETON, COCO_SKELETON)
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckNormalize, HipsNeckDeNormalize)
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \

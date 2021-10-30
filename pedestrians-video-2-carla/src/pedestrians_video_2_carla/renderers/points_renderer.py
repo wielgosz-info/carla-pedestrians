@@ -6,8 +6,8 @@ from typing import List, Tuple
 from torch.functional import Tensor
 import numpy as np
 
-from pedestrians_video_2_carla.skeletons.points.openpose import BODY_25_SKELETON, COCO_SKELETON
-from pedestrians_video_2_carla.skeletons.points.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from pedestrians_video_2_carla.walker_control.pose_projection import PoseProjection
 
 
