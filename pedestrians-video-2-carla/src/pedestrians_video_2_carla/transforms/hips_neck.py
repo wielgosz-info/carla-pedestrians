@@ -19,6 +19,7 @@ class HipsNeckExtractor(object):
         raise NotImplementedError()
 
 
+# TODO: should specific extractor be here or in e.g. skeletons.nodes.openpose?
 class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
     def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON) -> None:
         super().__init__(input_nodes)
@@ -34,6 +35,7 @@ class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
         return sample[..., self.input_nodes.neck__C.value, 0:2]
 
 
+# TODO: should specific extractor be here or in e.g. skeletons.nodes.carla?
 class CarlaHipsNeckExtractor(HipsNeckExtractor):
     def __init__(self, input_nodes: CARLA_SKELETON = CARLA_SKELETON) -> None:
         super().__init__(input_nodes)
@@ -78,16 +80,6 @@ class HipsNeckNormalize(object):
             normalized_sample[..., 2:] >= self.__near_zero, torch.tensor(0.0, device=normalized_sample.device))
 
         return normalized_sample
-
-
-class OpenPoseHipsNeckNormalize(HipsNeckNormalize):
-    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON) -> None:
-        super().__init__(OpenPoseHipsNeckExtractor(input_nodes))
-
-
-class CarlaHipsNeckNormalize(HipsNeckNormalize):
-    def __init__(self, input_nodes: CARLA_SKELETON = CARLA_SKELETON) -> None:
-        super().__init__(CarlaHipsNeckExtractor(input_nodes))
 
 
 class HipsNeckDeNormalize(object):

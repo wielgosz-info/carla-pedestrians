@@ -1,17 +1,11 @@
-from typing import Dict, Iterator, Tuple, Union
+from typing import Union
 
-import numpy as np
-from pedestrians_video_2_carla.renderers import MergingMethod
-from pedestrians_video_2_carla.renderers.carla_renderer import CarlaRenderer
-from pedestrians_video_2_carla.renderers.points_renderer import PointsRenderer
-from pedestrians_video_2_carla.renderers.renderer import Renderer
-from pedestrians_video_2_carla.renderers.source_renderer import SourceRenderer
 from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from pedestrians_video_2_carla.skeletons.nodes.openpose import (
     BODY_25_SKELETON, COCO_SKELETON)
 from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckNormalize, HipsNeckDeNormalize)
+    CarlaHipsNeckExtractor, HipsNeckNormalize)
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
@@ -30,12 +24,6 @@ class ProjectionModule(nn.Module):
                                     CARLA_SKELETON] = BODY_25_SKELETON,
                  output_nodes: CARLA_SKELETON = CARLA_SKELETON,
                  projection_transform=None,
-                 max_videos=1,
-                 fps=30.0,
-                 merging_method: MergingMethod = MergingMethod.square,
-                 enabled_renderers: Dict[str, bool] = None,
-                 data_dir=None,
-                 set_filepath=None,
                  **kwargs
                  ) -> None:
         super().__init__()
@@ -44,7 +32,8 @@ class ProjectionModule(nn.Module):
         self.output_nodes = output_nodes
 
         if projection_transform is None:
-            projection_transform = CarlaHipsNeckNormalize(input_nodes=output_nodes)
+            projection_transform = HipsNeckNormalize(
+                CarlaHipsNeckExtractor(input_nodes=output_nodes))
         self.projection_transform = projection_transform
 
         # set on every batch
@@ -52,42 +41,6 @@ class ProjectionModule(nn.Module):
         self.__pose_projection = None
         self.__world_locations = None
         self.__world_rotations = None
-        self.__denormalizer = None
-
-        # renderers
-        if enabled_renderers is None:
-            enabled_renderers = {
-                'source': False,
-                'input': True,
-                'projection': True,
-                'carla': False
-            }
-        self.__enabled_renderers = enabled_renderers
-
-        if sum(enabled_renderers.values()) < 3 and merging_method == MergingMethod.square:
-            merging_method = MergingMethod.horizontal
-        self.__merging_method = merging_method
-
-        self.__max_videos = max_videos
-        self.__fps = fps
-        self.__zeros_renderer = Renderer(max_videos=self.__max_videos)
-        self.__source_renderer = SourceRenderer(
-            data_dir=data_dir,
-            set_filepath=set_filepath,
-            max_videos=max_videos
-        ) if self.__enabled_renderers['source'] else None
-        self.__input_renderer = PointsRenderer(
-            input_nodes=self.input_nodes,
-            max_videos=max_videos
-        ) if self.__enabled_renderers['input'] else None
-        self.__projection_renderer = PointsRenderer(
-            input_nodes=self.projection_transform.extractor.input_nodes,
-            max_videos=max_videos
-        ) if self.__enabled_renderers['projection'] else None
-        self.__carla_renderer = CarlaRenderer(
-            fps=self.__fps,
-            max_videos=max_videos
-        ) if self.__enabled_renderers['carla'] else None
 
     def on_batch_start(self, batch, batch_idx, dataloader_idx):
         (frames, _, meta) = batch
@@ -102,34 +55,12 @@ class ProjectionModule(nn.Module):
         # only create one - we're assuming that camera is setup in the same for way for each pedestrian
         self.__pose_projection = P3dPoseProjection(
             device=frames.device, pedestrian=self.__pedestrians[0])
-        # TODO: handle initial world transform matching instead of setting all zeros?
 
+        # TODO: handle initial world transform matching instead of setting all zeros?
         self.__world_locations = torch.zeros(
             (batch_size, 3), device=frames.device)
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
-
-        movements = torch.zeros(
-            (batch_size, 1, len(self.output_nodes), 3), device=frames.device)
-        (relative_loc, relative_rot) = zip(*[
-            p.current_pose.tensors
-            for p in self.__pedestrians
-        ])
-        # prepare individual denormalization for each pedestrian
-        # since there can be different reference poses depending on
-        # adult/child male/female
-        self.__denormalizer = HipsNeckDeNormalize().from_projection(
-            self.projection_transform.extractor,
-            self.__pose_projection.forward(
-                self.__pedestrians[0].current_pose.forward(
-                    movements,
-                    torch.stack(relative_loc),
-                    torch.stack(relative_rot)
-                )[0],
-                self.__world_locations,
-                self.__world_rotations
-            ).unsqueeze(1)
-        )
 
     def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tensor:
         """
@@ -215,91 +146,3 @@ class ProjectionModule(nn.Module):
         common_input = targets[..., input_indices, 0:2]
 
         return (common_input, common_projection, projected_pose, normalized_projection)
-
-    def render(self,
-               batch: Tensor,
-               projected_pose: Tensor,
-               pose_change: Tensor,
-               stage: str
-               ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
-        """
-        Prepares video data. **It doesn't save anything!**
-
-        :param batch: As fed into .forward
-        :type batch: Tensor
-        :param projected_pose: Output of the projection layer
-        :type projected_pose: Tensor
-        :param pose_change: Output from the .forward
-        :type pose_change: Tensor
-        :param stage: train/val/test/predict
-        :type stage: str
-        :return: List of videos and (potential) name parts
-        :rtype: Tuple[List[Tensor], Tuple[str]]
-        """
-
-        (frames, _, meta) = batch
-        image_size = self.__pose_projection.image_size
-
-        denormalized_frames = self.__denormalizer(frames)
-
-        source_videos = None
-        if self.__source_renderer is not None:
-            source_videos = self.__source_renderer.render(meta, stage, image_size)
-
-        input_videos = None
-        if self.__input_renderer is not None:
-            input_videos = self.__input_renderer.render(
-                denormalized_frames, image_size)
-
-        projection_videos = None
-        if self.__projection_renderer is not None:
-            projection_videos = self.__projection_renderer.render(
-                projected_pose, image_size)
-
-        carla_videos = None
-        if self.__carla_renderer is not None:
-            carla_videos = self.__carla_renderer.render(
-                pose_change, meta, image_size
-            )
-
-        if self.__merging_method == MergingMethod.square:
-            source_videos = self.__zeros_renderer.render(
-                frames, image_size) if source_videos is None else source_videos
-            input_videos = self.__zeros_renderer.render(
-                frames, image_size) if input_videos is None else input_videos
-            projection_videos = self.__zeros_renderer.render(
-                frames, image_size) if projection_videos is None else projection_videos
-            carla_videos = self.__zeros_renderer.render(
-                frames, image_size) if carla_videos is None else carla_videos
-        else:
-            rendered_videos = min(self.__max_videos, len(frames))
-            source_videos = [None] * \
-                rendered_videos if source_videos is None else source_videos
-            input_videos = [None] * \
-                rendered_videos if input_videos is None else input_videos
-            projection_videos = [
-                None] * rendered_videos if projection_videos is None else projection_videos
-            carla_videos = [None] * \
-                rendered_videos if carla_videos is None else carla_videos
-
-        for vid_idx, (input_vid, projection_vid, carla_vid, source_vid) in enumerate(zip(input_videos, projection_videos, carla_videos, source_videos)):
-            if self.__merging_method.value < 2:
-                merged_vid = torch.tensor(np.concatenate(
-                    [a for a in (source_vid, input_vid, projection_vid,
-                                 carla_vid) if a is not None],
-                    axis=self.__merging_method.value+1
-                ))
-            else:  # square
-                merged_vid = torch.tensor(
-                    np.concatenate((
-                        np.concatenate((source_vid, input_vid), axis=2),
-                        np.concatenate((carla_vid, projection_vid), axis=2)
-                    ), axis=1)
-                )
-            vid_meta = {
-                'video_id': 'video_{:0>4d}'.format(vid_idx),
-                'pedestrian_id': 0,
-                'clip_id': 0
-            }
-            vid_meta.update({k: v[vid_idx] for k, v in meta.items()})
-            yield merged_vid, vid_meta

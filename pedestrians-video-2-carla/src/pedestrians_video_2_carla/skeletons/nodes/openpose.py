@@ -1,9 +1,8 @@
-from enum import Enum
-from pedestrians_video_2_carla.skeletons.nodes import register_skeleton
+from pedestrians_video_2_carla.skeletons.nodes import register_skeleton, Skeleton
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 
 
-class BODY_25_SKELETON(Enum):
+class BODY_25_SKELETON(Skeleton):
     head__C = 0
     neck__C = 1
     arm__R = 2
@@ -31,7 +30,7 @@ class BODY_25_SKELETON(Enum):
     heel__R = 24
 
 
-class COCO_SKELETON(Enum):
+class COCO_SKELETON(Skeleton):
     head__C = 0
     neck__C = 1
     arm__R = 2

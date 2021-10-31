@@ -16,21 +16,22 @@ from torch.functional import Tensor
 
 
 class CarlaRenderer(Renderer):
-    def __init__(self, fps=30.0, **kwargs) -> None:
+    def __init__(self, fps=30.0, fov=90.0, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.__fps = 30.0
+        self.__fps = fps
+        self.__fov = fov
 
     def render(self, pose_change: Tensor, meta: List[Dict[str, Any]], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
-        rendered_videos = min(self._max_videos, len(pose_change))
+        rendered_videos = len(pose_change)
 
         # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
         client, world = setup_client_and_world(fps=self.__fps)
 
-        for clip_idx in range(rendered_videos):
+        for clip_idx in range(len(pose_change)):
             video = self.render_clip(
                 pose_change[clip_idx],
-                meta[clip_idx]['age'],
-                meta[clip_idx]['gender'],
+                meta['age'][clip_idx],
+                meta['gender'][clip_idx],
                 image_size,
                 world,
                 rendered_videos
@@ -47,7 +48,7 @@ class CarlaRenderer(Renderer):
             world, age, gender, P3dPose, max_spawn_tries=10+rendered_videos, device=pose_changes_clip.device)
         camera_queue = Queue()
         camera_rgb = setup_camera(
-            world, camera_queue, bound_pedestrian)
+            world, camera_queue, bound_pedestrian, image_size, self.__fov)
         (prev_relative_loc, prev_relative_rot) = bound_pedestrian.current_pose.tensors
         # P3dPose.forward expects batches, so
         prev_relative_loc = prev_relative_loc.unsqueeze(0)

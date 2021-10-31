@@ -11,7 +11,7 @@ import pims
 from pedestrians_video_2_carla.renderers.renderer import Renderer
 
 
-class SourceRenderer(Renderer):
+class SourceVideosRenderer(Renderer):
     def __init__(self, data_dir: str, set_filepath, **kwargs) -> None:
         super().__init__(**kwargs)
 

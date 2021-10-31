@@ -1,8 +1,11 @@
-from .carla import CARLA_SKELETON
+from enum import Enum
 
-SKELETONS = {
-    'CARLA_SKELETON': CARLA_SKELETON,
-}
+
+class Skeleton(Enum):
+    pass
+
+
+SKELETONS = {}
 MAPPINGS = {}
 
 
@@ -14,6 +17,7 @@ def get_skeleton_name_by_type(skeleton):
     return list(SKELETONS.keys())[list(SKELETONS.values()).index(skeleton)]
 
 
-def register_skeleton(name, skeleton, mapping):
+def register_skeleton(name, skeleton, mapping=None):
     SKELETONS[name] = skeleton
-    MAPPINGS[skeleton] = mapping
+    if mapping is not None:
+        MAPPINGS[skeleton] = mapping

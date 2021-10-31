@@ -50,7 +50,7 @@ class Carla2D3DIterableDataset(IterableDataset):
             output_nodes=self.nodes,
             projection_transform=self.transform,
             enabled_renderers={
-                'source': False,
+                'source_videos': False,
                 'input': False,
                 'projection': False,
                 'carla': False

@@ -17,7 +17,7 @@ class PointsRenderer(Renderer):
         self.__keys = [k.name for k in input_nodes]
 
     def render(self, frames: Tensor, image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
-        rendered_videos = min(self._max_videos, len(frames))
+        rendered_videos = len(frames)
         cpu_frames = frames[..., 0:2].round().int().cpu().numpy()
 
         for clip_idx in range(rendered_videos):

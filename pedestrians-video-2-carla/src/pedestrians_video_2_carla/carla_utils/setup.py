@@ -50,7 +50,13 @@ def get_camera_transform(pedestrian: Any, distance=3.1, elevation=1.2) -> carla.
     )
 
 
-def setup_camera(world: carla.World, sensor_queue: Queue, pedestrian: Any) -> carla.Sensor:
+def setup_camera(
+    world: carla.World,
+    sensor_queue: Queue,
+    pedestrian: Any,
+    image_size: Tuple[int, int] = (800, 600),
+    fov: float = 90.0
+) -> carla.Sensor:
     """
     Sets up the camera with callback saving frames to disk in front of the pedestrian.
 
@@ -60,11 +66,20 @@ def setup_camera(world: carla.World, sensor_queue: Queue, pedestrian: Any) -> ca
     :type sensor_queue: Queue
     :param pedestrian: 
     :type pedestrian: ControlledPedestrian
+    :param image_size: Image size, defaults to (800, 600)
+    :type image_size: Tuple[int, int], optional
+    :param fov: Field of view, defaults to 90.0
+    :type fov: float, optional
     :return: RGB Camera
     :rtype: carla.Sensor
     """
     blueprint_library = world.get_blueprint_library()
     camera_bp = blueprint_library.find('sensor.camera.rgb')
+
+    camera_bp.set_attribute('image_size_x', str(image_size[0]))
+    camera_bp.set_attribute('image_size_y', str(image_size[1]))
+    camera_bp.set_attribute('fov', str(fov))
+
     camera_tr = get_camera_transform(pedestrian)
     camera_rgb = world.spawn_actor(camera_bp, camera_tr)
 

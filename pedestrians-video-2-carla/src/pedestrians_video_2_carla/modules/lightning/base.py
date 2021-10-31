@@ -19,20 +19,10 @@ class LitBaseMapper(pl.LightningModule):
     def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON, CARLA_SKELETON] = BODY_25_SKELETON, output_nodes=CARLA_SKELETON, log_videos_every_n_epochs=10, enabled_renderers=None, **kwargs):
         super().__init__()
 
-        self.__fps = 30.0
-        self.__log_videos_every_n_epochs = log_videos_every_n_epochs
-
         # default layers
         self.projection = ProjectionModule(
             input_nodes,
             output_nodes,
-            fps=self.__fps,
-            max_videos=64,
-            enabled_renderers=enabled_renderers,
-            # TODO: get it from datamodule
-            data_dir=os.path.join(DATASETS_BASE, 'JAAD', 'videos'),
-            # here should be the appropriate train/val/test set filepath
-            set_filepath=os.path.join(OUTPUTS_BASE, 'JAAD', 'annotations.csv'),
             **kwargs
         )
         self.criterion = nn.MSELoss(reduction='mean')
@@ -95,48 +85,18 @@ class LitBaseMapper(pl.LightningModule):
 
         return loss
 
+    def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):
+        vid = vid.permute(0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
+        self.logger[0].experiment.add_video(
+            '{}_{}_render'.format(stage, vid_idx),
+            vid, self.global_step, fps=fps
+        )
+
     def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str, log_to_tb: bool = False):
         if log_to_tb:
-            def vid_callback(vid, vid_idx, fps):
-                vid = vid.permute(
-                    0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
-                self.logger[0].experiment.add_video(
-                    '{}_{:0>2d}_{}_render'.format(stage, batch_idx, vid_idx),
-                    vid, self.global_step, fps=fps)
+            vid_callback = self._log_to_tensorboard
         else:
             vid_callback = None
 
         self.logger[1].experiment.log_videos(
-            batch, projected_pose, pose_change, vid_callback)
-
-        if stage == 'train':
-            # never log videos during training
-            return
-
-        if self.current_epoch % self.__log_videos_every_n_epochs != 0:
-            return
-
-        videos_dir = os.path.join(self.logger[0].log_dir, 'm-videos', stage)
-        if not os.path.exists(videos_dir):
-            os.makedirs(videos_dir)
-
-        for vid_idx, (vid, meta) in enumerate(self.projection.render(batch,
-                                                                     projected_pose,
-                                                                     pose_change,
-                                                                     stage)):
-            torchvision.io.write_video(
-                os.path.join(videos_dir,
-                             '{video_id}-{pedestrian_id}-{clip_id:0>2d}-ep{epoch:0>4d}.mp4'.format(
-                                 **meta,
-                                 epoch=self.current_epoch
-                             )),
-                vid,
-                fps=self.__fps
-            )
-
-            if log_to_tb:
-                tb = self.logger[0].experiment
-                vid = vid.permute(
-                    0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
-                tb.add_video('{}_{:0>2d}_{}_render'.format(stage, batch_idx, vid_idx),
-                             vid, self.global_step, fps=self.__fps)
+            batch, projected_pose, pose_change, self.global_step, batch_idx, stage, vid_callback, force=(stage != 'train'))

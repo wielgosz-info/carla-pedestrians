@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 import os
+from typing import List
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -11,6 +12,7 @@ from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.loggers.pedestrian_logger import PedestrianLogger
 from pedestrians_video_2_carla.data.datamodules import *
 from pedestrians_video_2_carla.modules.lightning import *
+from pedestrians_video_2_carla.transforms.hips_neck import CarlaHipsNeckExtractor, HipsNeckNormalize
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -20,6 +22,22 @@ __license__ = "MIT"
 # The functions defined in this section are wrappers around the main Python
 # API allowing them to be called directly from the terminal as a CLI
 # executable/script.
+
+
+# TODO: get this from argparse
+def get_model_cls():
+    return LitLSTMMapper
+
+
+# TODO: get this from argparse
+def get_data_module_cls():
+    return Carla2D3DDataModule
+
+
+# TODO: this probably should be encapsulated in DataModule
+# if you need different transforms, you need different data modules
+def get_data_transform(nodes):
+    return HipsNeckNormalize(CarlaHipsNeckExtractor(nodes))
 
 
 def add_program_args():
@@ -44,20 +62,29 @@ def add_program_args():
     )
     parser.add_argument(
         "-vv",
-        "--very-verbose",
+        "--very_verbose",
         dest="loglevel",
         help="set loglevel to DEBUG",
         action="store_const",
         const=logging.DEBUG,
     )
+    parser.add_argument(
+        "-m",
+        "--mode",
+        dest="mode",
+        help="set mode to train or test",
+        default="train",
+        choices=["train", "test"],
+    )
     return parser
 
 
 def setup_logging(loglevel):
-    """Setup basic logging
+    """
+    Setup basic logging
 
-    Args:
-      loglevel (int): minimum loglevel for emitting messages
+    :param loglevel: minimum loglevel for emitting messages
+    :type loglevel: int
     """
     logformat = "[%(asctime)s] %(levelname)s:%(name)s:%(message)s"
     logging.basicConfig(
@@ -68,19 +95,22 @@ def setup_logging(loglevel):
     matplotlib_logger.setLevel(logging.INFO)
 
 
-def main(args):
+def main(args: List[str]):
+    """
+    :param args: command line parameters as list of strings
+          (for example  ``["--verbose"]``).
+    :type args: List[str]
     """
 
-    Args:
-      args (List[str]): command line parameters as list of strings
-          (for example  ``["--verbose"]``).
-    """
+    model_cls = get_model_cls()
+    data_module_cls = get_data_module_cls()
 
     parser = add_program_args()
     parser = pl.Trainer.add_argparse_args(parser)
 
-    parser = Carla2D3DDataModule.add_data_specific_args(parser)
-    parser = LitLSTMMapper.add_model_specific_args(parser)
+    parser = data_module_cls.add_data_specific_args(parser)
+    parser = model_cls.add_model_specific_args(parser)
+    parser = PedestrianLogger.add_logger_specific_args(parser)
 
     args = parser.parse_args(args)
     setup_logging(args.loglevel)
@@ -88,21 +118,13 @@ def main(args):
     dict_args = vars(args)
 
     # data
-    dm = Carla2D3DDataModule(**dict_args)
-
-    # if model needs to know something about the data:
-    # dm.prepare_data()
-    # dm.setup()
+    dm = data_module_cls(
+        transform=get_data_transform,
+        **dict_args
+    )
 
     # model
-    model = LitLSTMMapper(**dict_args,
-                          log_videos_every_n_epochs=21,
-                          enabled_renderers={
-                              'source': False,
-                              'input': True,
-                              'projection': True,
-                              'carla': False
-                          })
+    model = model_cls(**dict_args)
 
     # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
     tb_logger = TensorBoardLogger(
@@ -112,11 +134,13 @@ def main(args):
     pedestrian_logger = PedestrianLogger(
         save_dir=os.path.join(tb_logger.log_dir, 'videos'),
         name=tb_logger.name,
-        version=tb_logger.version
+        version=tb_logger.version,
+        **dict_args
     )
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
         monitor="val_loss",
+        mode="min",
         save_top_k=1
     )
 
@@ -127,11 +151,11 @@ def main(args):
     ], callbacks=[
         checkpoint_callback
     ])
-    trainer.fit(model=model, datamodule=dm)
 
-    # testing
-    # trainer.test(model=model, datamodule=dm,
-    #              ckpt_path='/app/lightning_logs/version_2/checkpoints/epoch=209-step=6719.ckpt')
+    if args.mode == 'train':
+        trainer.fit(model=model, datamodule=dm)
+    elif args.mode == 'test':
+        trainer.test(model=model, datamodule=dm)
 
 
 def run():
@@ -143,14 +167,4 @@ def run():
 
 
 if __name__ == "__main__":
-    # ^  This is a guard statement that will prevent the following code from
-    #    being executed in the case someone imports this file instead of
-    #    executing it as a script.
-    #    https://docs.python.org/3/library/__main__.html
-
-    # After installing your project with pip, users can also run your Python
-    # modules as scripts via the ``-m`` flag, as defined in PEP 338::
-    #
-    #     python -m pedestrians_video_2_carla.skeleton 42
-    #
     run()
