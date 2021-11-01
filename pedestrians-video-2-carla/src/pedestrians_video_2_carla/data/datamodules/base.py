@@ -1,7 +1,8 @@
-from typing import Callable, Optional
+from typing import Optional
 from pedestrians_video_2_carla.data import OUTPUTS_BASE
 import os
 from pytorch_lightning import LightningDataModule
+from torch.utils.data import DataLoader
 
 from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
@@ -23,6 +24,10 @@ class BaseDataModule(LightningDataModule):
         self.clip_length = clip_length
         self.batch_size = batch_size
         self.nodes = input_nodes
+
+        self.train_set = None
+        self.val_set = None
+        self.test_set = None
 
         self.transform = self._setup_data_transform()
 
@@ -73,3 +78,21 @@ class BaseDataModule(LightningDataModule):
         )
         # input nodes are handled in the model hyperparameters
         return parent_parser
+
+    def _dataloader(self, dataset, shuffle=False):
+        return DataLoader(
+            dataset=dataset,
+            batch_size=self.batch_size,
+            num_workers=os.cpu_count(),
+            pin_memory=True,
+            shuffle=shuffle
+        )
+
+    def train_dataloader(self):
+        return self._dataloader(self.train_set, shuffle=True)
+
+    def val_dataloader(self):
+        return self._dataloader(self.val_set)
+
+    def test_dataloader(self):
+        return self._dataloader(self.test_set)

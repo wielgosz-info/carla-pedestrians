@@ -1,7 +1,7 @@
 import hashlib
 import math
 import os
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import pandas
 from pandas.core.frame import DataFrame
@@ -12,6 +12,7 @@ from pedestrians_video_2_carla.data.datasets.openpose_dataset import \
 from torch.utils.data.dataloader import DataLoader
 from pedestrians_video_2_carla.transforms.hips_neck import (
     OpenPoseHipsNeckExtractor, HipsNeckNormalize)
+from tqdm import tqdm
 
 OUTPUTS_DIR = os.path.join(OUTPUTS_BASE, 'JAAD')
 DF_ISIN = {
@@ -93,12 +94,16 @@ class JAADOpenPoseDataModule(BaseDataModule):
             # we already have datasset prepared for this combination of settings
             return
 
+        progress_bar = tqdm(total=8, desc='Generating subsets')
+
         # TODO: one day use JAAD annotations directly
         annotations_df: DataFrame = pandas.read_csv(
             self.annotations_filepath,
             usecols=self.annotations_usecols,
             index_col=['video', 'id']
         )
+
+        progress_bar.update()
 
         filtering_results = annotations_df.isin(self.annotations_filters)[
             list(self.annotations_filters.keys())].all(axis=1)
@@ -108,6 +113,8 @@ class JAADOpenPoseDataModule(BaseDataModule):
 
         # There is no 'senior' in CARLA, so replace with 'adult'
         annotations_df['age'] = annotations_df['age'].replace('senior', 'adult')
+
+        progress_bar.update()
 
         frame_counts = annotations_df.groupby(['video', 'id']).agg(
             frame_count=pandas.NamedAgg(column="frame", aggfunc="count"),
@@ -120,6 +127,8 @@ class JAADOpenPoseDataModule(BaseDataModule):
         # drop clips that are too short for sure
         frame_counts = frame_counts[frame_counts.frame_count >= self.clip_length]
 
+        progress_bar.update()
+
         clips = []
 
         # handle continuous clips first
@@ -130,6 +139,8 @@ class JAADOpenPoseDataModule(BaseDataModule):
                 clips.append(video.iloc[ci * self.clip_offset:ci *
                                         self.clip_offset + self.clip_length].reset_index()[self.annotations_usecols].assign(clip=ci))
                 ci += 1
+
+        progress_bar.update()
 
         # then try to extract from non-continuos
         for idx in frame_counts[frame_counts.frame_count_eq_diff == False].index:
@@ -149,6 +160,8 @@ class JAADOpenPoseDataModule(BaseDataModule):
                         self.annotations_usecols].assign(clip=ci))
                     ci += 1
 
+        progress_bar.update()
+
         clips = pandas.concat(clips).set_index(['video', 'id', 'clip', 'frame'])
         clips.sort_index(inplace=True)
 
@@ -158,6 +171,8 @@ class JAADOpenPoseDataModule(BaseDataModule):
             clips_count=pandas.NamedAgg(column='clip', aggfunc='nunique')).sort_values('clips_count', ascending=False)
         clip_counts = clip_counts.assign(clips_cumsum=clip_counts.cumsum())
         total = clip_counts['clips_count'].sum()
+
+        progress_bar.update()
 
         test_count = math.floor(total*0.2)
         val_count = math.floor((total-test_count)*0.2)
@@ -191,12 +206,17 @@ class JAADOpenPoseDataModule(BaseDataModule):
                 sets[0].append(clip_counts[assigned < clip_counts['clips_cumsum']])
                 break
 
+        progress_bar.update()
+
         # now we need to dump the actual clips info
         names = ['train', 'val', 'test']
         for (i, name) in enumerate(names):
             clips_set = clips.join(pandas.concat(sets[i]), how='right')
             clips_set.drop(['clips_count', 'clips_cumsum'], inplace=True, axis=1)
             clips_set.to_csv(os.path.join(self._subsets_dir, '{:s}.csv'.format(name)))
+
+        progress_bar.update()
+        progress_bar.close()
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
@@ -220,21 +240,3 @@ class JAADOpenPoseDataModule(BaseDataModule):
                 points=self.nodes,
                 transform=self.transform
             )
-
-    def __dataloader(self, dataset, shuffle=False):
-        return DataLoader(
-            dataset=dataset,
-            batch_size=self.batch_size,
-            num_workers=0,  # os.cpu_count(),
-            pin_memory=True,
-            shuffle=shuffle
-        )
-
-    def train_dataloader(self):
-        return self.__dataloader(self.train_set, shuffle=True)
-
-    def val_dataloader(self):
-        return self.__dataloader(self.val_set)
-
-    def test_dataloader(self):
-        return self.__dataloader(self.test_set)

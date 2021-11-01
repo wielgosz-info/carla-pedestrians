@@ -129,21 +129,6 @@ class Carla2D3DDataModule(BaseDataModule):
                 transform=self.transform
             )
 
-    def __dataloader(self, dataset, shuffle=False):
-        return DataLoader(
-            dataset=dataset,
-            batch_size=self.batch_size,
-            num_workers=os.cpu_count(),
-            pin_memory=True,
-            shuffle=shuffle
-        )
-
     def train_dataloader(self):
         # no need to shuffle, it is randomly generated
-        return self.__dataloader(self.train_set)
-
-    def val_dataloader(self):
-        return self.__dataloader(self.val_set)
-
-    def test_dataloader(self):
-        return self.__dataloader(self.test_set)
+        return self._dataloader(self.train_set)
