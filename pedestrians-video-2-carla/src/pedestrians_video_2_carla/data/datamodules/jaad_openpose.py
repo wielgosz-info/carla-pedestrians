@@ -70,6 +70,7 @@ class JAADOpenPoseDataModule(BaseDataModule):
         parser = parent_parser.add_argument_group('JAAD OpenPose DataModule')
         parser.add_argument(
             '--clip_offset',
+            metavar='NUM_FRAMES',
             help='''
                 Number of frames to shift from the BEGINNING of the last clip.
                 Example: clip_length=30 and clip_offset=10 means that there will be

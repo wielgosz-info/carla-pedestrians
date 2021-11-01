@@ -13,10 +13,10 @@ class LitLinearAutoencoderMapper(LitBaseMapper):
 
         self.__clip_length = clip_length
 
-        self.__input_nodes_len = len(self.projection.input_nodes)
+        self.__input_nodes_len = len(self.input_nodes)
         self.__input_features = 3
 
-        self.__output_nodes_len = len(self.projection.output_nodes)
+        self.__output_nodes_len = len(self.output_nodes)
         self.__output_features = 3
 
         self.__input_size = self.__clip_length * self.__input_nodes_len * self.__input_features

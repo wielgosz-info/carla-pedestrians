@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Tuple, Union
 
 from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
@@ -20,20 +20,13 @@ from torch.functional import Tensor
 
 class ProjectionModule(nn.Module):
     def __init__(self,
-                 input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON,
-                                    CARLA_SKELETON] = BODY_25_SKELETON,
-                 output_nodes: CARLA_SKELETON = CARLA_SKELETON,
                  projection_transform=None,
                  **kwargs
                  ) -> None:
         super().__init__()
 
-        self.input_nodes = input_nodes
-        self.output_nodes = output_nodes
-
         if projection_transform is None:
-            projection_transform = HipsNeckNormalize(
-                CarlaHipsNeckExtractor(input_nodes=output_nodes))
+            projection_transform = HipsNeckNormalize(CarlaHipsNeckExtractor())
         self.projection_transform = projection_transform
 
         # set on every batch
@@ -62,7 +55,7 @@ class ProjectionModule(nn.Module):
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
 
-    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tensor:
+    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor]:
         """
         Handles calculation of the pose projection.
 
@@ -124,25 +117,14 @@ class ProjectionModule(nn.Module):
                 self.__world_locations,
                 self.__world_rotations
             )
-        return projections.reshape((batch_size, clip_length, points, 3))
+        return projections.reshape((batch_size, clip_length, points, 3)), absolute_loc
 
-    def forward(self, pose_inputs, targets, world_loc_inputs=None, world_rot_inputs=None):
-        projected_pose = self.project_pose(
+    def forward(self, pose_inputs: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
+        projected_pose, absolute_pose_loc = self.project_pose(
             pose_inputs,
             world_loc_inputs,
             world_rot_inputs,
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        if self.input_nodes == CARLA_SKELETON:
-            carla_indices = slice(None)
-            input_indices = slice(None)
-        else:
-            mappings = MAPPINGS[self.input_nodes]
-            (carla_indices, input_indices) = zip(
-                *[(c.value, o.value) for (c, o) in mappings])
-
-        common_projection = normalized_projection[..., carla_indices, 0:2]
-        common_input = targets[..., input_indices, 0:2]
-
-        return (common_input, common_projection, projected_pose, normalized_projection)
+        return (projected_pose, normalized_projection, absolute_pose_loc)

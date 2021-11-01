@@ -52,11 +52,24 @@ class BaseDataModule(LightningDataModule):
     @staticmethod
     def add_data_specific_args(parent_parser):
         parser = parent_parser.add_argument_group('Base DataModule')
-        parser.add_argument("--outputs_dir", type=str, default=OUTPUTS_DIR,
-                            help="Output directory for the dataset")
-        parser.add_argument("--clip_length", type=int, default=30,
-                            help="Length of the clips")
-        parser.add_argument("--batch_size", type=int, default=64,
-                            help="Batch size")
+        parser.add_argument(
+            "--outputs_dir",
+            type=str,
+            default=OUTPUTS_DIR,
+            help="Output directory for the dataset."
+        )
+        parser.add_argument(
+            "--clip_length",
+            metavar='NUM_FRAMES',
+            type=int,
+            default=30,
+            help="Length of the clips."
+        )
+        parser.add_argument(
+            "--batch_size",
+            type=int,
+            default=64,
+            help="Batch size."
+        )
         # input nodes are handled in the model hyperparameters
         return parent_parser

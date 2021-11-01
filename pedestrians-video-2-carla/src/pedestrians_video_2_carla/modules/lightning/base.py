@@ -1,44 +1,76 @@
 
-import os
-from typing import Tuple, Union
+from typing import Tuple
 
 import pytorch_lightning as pl
-import torch
-import torchvision
 from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
-from pedestrians_video_2_carla.skeletons.nodes import SKELETONS, get_skeleton_name_by_type, get_skeleton_type_by_name
+from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS, Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name
 
-from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from torch import nn
 from torch.functional import Tensor
-from pedestrians_video_2_carla.data import DATASETS_BASE, OUTPUTS_BASE
+from enum import Enum
+
+
+class LossModes(Enum):
+    """
+    Enum for loss modes.
+    """
+    common_loc_2d = 0
+    loc_3d = 1
 
 
 class LitBaseMapper(pl.LightningModule):
-    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON, CARLA_SKELETON] = BODY_25_SKELETON, output_nodes=CARLA_SKELETON, log_videos_every_n_epochs=10, enabled_renderers=None, **kwargs):
+    def __init__(
+        self,
+        input_nodes: Skeleton = BODY_25_SKELETON,
+        output_nodes: Skeleton = CARLA_SKELETON,
+        loss_mode: LossModes = LossModes.common_loc_2d,
+        **kwargs
+    ):
         super().__init__()
+
+        self._loss_mode = loss_mode
+        self._loss_fn = {
+            LossModes.common_loc_2d: self._calculate_loss_common_loc_2d,
+            LossModes.loc_3d: self._calculate_loss_loc_3d
+        }[self._loss_mode]
+
+        self.input_nodes = input_nodes
+        self.output_nodes = output_nodes
 
         # default layers
         self.projection = ProjectionModule(
-            input_nodes,
-            output_nodes,
             **kwargs
         )
-        self.criterion = nn.MSELoss(reduction='mean')
+        self.criterion = self._setup_criterion()
 
         self.save_hyperparameters({
             'input_nodes': get_skeleton_name_by_type(input_nodes),
             'output_nodes': get_skeleton_name_by_type(output_nodes),
+            'loss_mode': self._loss_mode.name
         })
 
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
         parser.add_argument(
-            '--input_nodes', type=get_skeleton_type_by_name, default='BODY_25_SKELETON')
+            '--input_nodes',
+            type=get_skeleton_type_by_name,
+            default=BODY_25_SKELETON
+        )
         parser.add_argument(
-            '--output_nodes', type=get_skeleton_type_by_name, default='CARLA_SKELETON')
+            '--output_nodes',
+            type=get_skeleton_type_by_name,
+            default=CARLA_SKELETON
+        )
+        parser.add_argument(
+            '--loss_mode',
+            type=LossModes.__getitem__,
+            metavar='{}'.format(set(LossModes.__members__.keys())),
+            default=LossModes.common_loc_2d,
+            choices=list(LossModes)
+        )
         return parent_parser
 
     def _on_batch_start(self, batch, batch_idx, dataloader_idx):
@@ -67,22 +99,55 @@ class LitBaseMapper(pl.LightningModule):
         return self._step(batch, batch_idx, 'test')
 
     def _step(self, batch, batch_idx, stage):
-        (frames, *_) = batch
+        (frames, targets, meta) = batch
 
         pose_change = self.forward(frames.to(self.device))
 
-        (common_input, common_projection, projected_pose, _) = self.projection(
-            pose_change,
-            frames
+        (projected_pose, normalized_projection, absolute_pose_loc) = self.projection(
+            pose_change
         )
-        loss = self.criterion(
-            common_projection,
-            common_input
+        loss = self._loss_fn(
+            projected_pose=projected_pose,
+            normalized_projection=normalized_projection,
+            absolute_pose_loc=absolute_pose_loc,
+            frames=frames,
+            targets=targets,
+            meta=meta
         )
 
         self.log('{}_loss'.format(stage), loss)
         self._log_videos(pose_change, projected_pose, batch, batch_idx, stage)
 
+        return loss
+
+    def _setup_criterion(self):
+        return nn.MSELoss(reduction='mean')
+
+    def _calculate_loss_common_loc_2d(self, normalized_projection, frames, **kwargs):
+        if self.input_nodes == CARLA_SKELETON:
+            carla_indices = slice(None)
+            input_indices = slice(None)
+        else:
+            mappings = MAPPINGS[self.input_nodes]
+            (carla_indices, input_indices) = zip(
+                *[(c.value, o.value) for (c, o) in mappings])
+
+        common_projection = normalized_projection[..., carla_indices, 0:2]
+        common_input = frames[..., input_indices, 0:2]
+
+        loss = self.criterion(
+            common_projection,
+            common_input
+        )
+
+        return loss
+
+    def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs):
+        # TODO: coordinates are in meters, should we normalize? Especially when mixing different datasets
+        loss = self.criterion(
+            absolute_pose_loc,
+            targets['absolute_pose_loc']
+        )
         return loss
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):

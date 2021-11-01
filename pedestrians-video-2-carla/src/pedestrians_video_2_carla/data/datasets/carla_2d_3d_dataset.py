@@ -13,7 +13,8 @@ class Carla2D3DDataset(Dataset):
         set_file = h5py.File(set_filepath, 'r')
 
         self.projection_2d = set_file['carla_2d_3d/projection_2d']
-        self.pose_changes = set_file['carla_2d_3d/pose_changes']
+        self.pose_changes = set_file['carla_2d_3d/targets/pose_changes']
+        self.absolute_pose_loc = set_file['carla_2d_3d/targets/absolute_pose_loc']
         self.meta = set_file['carla_2d_3d/meta']
 
         self.transform = transform
@@ -31,10 +32,20 @@ class Carla2D3DDataset(Dataset):
         pose_changes = self.pose_changes[idx]
         pose_changes = torch.from_numpy(pose_changes)
 
+        absolute_pose_loc = self.absolute_pose_loc[idx]
+        absolute_pose_loc = torch.from_numpy(absolute_pose_loc)
+
         meta = {k: self.meta[k].attrs['labels'][v[idx]].decode(
             "latin-1") for k, v in self.meta.items()}
 
-        return (projection_2d, pose_changes, meta)
+        return (
+            projection_2d,
+            {
+                'pose_changes': pose_changes,
+                'absolute_pose_loc': absolute_pose_loc,
+            },
+            meta
+        )
 
 
 class Carla2D3DIterableDataset(IterableDataset):
@@ -75,11 +86,18 @@ class Carla2D3DIterableDataset(IterableDataset):
             'age': [age],
             'gender': [gender]
         }), 0, None)
-        projection_2d = self.projection.project_pose(
+        projection_2d, absolute_pose_loc = self.projection.project_pose(
             pose_changes
         )
 
         if self.transform:
             projection_2d = self.transform(projection_2d)
 
-        yield (projection_2d.squeeze(dim=0), pose_changes.squeeze(dim=0), {'age': age, 'gender': gender})
+        yield (
+            projection_2d.squeeze(dim=0),
+            {
+                'pose_changes': pose_changes.squeeze(dim=0),
+                'absolute_pose_loc': absolute_pose_loc.squeeze(dim=0)
+            },
+            {'age': age, 'gender': gender}
+        )

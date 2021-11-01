@@ -26,7 +26,7 @@ __license__ = "MIT"
 
 # TODO: get this from argparse
 def get_model_cls():
-    return LitLSTMMapper
+    return LitLinearAutoencoderMapper
 
 
 # TODO: get this from argparse

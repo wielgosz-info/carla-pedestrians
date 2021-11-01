@@ -19,12 +19,13 @@ RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.
     torchvision==0.10.1+cu111 \
     torchaudio==0.9.1
 
-# separate some utility/development requirements, since they will change much more often than PyTorch ones
+# separate some utility/development requirements, since they will change much slower than project ones
 RUN pip install --no-cache-dir \
     autopep8 \
     pylint \
     pytest \
-    pytest-cov
+    pytest-cov \
+    torch-tb-profiler
 
 # Let's pretend we've installed CARLA via easy_install
 # It's client for Python 3.7 and in Ubuntu 20.04 there's Python 3.8 but hopefully this will work

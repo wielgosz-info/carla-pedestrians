@@ -8,6 +8,7 @@ import hashlib
 import h5py
 import numpy as np
 from pedestrians_video_2_carla.data import OUTPUTS_BASE
+from tqdm import trange
 
 OUTPUTS_DIR = os.path.join(OUTPUTS_BASE, 'JAAD')
 
@@ -39,10 +40,20 @@ class Carla2D3DDataModule(BaseDataModule):
         BaseDataModule.add_data_specific_args(parent_parser)
 
         parser = parent_parser.add_argument_group("Carla2D3D DataModule")
-        parser.add_argument("--random_changes_each_frame", type=int, default=3,
-                            help="Number of nodes that will be randomly changed in each frame")
-        parser.add_argument("--max_change_in_deg", type=int, default=5,
-                            help="Max random change in degrees")
+        parser.add_argument(
+            "--random_changes_each_frame",
+            type=int,
+            default=3,
+            metavar='NUM_NODES',
+            help="Number of nodes that will be randomly changed in each frame."
+        )
+        parser.add_argument(
+            "--max_change_in_deg",
+            type=int,
+            default=5,
+            metavar='DEGREES',
+            help="Max random [+/-] change in degrees."
+        )
         return parent_parser
 
     def prepare_data(self) -> None:
@@ -65,16 +76,21 @@ class Carla2D3DDataModule(BaseDataModule):
         sizes = [val_set_size, test_set_size]
         names = ['val', 'test']
         for (size, name) in zip(sizes, names):
-            clips_set = tuple(zip(*[next(iter(iterable_dataset)) for _ in range(size)]))
+            clips_set = tuple(zip(*[next(iter(iterable_dataset))
+                              for _ in trange(size, desc=f'Generating {name} set')]))
             projection_2d = np.stack(clips_set[0], axis=0)
-            pose_changes = np.stack(clips_set[1], axis=0)
+            targets = {k: [dic[k] for dic in clips_set[1]] for k in clips_set[1][0]}
             meta = {k: [dic[k] for dic in clips_set[2]] for k in clips_set[2][0]}
 
             with h5py.File(os.path.join(self._subsets_dir, "{}.hdf5".format(name)), "w") as f:
                 f.create_dataset("carla_2d_3d/projection_2d", data=projection_2d,
                                  chunks=(1, *projection_2d.shape[1:]))
-                f.create_dataset("carla_2d_3d/pose_changes", data=pose_changes,
-                                 chunks=(1, *pose_changes.shape[1:]))
+
+                for k, v in targets.items():
+                    stacked_v = np.stack(v, axis=0)
+                    f.create_dataset(f"carla_2d_3d/targets/{k}", data=stacked_v,
+                                     chunks=(1, *stacked_v.shape[1:]))
+
                 for k, v in meta.items():
                     unique = list(set(v))
                     labels = np.array([

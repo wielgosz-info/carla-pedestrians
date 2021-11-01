@@ -1,26 +1,39 @@
 import logging
 import os
+from enum import Enum
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 
 import numpy as np
 import torch
 import torchvision
-from pedestrians_video_2_carla.data import OUTPUTS_BASE, DATASETS_BASE
+from pedestrians_video_2_carla.data import DATASETS_BASE, OUTPUTS_BASE
 from pedestrians_video_2_carla.renderers import MergingMethod
 from pedestrians_video_2_carla.renderers.carla_renderer import CarlaRenderer
 from pedestrians_video_2_carla.renderers.points_renderer import PointsRenderer
 from pedestrians_video_2_carla.renderers.renderer import Renderer
-from pedestrians_video_2_carla.renderers.source_videos_renderer import SourceVideosRenderer
+from pedestrians_video_2_carla.renderers.source_videos_renderer import \
+    SourceVideosRenderer
+from pedestrians_video_2_carla.skeletons.nodes import Skeleton
+from pedestrians_video_2_carla.transforms.hips_neck import (
+    CarlaHipsNeckExtractor, HipsNeckDeNormalize, HipsNeckExtractor)
+from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
+    ControlledPedestrian
+from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
+from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
+    P3dPoseProjection
 from pytorch_lightning.loggers import LightningLoggerBase
 from pytorch_lightning.loggers.base import rank_zero_experiment
 from pytorch_lightning.utilities import rank_zero_only
 from torch.functional import Tensor
-from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 
-from pedestrians_video_2_carla.transforms.hips_neck import CarlaHipsNeckExtractor, HipsNeckDeNormalize, HipsNeckExtractor
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import ControlledPedestrian
-from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
-from pedestrians_video_2_carla.walker_control.torch.pose_projection import P3dPoseProjection
+
+class PedestrianRenderers(Enum):
+    none = 0
+    source_videos = 1
+    source_carla = 2
+    input_points = 3
+    projection_points = 4
+    carla = 5
 
 
 class DisabledPedestrianWriter(object):
@@ -74,24 +87,24 @@ class PedestrianWriter(object):
             data_dir=os.path.join(DATASETS_BASE, 'JAAD', 'videos'),
             # TODO: make this a parameter
             set_filepath=os.path.join(OUTPUTS_BASE, 'JAAD', 'videos')
-        ) if 'source_videos' in self._renderers else None
+        ) if PedestrianRenderers.source_videos in self._renderers else None
 
         self.__source_carla_renderer = CarlaRenderer(
             fps=self._fps
-        ) if 'source_carla' in self._renderers else None
+        ) if PedestrianRenderers.source_carla in self._renderers else None
 
         self.__input_renderer = PointsRenderer(
             input_nodes=self._input_nodes
-        ) if 'input' in self._renderers else None
+        ) if PedestrianRenderers.input_points in self._renderers else None
 
-        assert self._output_nodes == self._extractor.input_nodes
+        assert self._output_nodes == self._extractor.input_nodes, "Configuration mismatch, HipsNeckExtractor and PointsRenderer need to use the same Skeleton."
         self.__projection_renderer = PointsRenderer(
             input_nodes=self._output_nodes
-        ) if 'projection' in self._renderers else None
+        ) if PedestrianRenderers.projection_points in self._renderers else None
 
         self.__carla_renderer = CarlaRenderer(
             fps=self._fps
-        ) if 'carla' in self._renderers else None
+        ) if PedestrianRenderers.carla in self._renderers else None
 
     def log_videos(self,
                    batch: Tensor,
@@ -108,7 +121,7 @@ class PedestrianWriter(object):
 
         for vid_idx, (vid, meta) in enumerate(self._render(
                 batch[0][self.__videos_slice],
-                batch[1][self.__videos_slice] if batch[1] is not None else None,
+                batch[1]['pose_changes'][self.__videos_slice] if batch[1] is not None else None,
                 {k: v[self.__videos_slice] for k, v in batch[2].items()},
                 projected_pose[self.__videos_slice],
                 pose_change[self.__videos_slice],
@@ -299,7 +312,7 @@ class PedestrianLogger(LightningLoggerBase):
                  version: Union[int, str] = 0,
                  log_every_n_steps: int = 50,
                  video_saving_frequency_reduction: int = 10,
-                 renderers: List = None,
+                 renderers: List[PedestrianRenderers] = None,
                  extractor: HipsNeckExtractor = None,
                  **kwargs):
         """
@@ -316,8 +329,8 @@ class PedestrianLogger(LightningLoggerBase):
         :type log_every_n_steps: int
         :param video_saving_frequency_reduction: Reduce the video saving frequency by this factor. Default: 10.
         :type video_saving_frequency_reduction: int
-        :param renderers: List of used renderers. Default: [ 'input', 'projection'].
-        :type renderers: List
+        :param renderers: List of used renderers. Default: ['input_points', 'projection_points'].
+        :type renderers: List[PedestrianRenderers]
         :param extractor: Extractor used for denormalization. Default: CarlaHipsNeckExtractor().
         :type extractor: HipsNeckExtractor
         """
@@ -343,16 +356,20 @@ class PedestrianLogger(LightningLoggerBase):
                 "Video logging interval set to 0. Disabling video output.")
             self._writer_cls = DisabledPedestrianWriter
 
-        self._renderers = list(set(renderers)) if renderers is not None else [
-            "input", "projection"]
+        # If renderers were not specified, use default. To disable, 'none' renderer must be passed explicitly.
+        self._renderers = list(set(renderers)) if (renderers is not None) and (len(renderers) > 0) else [
+            PedestrianRenderers.input_points, PedestrianRenderers.projection_points
+        ]
+
+        try:
+            self._renderers.remove(PedestrianRenderers.none)
+        except ValueError:
+            pass
 
         if len(self._renderers) == 0:
             logging.getLogger(__name__).warning(
                 "No renderers specified. Disabling video output.")
             self._writer_cls = DisabledPedestrianWriter
-
-        if self._writer_cls != DisabledPedestrianWriter and not os.path.exists(self._save_dir):
-            os.makedirs(self._save_dir)
 
         if extractor is None:
             extractor = CarlaHipsNeckExtractor()
@@ -373,20 +390,27 @@ class PedestrianLogger(LightningLoggerBase):
             "--max_videos",
             dest="max_videos",
             help="Set maximum number of videos to save from each batch. Set to -1 to save all videos in batch. Default: 10",
-            default=10
+            default=10,
+            type=int
         )
         parser.add_argument(
             "--renderers",
             dest="renderers",
-            help="Set renderers to use for video output. Default: ['input_points', 'projection_points']",
+            help="""
+                Set renderers to use for video output.
+                To disable rendering, 'none' renderer must be explicitly passed as the only renderer.
+                Choices: {}.
+                Default: ['input_points', 'projection_points']
+                """.format(
+                set(PedestrianRenderers.__members__.keys())),
             metavar="RENDERER",
-            default=["input", "projection"],
-            choices=["source_videos", "source_carla",
-                     "input_points", "projection_points", "carla"],
+            default=[],
+            choices=list(PedestrianRenderers),
             nargs="+",
             action="extend",
-            type=str
+            type=PedestrianRenderers.__getitem__
         )
+
         return parent_parser
 
     @property
