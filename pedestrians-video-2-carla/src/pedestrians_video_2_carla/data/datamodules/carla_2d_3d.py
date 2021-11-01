@@ -1,13 +1,16 @@
-from typing import Optional
-from pytorch_lightning import LightningDataModule
-from torch.utils.data.dataloader import DataLoader
-from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
-from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import Carla2D3DDataset, Carla2D3DIterableDataset
-import os
 import hashlib
+import os
+from typing import Optional
+
 import h5py
 import numpy as np
 from pedestrians_video_2_carla.data import OUTPUTS_BASE
+from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
+from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
+    Carla2D3DDataset, Carla2D3DIterableDataset)
+from pedestrians_video_2_carla.transforms.hips_neck import (
+    CarlaHipsNeckExtractor, HipsNeckNormalize)
+from torch.utils.data.dataloader import DataLoader
 from tqdm import trange
 
 OUTPUTS_DIR = os.path.join(OUTPUTS_BASE, 'JAAD')
@@ -34,6 +37,9 @@ class Carla2D3DDataModule(BaseDataModule):
             self.random_changes_each_frame,
             self.max_change_in_deg
         ]]).encode()).hexdigest()
+
+    def _setup_data_transform(self):
+        return HipsNeckNormalize(CarlaHipsNeckExtractor(self.nodes))
 
     @staticmethod
     def add_data_specific_args(parent_parser):

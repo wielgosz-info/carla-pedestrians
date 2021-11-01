@@ -1,7 +1,5 @@
-import logging
 import os
-from enum import Enum
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Tuple
 
 import numpy as np
 import torch
@@ -15,33 +13,15 @@ from pedestrians_video_2_carla.renderers.source_videos_renderer import \
     SourceVideosRenderer
 from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckDeNormalize, HipsNeckExtractor)
+    HipsNeckDeNormalize, HipsNeckExtractor)
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
     P3dPoseProjection
-from pytorch_lightning.loggers import LightningLoggerBase
-from pytorch_lightning.loggers.base import rank_zero_experiment
-from pytorch_lightning.utilities import rank_zero_only
 from torch.functional import Tensor
 
-
-class PedestrianRenderers(Enum):
-    none = 0
-    source_videos = 1
-    source_carla = 2
-    input_points = 3
-    projection_points = 4
-    carla = 5
-
-
-class DisabledPedestrianWriter(object):
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def log_videos(self, *args, **kwargs):
-        pass
+from .pedestrian_renderers import PedestrianRenderers
 
 
 class PedestrianWriter(object):
@@ -55,6 +35,7 @@ class PedestrianWriter(object):
                  fps: float = 30.0,
                  max_videos: int = 10,
                  merging_method: MergingMethod = MergingMethod.square,
+                 source_videos_dir: str = None,
                  **kwargs) -> None:
         self._log_dir = log_dir
 
@@ -83,10 +64,7 @@ class PedestrianWriter(object):
         self.__zeros_renderer = Renderer()
 
         self.__source_videos_renderer = SourceVideosRenderer(
-            # TODO: make this a parameter
-            data_dir=os.path.join(DATASETS_BASE, 'JAAD', 'videos'),
-            # TODO: make this a parameter
-            set_filepath=os.path.join(OUTPUTS_BASE, 'JAAD', 'videos')
+            data_dir=source_videos_dir
         ) if PedestrianRenderers.source_videos in self._renderers else None
 
         self.__source_carla_renderer = CarlaRenderer(
@@ -119,14 +97,15 @@ class PedestrianWriter(object):
         if step % self._reduced_log_every_n_steps != 0 and not force:
             return
 
+        (inputs, targets, meta) = batch
+
         for vid_idx, (vid, meta) in enumerate(self._render(
-                batch[0][self.__videos_slice],
-                batch[1]['pose_changes'][self.__videos_slice] if batch[1] is not None else None,
-                {k: v[self.__videos_slice] for k, v in batch[2].items()},
+                inputs[self.__videos_slice],
+                {k: v[self.__videos_slice] for k, v in targets.items()},
+                {k: v[self.__videos_slice] for k, v in meta.items()},
                 projected_pose[self.__videos_slice],
                 pose_change[self.__videos_slice],
-                batch_idx,
-                stage)):
+                batch_idx)):
             video_dir = os.path.join(self._log_dir, stage, meta['video_id'])
             os.makedirs(video_dir, exist_ok=True)
 
@@ -203,8 +182,7 @@ class PedestrianWriter(object):
                 meta: Dict[str, List[Any]],
                 projected_pose: Tensor,
                 pose_change: Tensor,
-                batch_idx: int,
-                stage: str
+                batch_idx: int
                 ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
         """
         Prepares video data. **It doesn't save anything!**
@@ -219,8 +197,6 @@ class PedestrianWriter(object):
         :type pose_change: Tensor
         :param batch_idx: Batch index
         :type batch_idx: int
-        :param stage: train/val/test/predict
-        :type stage: str
         :return: List of videos and metadata
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
@@ -234,13 +210,13 @@ class PedestrianWriter(object):
 
         source_videos = None
         # it only makes sense to render single source
-        if self.__source_carla_renderer is not None and targets is not None:
+        if self.__source_carla_renderer is not None and targets['pose_changes'] is not None:
             source_videos = self.__source_carla_renderer.render(
-                targets, meta, image_size
+                targets['pose_changes'], meta, image_size
             )
         elif self.__source_videos_renderer is not None:
             source_videos = self.__source_videos_renderer.render(
-                meta, stage, image_size)
+                meta, image_size)
 
         input_videos = None
         if self.__input_renderer is not None:
@@ -297,148 +273,8 @@ class PedestrianWriter(object):
                 'pedestrian_id': '{}_{}'.format(meta['age'][vid_idx], meta['gender'][vid_idx]),
                 'clip_id': 0
             }
-            vid_meta.update({k: v[vid_idx] for k, v in meta.items()})
+            vid_meta.update({
+                k: v[vid_idx]
+                for k, v in meta.items()
+            })
             yield merged_vid, vid_meta
-
-
-class PedestrianLogger(LightningLoggerBase):
-    """
-    Logger for video output.
-    """
-
-    def __init__(self,
-                 save_dir: str,
-                 name: str,
-                 version: Union[int, str] = 0,
-                 log_every_n_steps: int = 50,
-                 video_saving_frequency_reduction: int = 10,
-                 renderers: List[PedestrianRenderers] = None,
-                 extractor: HipsNeckExtractor = None,
-                 **kwargs):
-        """
-        Initialize PedestrianLogger.
-
-        :param save_dir: Directory to save videos. Usually you get this from TensorBoardLogger.log_dir + 'videos'.
-        :type save_dir: str
-        :param name: Name of the experiment.
-        :type name: str
-        :param version: Version of the experiment.
-        :type version: Union[int, str]
-        :param log_every_n_steps: Log every n steps. This should match the Trainer setting,
-            the final value will be determined by multiplying it with video_saving_frequency_reduction. Default: 50.
-        :type log_every_n_steps: int
-        :param video_saving_frequency_reduction: Reduce the video saving frequency by this factor. Default: 10.
-        :type video_saving_frequency_reduction: int
-        :param renderers: List of used renderers. Default: ['input_points', 'projection_points'].
-        :type renderers: List[PedestrianRenderers]
-        :param extractor: Extractor used for denormalization. Default: CarlaHipsNeckExtractor().
-        :type extractor: HipsNeckExtractor
-        """
-        super().__init__(
-            agg_key_funcs=kwargs.get('agg_key_funcs', None),
-            agg_default_func=kwargs.get('agg_default_func', np.mean),
-        )
-
-        self._save_dir = save_dir
-        self._name = name
-        self._version = version
-        self._kwargs = kwargs
-        self._experiment = None
-        self._writer_cls = PedestrianWriter
-
-        self._video_saving_frequency_reduction = video_saving_frequency_reduction
-        self._log_every_n_steps = log_every_n_steps
-        self._reduced_log_every_n_steps = self._log_every_n_steps * \
-            self._video_saving_frequency_reduction
-
-        if self._reduced_log_every_n_steps <= 1:
-            logging.getLogger(__name__).warning(
-                "Video logging interval set to 0. Disabling video output.")
-            self._writer_cls = DisabledPedestrianWriter
-
-        # If renderers were not specified, use default. To disable, 'none' renderer must be passed explicitly.
-        self._renderers = list(set(renderers)) if (renderers is not None) and (len(renderers) > 0) else [
-            PedestrianRenderers.input_points, PedestrianRenderers.projection_points
-        ]
-
-        try:
-            self._renderers.remove(PedestrianRenderers.none)
-        except ValueError:
-            pass
-
-        if len(self._renderers) == 0:
-            logging.getLogger(__name__).warning(
-                "No renderers specified. Disabling video output.")
-            self._writer_cls = DisabledPedestrianWriter
-
-        if extractor is None:
-            extractor = CarlaHipsNeckExtractor()
-        self._extractor = extractor
-
-    @staticmethod
-    def add_logger_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("Pedestrian Logger")
-        parser.add_argument(
-            "--video_saving_frequency_reduction",
-            dest="video_saving_frequency_reduction",
-            help="Set video saving frequency reduction to save them every REDUCTION * log_every_n_steps. If 0 or less disables saving videos.",
-            metavar="REDUCTION",
-            default=10,
-            type=lambda x: max(int(x), 0)
-        )
-        parser.add_argument(
-            "--max_videos",
-            dest="max_videos",
-            help="Set maximum number of videos to save from each batch. Set to -1 to save all videos in batch. Default: 10",
-            default=10,
-            type=int
-        )
-        parser.add_argument(
-            "--renderers",
-            dest="renderers",
-            help="""
-                Set renderers to use for video output.
-                To disable rendering, 'none' renderer must be explicitly passed as the only renderer.
-                Choices: {}.
-                Default: ['input_points', 'projection_points']
-                """.format(
-                set(PedestrianRenderers.__members__.keys())),
-            metavar="RENDERER",
-            default=[],
-            choices=list(PedestrianRenderers),
-            nargs="+",
-            action="extend",
-            type=PedestrianRenderers.__getitem__
-        )
-
-        return parent_parser
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def version(self) -> int:
-        return self._version
-
-    @property
-    @rank_zero_experiment
-    def experiment(self):
-        if self._experiment is None:
-            self._experiment = self._writer_cls(
-                log_dir=self._save_dir,
-                renderers=self._renderers,
-                reduced_log_every_n_steps=self._reduced_log_every_n_steps,
-                extractor=self._extractor,
-                **self._kwargs
-            )
-
-        return self._experiment
-
-    @rank_zero_only
-    def log_hyperparams(self, params):
-        pass
-
-    @rank_zero_only
-    def log_metrics(self, metrics, step):
-        pass

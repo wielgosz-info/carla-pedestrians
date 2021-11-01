@@ -40,8 +40,12 @@ class OpenPoseDataset(Dataset):
         start_frame = pedestrian_info.iloc[0]['frame']
         stop_frame = pedestrian_info.iloc[-1]['frame'] + 1
         frames = []
+        bboxes = []
 
         for i, f in enumerate(range(start_frame, stop_frame, 1)):
+            gt_bbox = pedestrian_info.iloc[i][[
+                'x1', 'y1', 'x2', 'y2']].to_numpy().reshape((2, 2)).astype(np.float32)
+            bboxes.append(torch.tensor(gt_bbox))
             with open(os.path.join(self.data_dir, video_id, '{:s}_{:0>12d}_keypoints.json'.format(
                 video_id,
                 f
@@ -54,8 +58,6 @@ class OpenPoseDataset(Dataset):
                     # select the pose with biggest IOU with base bounding box
                     candidates = [np.array(p['pose_keypoints_2d']).reshape(
                         (-1, 3)) for p in people]
-                    gt_bbox = pedestrian_info.iloc[i][[
-                        'x1', 'y1', 'x2', 'y2']].to_numpy().reshape((2, 2))
                     frames.append(self.__select_best_candidate(candidates, gt_bbox))
 
         torch_frames = torch.tensor(frames, dtype=torch.float32)
@@ -63,13 +65,15 @@ class OpenPoseDataset(Dataset):
         if self.transform is not None:
             torch_frames = self.transform(torch_frames)
 
-        return (torch_frames, None, {
+        return (torch_frames, {}, {
             'age': pedestrian_info.iloc[0]['age'],
             'gender': pedestrian_info.iloc[0]['gender'],
             'video_id': video_id,
             'pedestrian_id': pedestrian_id,
             'clip_id': clip_id,
-            'frame_id': (start_frame, stop_frame)
+            'start_frame': start_frame,
+            'end_frame': stop_frame,
+            'bboxes': torch.stack(bboxes, dim=0)
         })
 
     def __select_best_candidate(self, candidates: List[np.ndarray], gt_bbox: np.ndarray, near_zero: float = 1e-5) -> np.ndarray:

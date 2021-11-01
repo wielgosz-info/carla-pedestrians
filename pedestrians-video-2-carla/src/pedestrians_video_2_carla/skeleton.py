@@ -9,10 +9,9 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.loggers.pedestrian_logger import PedestrianLogger
+from pedestrians_video_2_carla.loggers.pedestrian import PedestrianLogger
 from pedestrians_video_2_carla.data.datamodules import *
 from pedestrians_video_2_carla.modules.lightning import *
-from pedestrians_video_2_carla.transforms.hips_neck import CarlaHipsNeckExtractor, HipsNeckNormalize
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -29,15 +28,11 @@ def get_model_cls():
     return LitLinearAutoencoderMapper
 
 
-# TODO: get this from argparse
-def get_data_module_cls():
-    return Carla2D3DDataModule
-
-
-# TODO: this probably should be encapsulated in DataModule
-# if you need different transforms, you need different data modules
-def get_data_transform(nodes):
-    return HipsNeckNormalize(CarlaHipsNeckExtractor(nodes))
+def get_data_module_cls(data_module_name: str = 'Carla2D3DDataModule'):
+    if data_module_name == 'Carla2D3DDataModule':
+        return Carla2D3DDataModule
+    elif data_module_name == 'JAADOpenPoseDataModule':
+        return JAADOpenPoseDataModule
 
 
 def add_program_args():
@@ -76,6 +71,14 @@ def add_program_args():
         default="train",
         choices=["train", "test"],
     )
+    parser.add_argument(
+        "--data_module_name",
+        dest="data_module_name",
+        help="Data module class to use",
+        default="Carla2D3DDataModule",
+        choices=["Carla2D3DDataModule", "JAADOpenPoseDataModule"],
+        type=str,
+    )
     return parser
 
 
@@ -102,11 +105,12 @@ def main(args: List[str]):
     :type args: List[str]
     """
 
-    model_cls = get_model_cls()
-    data_module_cls = get_data_module_cls()
-
     parser = add_program_args()
     parser = pl.Trainer.add_argparse_args(parser)
+
+    program_args, _ = parser.parse_known_args(args)
+    model_cls = get_model_cls()
+    data_module_cls = get_data_module_cls(program_args.data_module_name)
 
     parser = data_module_cls.add_data_specific_args(parser)
     parser = model_cls.add_model_specific_args(parser)
@@ -118,10 +122,7 @@ def main(args: List[str]):
     dict_args = vars(args)
 
     # data
-    dm = data_module_cls(
-        transform=get_data_transform,
-        **dict_args
-    )
+    dm = data_module_cls(**dict_args)
 
     # model
     model = model_cls(**dict_args)

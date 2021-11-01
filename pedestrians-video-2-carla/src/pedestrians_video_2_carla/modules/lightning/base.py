@@ -48,7 +48,8 @@ class LitBaseMapper(pl.LightningModule):
         self.save_hyperparameters({
             'input_nodes': get_skeleton_name_by_type(input_nodes),
             'output_nodes': get_skeleton_name_by_type(output_nodes),
-            'loss_mode': self._loss_mode.name
+            'loss_mode': self._loss_mode.name,
+            'loss_criterion': '{}(reduction="{}")'.format(self.criterion.__class__.__name__, getattr(self.criterion, 'reduction', ''))
         })
 
     @staticmethod

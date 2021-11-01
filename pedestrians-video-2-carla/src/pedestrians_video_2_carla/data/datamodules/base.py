@@ -16,7 +16,6 @@ class BaseDataModule(LightningDataModule):
                  clip_length: Optional[int] = 30,
                  batch_size: Optional[int] = 64,
                  input_nodes: Optional[Skeleton] = CARLA_SKELETON,
-                 transform: Optional[Callable] = None,
                  **kwargs):
         super().__init__()
 
@@ -25,10 +24,7 @@ class BaseDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.nodes = input_nodes
 
-        if transform is not None:
-            self.transform = transform(self.nodes)
-        else:
-            self.transform = None
+        self.transform = self._setup_data_transform()
 
         self._settings_digest = self._calculate_settings_digest()
         self._subsets_dir = os.path.join(
@@ -41,6 +37,7 @@ class BaseDataModule(LightningDataModule):
 
         # TODO: add self.transform repr to hyperparams
         self.save_hyperparameters({
+            'data_module_name': self.__class__.__name__,
             'batch_size': self.batch_size,
             'clip_length': self.clip_length,
             'settings_digest': self._settings_digest
@@ -48,6 +45,9 @@ class BaseDataModule(LightningDataModule):
 
     def _calculate_settings_digest(self):
         raise NotImplementedError()
+
+    def _setup_data_transform(self):
+        return None
 
     @staticmethod
     def add_data_specific_args(parent_parser):
