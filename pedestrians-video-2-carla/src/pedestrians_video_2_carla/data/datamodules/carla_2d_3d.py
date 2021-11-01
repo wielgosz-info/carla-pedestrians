@@ -13,8 +13,6 @@ from pedestrians_video_2_carla.transforms.hips_neck import (
 from torch.utils.data.dataloader import DataLoader
 from tqdm import trange
 
-OUTPUTS_DIR = os.path.join(OUTPUTS_BASE, 'JAAD')
-
 
 class Carla2D3DDataModule(BaseDataModule):
     def __init__(self,
