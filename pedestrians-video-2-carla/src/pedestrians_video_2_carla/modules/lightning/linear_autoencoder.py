@@ -1,4 +1,4 @@
-from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
+from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 import torch
 from torch import nn
 
@@ -23,7 +23,7 @@ class LinearAE(LitBaseMapper):
         self.__input_features = 2  # (x, y)
 
         self.__output_nodes_len = len(self.output_nodes)
-        self.__output_features = 3
+        self.__output_features = 6
 
         self.__input_size = self.__clip_length * self.__input_nodes_len * self.__input_features
         self.__output_size = self.__clip_length * self.__output_nodes_len * self.__output_features
@@ -54,7 +54,7 @@ class LinearAE(LitBaseMapper):
 
         pose_change = pose_change.view(*original_shape[0:2],
                                        self.__output_nodes_len, self.__output_features)
-        return euler_angles_to_matrix(pose_change, "XYZ")
+        return rotation_6d_to_matrix(pose_change, "XYZ")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
