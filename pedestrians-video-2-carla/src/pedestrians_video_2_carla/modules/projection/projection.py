@@ -82,22 +82,22 @@ class ProjectionModule(nn.Module):
         """
         Handles calculation of the pose projection.
 
-        :param pose_inputs_batch: (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles in radians) pose changes
+        :param pose_inputs_batch: (N - batch_size, L - clip_length, B - bones, 3, 3 - rotations as rotation matrices) pose changes
             OR (N - batch_size, L - clip_length, B - bones, 3 - x, y, z) absolute pose locations
             OR (N - batch_size, L - clip_length, B - bones, 3 - x, y, z) absolute pose locations + (N - batch_size, L - clip_length, B - bones, 3, 3 - rotation matrix)
         :type pose_inputs_batch: Union[Tensor, Tuple[Tensor, Tensor]]
         :param world_loc_change_batch: (N - batch_size, L - clip_length, 3 - location changes)
         :type world_loc_change_batch: Tensor
-        :param world_rot_change_batch: (N - batch_size, L - clip_length, 3 - rotation changes as euler angles in radians)
+        :param world_rot_change_batch: (N - batch_size, L - clip_length, 3, 3 - rotation changes as rotation matrices)
         :type world_rot_change_batch: Tensor
         :raises RuntimeError: when pose_inputs_batch dimensionality is incorrect
         :return: Pose projection, absolute pose locations & absolute pose rotations
         :rtype: Tuple[Tensor, Tensor, Tensor]
         """
         # TODO: switch batch and clip length dimensions?
-        if self.projection_type == ProjectionTypes.pose_changes and pose_inputs_batch.ndim < 4:
+        if self.projection_type == ProjectionTypes.pose_changes and pose_inputs_batch.ndim < 5:
             raise RuntimeError(
-                'Pose changes should have shape of (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles)')
+                'Pose changes should have shape of (N - batch_size, L - clip_length, B - bones, 3, 3 - rotations as rotation matrices)')
         elif self.projection_type == ProjectionTypes.absolute_loc and pose_inputs_batch.ndim < 4:
             raise RuntimeError(
                 'Absolute location should have shape of (N - batch_size, L - clip_length, B - bones, 3 - absolute location coordinates)')

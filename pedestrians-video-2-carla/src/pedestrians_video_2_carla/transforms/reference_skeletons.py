@@ -57,8 +57,8 @@ class ReferenceSkeletonsDenormalize(object):
         if self.__reference_abs is None:
             pedestrians = self._get_reference_pedestrians(device)
 
-            movements = torch.zeros(
-                (len(pedestrians), 1, len(pedestrians[0].current_pose.empty), 3), device=device)
+            movements = torch.eye(3, device=device).reshape(
+                (1, 1, 3, 3)).repeat((len(pedestrians), len(pedestrians[0].current_pose.empty), 1, 1))
             (relative_loc, relative_rot) = zip(*[
                 p.current_pose.tensors
                 for p in pedestrians

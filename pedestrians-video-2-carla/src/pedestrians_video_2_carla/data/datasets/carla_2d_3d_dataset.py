@@ -6,6 +6,7 @@ from pedestrians_video_2_carla.modules.projection.projection import ProjectionMo
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import numpy as np
 from torch.functional import Tensor
+from pytorch3d.transforms import euler_angles_to_matrix
 
 
 class Carla2D3DDataset(Dataset):
@@ -30,8 +31,8 @@ class Carla2D3DDataset(Dataset):
         if self.transform:
             projection_2d = self.transform(projection_2d)
 
-        pose_changes = self.pose_changes[idx]
-        pose_changes = torch.from_numpy(pose_changes)
+        pose_changes_matrix = self.pose_changes[idx]
+        pose_changes_matrix = torch.from_numpy(pose_changes_matrix)
 
         absolute_pose_loc = self.absolute_pose_loc[idx]
         absolute_pose_loc = torch.from_numpy(absolute_pose_loc)
@@ -45,7 +46,7 @@ class Carla2D3DDataset(Dataset):
         return (
             projection_2d,
             {
-                'pose_changes': pose_changes,
+                'pose_changes': pose_changes_matrix,
                 'absolute_pose_loc': absolute_pose_loc,
                 'absolute_pose_rot': absolute_pose_rot,
             },
@@ -135,7 +136,6 @@ class Carla2D3DIterableDataset(IterableDataset):
         )
 
     def __generate_batch(self):
-        # avg. exec time: 16.516127769998274 (over 10 calls)
         nodes_size = len(self.nodes)
         nodes_nums = np.arange(nodes_size)
         pose_changes = torch.zeros(
@@ -147,6 +147,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                                            size=self.random_changes_each_frame, replace=False)
                 pose_changes[idx, i, indices] = (torch.rand(
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
+        pose_changes_matrix = euler_angles_to_matrix(pose_changes, "XYZ")
 
         # TODO: we should probably take care of the "correct" pedestrians data distribution
         # need to find some pedestrian statistics
@@ -158,7 +159,7 @@ class Carla2D3DIterableDataset(IterableDataset):
             'gender': gender
         }), 0, None)
         projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
-            pose_changes
+            pose_changes_matrix
         )
 
         # use the third dimension as 'confidence' of the projection

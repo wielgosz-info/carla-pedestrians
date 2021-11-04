@@ -1,3 +1,4 @@
+from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
 import torch
 from torch import nn
 
@@ -38,7 +39,7 @@ class Linear(LitBaseMapper):
         pose_change = self.linear(x)
         pose_change = pose_change.view(*original_shape[0:2],
                                        self.__output_nodes_len, self.__output_features)
-        return pose_change
+        return euler_angles_to_matrix(pose_change, "XYZ")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)

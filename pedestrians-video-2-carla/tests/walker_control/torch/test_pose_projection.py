@@ -92,7 +92,8 @@ def test_batch(device):
         rotations[i] = rot
 
     # prepare a batch of "zero" movements
-    movements = torch.zeros((batch_size, bones_amount, 3), device=device)
+    movements = torch.eye(3, device=device).reshape(
+        (1, 1, 3, 3)).repeat((batch_size, bones_amount, 1, 1))
     (abs_locations, _, _) = p3d_pose.forward(
         movements, locations, rotations)
 
@@ -108,7 +109,7 @@ def test_batch(device):
         assert torch.allclose(p3d_points[i], p3d_points[i+1])
 
     # add some random movements
-    random_movements = torch.rand_like(movements)*5.
+    random_movements = torch.rand_like(movements)*0.8
     (abs_locations, _, _) = p3d_pose.forward(
         random_movements, locations, rotations)
 
