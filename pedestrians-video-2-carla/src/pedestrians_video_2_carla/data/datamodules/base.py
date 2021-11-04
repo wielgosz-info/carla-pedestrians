@@ -1,6 +1,7 @@
 from typing import Optional
 from pedestrians_video_2_carla.data import OUTPUTS_BASE
 import os
+import math
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
@@ -16,6 +17,7 @@ class BaseDataModule(LightningDataModule):
                  outputs_dir: Optional[str] = OUTPUTS_DIR,
                  clip_length: Optional[int] = 30,
                  batch_size: Optional[int] = 64,
+                 num_workers: Optional[int] = os.cpu_count(),
                  input_nodes: Optional[Skeleton] = CARLA_SKELETON,
                  **kwargs):
         super().__init__()
@@ -23,6 +25,7 @@ class BaseDataModule(LightningDataModule):
         self.outputs_dir = outputs_dir
         self.clip_length = clip_length
         self.batch_size = batch_size
+        self.num_workers = num_workers
         self.nodes = input_nodes
 
         self.train_set = None
@@ -76,6 +79,12 @@ class BaseDataModule(LightningDataModule):
             default=64,
             help="Batch size."
         )
+        parser.add_argument(
+            "--num_workers",
+            type=int,
+            default=os.cpu_count(),
+            help="Number of workers for the data loader."
+        )
         # input nodes are handled in the model hyperparameters
         return parent_parser
 
@@ -83,7 +92,7 @@ class BaseDataModule(LightningDataModule):
         return DataLoader(
             dataset=dataset,
             batch_size=self.batch_size,
-            num_workers=os.cpu_count(),
+            num_workers=self.num_workers,
             pin_memory=True,
             shuffle=shuffle
         )

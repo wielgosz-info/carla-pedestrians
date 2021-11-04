@@ -18,6 +18,7 @@ class LossModes(Enum):
     """
     common_loc_2d = 0
     loc_3d = 1
+    loc_2d_3d = 2
 
 
 class LitBaseMapper(pl.LightningModule):
@@ -33,7 +34,8 @@ class LitBaseMapper(pl.LightningModule):
         self._loss_mode = loss_mode
         self._loss_fn = {
             LossModes.common_loc_2d: self._calculate_loss_common_loc_2d,
-            LossModes.loc_3d: self._calculate_loss_loc_3d
+            LossModes.loc_3d: self._calculate_loss_loc_3d,
+            LossModes.loc_2d_3d: self._calculate_loss_loc_2d_3d
         }[self._loss_mode]
 
         self.input_nodes = input_nodes
@@ -107,7 +109,7 @@ class LitBaseMapper(pl.LightningModule):
         (projected_pose, normalized_projection, absolute_pose_loc) = self.projection(
             pose_change
         )
-        loss = self._loss_fn(
+        loss_dict = self._loss_fn(
             projected_pose=projected_pose,
             normalized_projection=normalized_projection,
             absolute_pose_loc=absolute_pose_loc,
@@ -115,11 +117,15 @@ class LitBaseMapper(pl.LightningModule):
             targets=targets,
             meta=meta
         )
+        stage_loss_dict = {
+            '{}_loss/{}'.format(stage, key): value for key, value in loss_dict.items()}
 
-        self.log('{}_loss'.format(stage), loss)
+        for key, value in stage_loss_dict.items():
+            self.log(key, value)
+
         self._log_videos(pose_change, projected_pose, batch, batch_idx, stage)
 
-        return loss
+        return stage_loss_dict
 
     def _setup_criterion(self):
         return nn.MSELoss(reduction='mean')
@@ -141,7 +147,7 @@ class LitBaseMapper(pl.LightningModule):
             common_input
         )
 
-        return loss
+        return {'common_loc_2d': loss}
 
     def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs):
         # TODO: coordinates are in meters, should we normalize? Especially when mixing different datasets
@@ -149,6 +155,18 @@ class LitBaseMapper(pl.LightningModule):
             absolute_pose_loc,
             targets['absolute_pose_loc']
         )
+        return {'loc_3d': loss}
+
+    def _calculate_loss_loc_2d_3d(self, normalized_projection, absolute_pose_loc, frames, targets, **kwargs):
+        loss = {}
+        loss.update(self._calculate_loss_common_loc_2d(
+            normalized_projection, frames, **kwargs))
+        loss.update(self._calculate_loss_loc_3d(absolute_pose_loc, targets, **kwargs))
+
+        loss.update(
+            {'loc_2d_3d': loss['common_loc_2d'] + loss['loc_3d']}
+        )
+
         return loss
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):

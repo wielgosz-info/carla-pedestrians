@@ -106,14 +106,22 @@ def main(args: List[str]):
     """
 
     parser = add_program_args()
+    tmp_args = args[:]
+    try:
+        tmp_args.remove("-h")
+        tmp_args.remove("--help")
+    except ValueError:
+        pass
+    program_args, _ = parser.parse_known_args(tmp_args)
+
     parser = pl.Trainer.add_argparse_args(parser)
 
-    program_args, _ = parser.parse_known_args(args)
     model_cls = get_model_cls()
     data_module_cls = get_data_module_cls(program_args.data_module_name)
 
     parser = data_module_cls.add_data_specific_args(parser)
     parser = model_cls.add_model_specific_args(parser)
+
     parser = PedestrianLogger.add_logger_specific_args(parser)
 
     args = parser.parse_args(args)
@@ -140,7 +148,7 @@ def main(args: List[str]):
     )
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
-        monitor="val_loss",
+        monitor="val_loss/{}".format(args.loss_mode),
         mode="min",
         save_top_k=1
     )
