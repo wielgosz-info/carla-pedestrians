@@ -148,7 +148,7 @@ def main(args: List[str]):
     )
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
-        monitor="val_loss/{}".format(args.loss_mode),
+        monitor="val_loss/{}".format(args.loss_mode.name),
         mode="min",
         save_top_k=1
     )

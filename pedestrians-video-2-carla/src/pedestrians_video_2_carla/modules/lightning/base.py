@@ -1,5 +1,5 @@
 
-from typing import Tuple
+from typing import Dict, Tuple
 
 import pytorch_lightning as pl
 from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
@@ -10,6 +10,8 @@ from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from torch import nn
 from torch.functional import Tensor
 from enum import Enum
+
+from pedestrians_video_2_carla.transforms.hips_neck import CarlaHipsNeckExtractor, HipsNeckNormalize
 
 
 class LossModes(Enum):
@@ -117,27 +119,21 @@ class LitBaseMapper(pl.LightningModule):
             targets=targets,
             meta=meta
         )
-        stage_loss_dict = {
-            '{}_loss/{}'.format(stage, key): value for key, value in loss_dict.items()}
 
-        for key, value in stage_loss_dict.items():
-            self.log(key, value)
+        for k, v in loss_dict.items():
+            self.log('{}_loss/{}'.format(stage, k.name), v)
 
-        self._log_videos(pose_change, projected_pose, batch, batch_idx, stage)
+        self._log_videos(pose_change, projected_pose, batch,
+                         batch_idx, dataloader_idx, stage)
 
-        return stage_loss_dict
+        # return primary loss
+        return loss_dict[self._loss_mode]
 
     def _setup_criterion(self):
         return nn.MSELoss(reduction='mean')
 
-    def _calculate_loss_common_loc_2d(self, normalized_projection, frames, **kwargs):
-        if self.input_nodes == CARLA_SKELETON:
-            carla_indices = slice(None)
-            input_indices = slice(None)
-        else:
-            mappings = MAPPINGS[self.input_nodes]
-            (carla_indices, input_indices) = zip(
-                *[(c.value, o.value) for (c, o) in mappings])
+    def _calculate_loss_common_loc_2d(self, normalized_projection, frames, **kwargs) -> Dict[LossModes, Tensor]:
+        carla_indices, input_indices = self._get_common_indices()
 
         common_projection = normalized_projection[..., carla_indices, 0:2]
         common_input = frames[..., input_indices, 0:2]
@@ -147,24 +143,36 @@ class LitBaseMapper(pl.LightningModule):
             common_input
         )
 
-        return {'common_loc_2d': loss}
+        return {LossModes.common_loc_2d: loss}
 
-    def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs):
-        # TODO: coordinates are in meters, should we normalize? Especially when mixing different datasets
+    def _get_common_indices(self):
+        if self.input_nodes == CARLA_SKELETON:
+            carla_indices = slice(None)
+            input_indices = slice(None)
+        else:
+            mappings = MAPPINGS[self.input_nodes]
+            (carla_indices, input_indices) = zip(
+                *[(c.value, o.value) for (c, o) in mappings])
+
+        return carla_indices, input_indices
+
+    def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs) -> Dict[LossModes, Tensor]:
+        transform = HipsNeckNormalize(CarlaHipsNeckExtractor(self.input_nodes))
         loss = self.criterion(
-            absolute_pose_loc,
-            targets['absolute_pose_loc']
+            transform(absolute_pose_loc, dim=3),
+            transform(targets['absolute_pose_loc'], dim=3)
         )
-        return {'loc_3d': loss}
+        return {LossModes.loc_3d: loss}
 
-    def _calculate_loss_loc_2d_3d(self, normalized_projection, absolute_pose_loc, frames, targets, **kwargs):
+    def _calculate_loss_loc_2d_3d(self, normalized_projection, absolute_pose_loc, frames, targets, **kwargs) -> Dict[LossModes, Tensor]:
         loss = {}
         loss.update(self._calculate_loss_common_loc_2d(
             normalized_projection, frames, **kwargs))
         loss.update(self._calculate_loss_loc_3d(absolute_pose_loc, targets, **kwargs))
 
         loss.update(
-            {'loc_2d_3d': loss['common_loc_2d'] + loss['loc_3d']}
+            {LossModes.loc_2d_3d: loss[LossModes.common_loc_2d] +
+                loss[LossModes.loc_3d]}
         )
 
         return loss
