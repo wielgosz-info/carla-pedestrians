@@ -84,12 +84,14 @@ class PedestrianWriter(object):
             fps=self._fps
         ) if PedestrianRenderers.carla in self._renderers else None
 
+    @torch.no_grad()
     def log_videos(self,
                    batch: Tensor,
                    projected_pose: Tensor,
                    pose_change: Tensor,
                    step: int,
                    batch_idx: int,
+                   dataloader_idx: int,
                    stage: str,
                    vid_callback: Callable = None,
                    force: bool = False,
@@ -105,7 +107,8 @@ class PedestrianWriter(object):
                 {k: v[self.__videos_slice] for k, v in meta.items()},
                 projected_pose[self.__videos_slice],
                 pose_change[self.__videos_slice],
-                batch_idx)):
+                batch_idx,
+                dataloader_idx)):
             video_dir = os.path.join(self._log_dir, stage, meta['video_id'])
             os.makedirs(video_dir, exist_ok=True)
 
@@ -122,6 +125,7 @@ class PedestrianWriter(object):
             if vid_callback is not None:
                 vid_callback(vid, vid_idx, self._fps, stage, meta)
 
+    @torch.no_grad()
     def _denormalize(self, frames: Tensor, meta: Dict[str, List[Any]]) -> Tensor:
         # shortcut - we have only 4 possible skeletons
         if self.__reference_projections is None:
@@ -137,6 +141,7 @@ class PedestrianWriter(object):
 
         return HipsNeckDeNormalize().from_projection(self._extractor, frame_projections)(frames)
 
+    @torch.no_grad()
     def _get_reference_projections(self, device):
         types = [
             ('adult', 'female'),
@@ -176,13 +181,15 @@ class PedestrianWriter(object):
             world_rotations
         ).unsqueeze(1)
 
+    @torch.no_grad()
     def _render(self,
                 frames: Tensor,
                 targets: Tensor,
                 meta: Dict[str, List[Any]],
                 projected_pose: Tensor,
                 pose_change: Tensor,
-                batch_idx: int
+                batch_idx: int,
+                dataloader_idx: int = None
                 ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
         """
         Prepares video data. **It doesn't save anything!**
@@ -197,6 +204,8 @@ class PedestrianWriter(object):
         :type pose_change: Tensor
         :param batch_idx: Batch index
         :type batch_idx: int
+        :param dataloader_idx: Dataloader index. Can be None.
+        :type dataloader_idx: int
         :return: List of videos and metadata
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
@@ -269,7 +278,12 @@ class PedestrianWriter(object):
                     ), axis=1)
                 )
             vid_meta = {
-                'video_id': 'video_{:0>2d}_{:0>2d}'.format(batch_idx, vid_idx),
+                'video_id': 'video{}_{:0>2d}_{:0>2d}'.format(
+                    '_{:0>2d}'.format(
+                        dataloader_idx) if dataloader_idx is not None else '',
+                    batch_idx,
+                    vid_idx
+                ),
                 'pedestrian_id': '{}_{}'.format(meta['age'][vid_idx], meta['gender'][vid_idx]),
                 'clip_id': 0
             }

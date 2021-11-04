@@ -88,20 +88,20 @@ class LitBaseMapper(pl.LightningModule):
     def on_test_batch_start(self, batch, batch_idx, dataloader_idx):
         self._on_batch_start(batch, batch_idx, dataloader_idx)
 
-    def predict_step(self, batch, batch_idx, dataloader_idx):
+    def predict_step(self, batch, batch_idx, dataloader_idx=None):
         self._on_batch_start(batch, batch_idx, dataloader_idx)
         return self(batch)
 
     def training_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, 'train')
+        return self._step(batch, batch_idx, None, 'train')
 
-    def validation_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, 'val')
+    def validation_step(self, batch, batch_idx, dataloader_idx=None):
+        return self._step(batch, batch_idx, dataloader_idx, 'val')
 
-    def test_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, 'test')
+    def test_step(self, batch, batch_idx, dataloader_idx=None):
+        return self._step(batch, batch_idx, dataloader_idx, 'test')
 
-    def _step(self, batch, batch_idx, stage):
+    def _step(self, batch, batch_idx, dataloader_idx, stage):
         (frames, targets, meta) = batch
 
         pose_change = self.forward(frames.to(self.device))
@@ -176,11 +176,11 @@ class LitBaseMapper(pl.LightningModule):
             vid, self.global_step, fps=fps
         )
 
-    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, stage: str, log_to_tb: bool = False):
+    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, dataloader_idx: int, stage: str, log_to_tb: bool = False):
         if log_to_tb:
             vid_callback = self._log_to_tensorboard
         else:
             vid_callback = None
 
         self.logger[1].experiment.log_videos(
-            batch, projected_pose, pose_change, self.global_step, batch_idx, stage, vid_callback, force=(stage != 'train'))
+            batch, projected_pose, pose_change, self.global_step, batch_idx, dataloader_idx, stage, vid_callback, force=(stage != 'train'))

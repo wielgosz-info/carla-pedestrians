@@ -21,6 +21,7 @@ class CarlaRenderer(Renderer):
         self.__fps = fps
         self.__fov = fov
 
+    @torch.no_grad()
     def render(self, pose_change: Tensor, meta: List[Dict[str, Any]], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
         rendered_videos = len(pose_change)
 
@@ -42,6 +43,7 @@ class CarlaRenderer(Renderer):
         if (client is not None) and (world is not None):
             destroy_client_and_world(client, world)
 
+    @torch.no_grad()
     def render_clip(self, pose_changes_clip, age, gender, image_size, world, rendered_videos):
         # easiest way to get (sparse) rendering is to re-calculate all pose changes
         bound_pedestrian = ControlledPedestrian(
@@ -67,6 +69,7 @@ class CarlaRenderer(Renderer):
 
         return torch.stack(video, dim=0)
 
+    @torch.no_grad()
     def render_frame(self,
                      pose_change_frame: Tensor,
                      prev_relative_loc: Tensor,
