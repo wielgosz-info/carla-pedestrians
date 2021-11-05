@@ -49,13 +49,16 @@ class LitBaseMapper(pl.LightningModule):
         self.projection = ProjectionModule(
             **kwargs
         )
-        self.criterion = self._setup_criterion()
+        self.criterions = self._setup_criterions()
 
         self.save_hyperparameters({
             'input_nodes': get_skeleton_name_by_type(input_nodes),
             'output_nodes': get_skeleton_name_by_type(output_nodes),
             'loss_mode': self._loss_mode.name,
-            'loss_criterion': '{}(reduction="{}")'.format(self.criterion.__class__.__name__, getattr(self.criterion, 'reduction', ''))
+            'loss_criterion': '{}(reduction="{}")'.format(
+                self.criterions[self._loss_mode].__class__.__name__,
+                getattr(self.criterions[self._loss_mode], 'reduction', '')
+            )
         })
 
     @staticmethod
@@ -132,8 +135,13 @@ class LitBaseMapper(pl.LightningModule):
         # return primary loss
         return loss_dict[self._loss_mode]
 
-    def _setup_criterion(self):
-        return nn.MSELoss(reduction='mean')
+    def _setup_criterions(self):
+        criterions = {
+            k: nn.MSELoss(reduction='sum') if k == LossModes.pose_changes else nn.MSELoss(
+                reduction='mean')
+            for k in LossModes
+        }
+        return criterions
 
     def _calculate_loss_common_loc_2d(self, normalized_projection, frames, **kwargs) -> Dict[LossModes, Tensor]:
         carla_indices, input_indices = self._get_common_indices()
@@ -141,7 +149,7 @@ class LitBaseMapper(pl.LightningModule):
         common_projection = normalized_projection[..., carla_indices, 0:2]
         common_input = frames[..., input_indices, 0:2]
 
-        loss = self.criterion(
+        loss = self.criterions[LossModes.common_loc_2d](
             common_projection,
             common_input
         )
@@ -161,7 +169,7 @@ class LitBaseMapper(pl.LightningModule):
 
     def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs) -> Dict[LossModes, Tensor]:
         transform = HipsNeckNormalize(CarlaHipsNeckExtractor(self.input_nodes))
-        loss = self.criterion(
+        loss = self.criterions[LossModes.loc_3d](
             transform(absolute_pose_loc, dim=3),
             transform(targets['absolute_pose_loc'], dim=3)
         )
@@ -182,10 +190,11 @@ class LitBaseMapper(pl.LightningModule):
 
     def _calculate_loss_pose_changes(self, pose_changes, targets, normalized_projection, absolute_pose_loc, frames, **kwargs) -> Dict[LossModes, Tensor]:
         loss = {
-            LossModes.pose_changes: self.criterion(
+            LossModes.pose_changes: self.criterions[LossModes.pose_changes](
                 pose_changes,
                 targets['pose_changes']
-            )}
+            )
+        }
 
         # TODO: add option to use loss like a metric (not used during the training) instead of this
         loss.update(self._calculate_loss_loc_2d_3d(
