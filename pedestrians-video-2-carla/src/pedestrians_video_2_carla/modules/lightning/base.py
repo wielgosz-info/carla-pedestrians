@@ -21,6 +21,7 @@ class LossModes(Enum):
     common_loc_2d = 0
     loc_3d = 1
     loc_2d_3d = 2
+    pose_changes = 3
 
 
 class LitBaseMapper(pl.LightningModule):
@@ -37,7 +38,8 @@ class LitBaseMapper(pl.LightningModule):
         self._loss_fn = {
             LossModes.common_loc_2d: self._calculate_loss_common_loc_2d,
             LossModes.loc_3d: self._calculate_loss_loc_3d,
-            LossModes.loc_2d_3d: self._calculate_loss_loc_2d_3d
+            LossModes.loc_2d_3d: self._calculate_loss_loc_2d_3d,
+            LossModes.pose_changes: self._calculate_loss_pose_changes,
         }[self._loss_mode]
 
         self.input_nodes = input_nodes
@@ -106,12 +108,13 @@ class LitBaseMapper(pl.LightningModule):
     def _step(self, batch, batch_idx, dataloader_idx, stage):
         (frames, targets, meta) = batch
 
-        pose_change = self.forward(frames.to(self.device))
+        pose_changes = self.forward(frames.to(self.device))
 
         (projected_pose, normalized_projection, absolute_pose_loc) = self.projection(
-            pose_change
+            pose_changes
         )
         loss_dict = self._loss_fn(
+            pose_changes=pose_changes,
             projected_pose=projected_pose,
             normalized_projection=normalized_projection,
             absolute_pose_loc=absolute_pose_loc,
@@ -123,7 +126,7 @@ class LitBaseMapper(pl.LightningModule):
         for k, v in loss_dict.items():
             self.log('{}_loss/{}'.format(stage, k.name), v)
 
-        self._log_videos(pose_change, projected_pose, batch,
+        self._log_videos(pose_changes, projected_pose, batch,
                          batch_idx, dataloader_idx, stage)
 
         # return primary loss
@@ -174,6 +177,19 @@ class LitBaseMapper(pl.LightningModule):
             {LossModes.loc_2d_3d: loss[LossModes.common_loc_2d] +
                 loss[LossModes.loc_3d]}
         )
+
+        return loss
+
+    def _calculate_loss_pose_changes(self, pose_changes, targets, normalized_projection, absolute_pose_loc, frames, **kwargs) -> Dict[LossModes, Tensor]:
+        loss = {
+            LossModes.pose_changes: self.criterion(
+                pose_changes,
+                targets['pose_changes']
+            )}
+
+        # TODO: add option to use loss like a metric (not used during the training) instead of this
+        loss.update(self._calculate_loss_loc_2d_3d(
+            normalized_projection, absolute_pose_loc, frames, targets))
 
         return loss
 
