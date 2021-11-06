@@ -15,6 +15,7 @@ class Carla2D3DDataset(Dataset):
         self.projection_2d = set_file['carla_2d_3d/projection_2d']
         self.pose_changes = set_file['carla_2d_3d/targets/pose_changes']
         self.absolute_pose_loc = set_file['carla_2d_3d/targets/absolute_pose_loc']
+        self.absolute_pose_rot = set_file['carla_2d_3d/targets/absolute_pose_rot']
         self.meta = set_file['carla_2d_3d/meta']
 
         self.transform = transform
@@ -35,6 +36,9 @@ class Carla2D3DDataset(Dataset):
         absolute_pose_loc = self.absolute_pose_loc[idx]
         absolute_pose_loc = torch.from_numpy(absolute_pose_loc)
 
+        absolute_pose_rot = self.absolute_pose_rot[idx]
+        absolute_pose_rot = torch.from_numpy(absolute_pose_rot)
+
         meta = {k: self.meta[k].attrs['labels'][v[idx]].decode(
             "latin-1") for k, v in self.meta.items()}
 
@@ -43,6 +47,7 @@ class Carla2D3DDataset(Dataset):
             {
                 'pose_changes': pose_changes,
                 'absolute_pose_loc': absolute_pose_loc,
+                'absolute_pose_rot': absolute_pose_rot,
             },
             meta
         )
@@ -86,7 +91,7 @@ class Carla2D3DIterableDataset(IterableDataset):
             'age': [age],
             'gender': [gender]
         }), 0, None)
-        projection_2d, absolute_pose_loc = self.projection.project_pose(
+        projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
             pose_changes
         )
 
@@ -97,7 +102,8 @@ class Carla2D3DIterableDataset(IterableDataset):
             projection_2d.squeeze(dim=0),
             {
                 'pose_changes': pose_changes.squeeze(dim=0),
-                'absolute_pose_loc': absolute_pose_loc.squeeze(dim=0)
+                'absolute_pose_loc': absolute_pose_loc.squeeze(dim=0),
+                'absolute_pose_rot': absolute_pose_rot.squeeze(dim=0)
             },
             {'age': age, 'gender': gender}
         )

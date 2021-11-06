@@ -17,7 +17,7 @@ def calculate_loss_loc_3d(criterion: loss._Loss, input_nodes: Type[CARLA_SKELETO
     :type input_nodes: Type[CARLA_SKELETON]
     :param absolute_pose_loc: Absolute pose location coordinates as calculates by the projection module.
     :type absolute_pose_loc: Tensor
-    :param targets: Dictionary returned from dataset that containins the target absolute poses.
+    :param targets: Dictionary returned from dataset that contains the target absolute poses.
     :type targets: Dict[str, Tensor]
     :return: Calculated loss.
     :rtype: Tensor
