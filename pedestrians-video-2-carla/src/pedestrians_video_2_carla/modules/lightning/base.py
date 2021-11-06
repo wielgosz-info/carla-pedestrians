@@ -113,7 +113,7 @@ class LitBaseMapper(pl.LightningModule):
 
         pose_changes = self.forward(frames.to(self.device))
 
-        (projected_pose, normalized_projection, absolute_pose_loc) = self.projection(
+        (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot) = self.projection(
             pose_changes
         )
         loss_dict = self._loss_fn(
@@ -121,6 +121,7 @@ class LitBaseMapper(pl.LightningModule):
             projected_pose=projected_pose,
             normalized_projection=normalized_projection,
             absolute_pose_loc=absolute_pose_loc,
+            absolute_pose_rot=absolute_pose_rot,
             frames=frames,
             targets=targets,
             meta=meta

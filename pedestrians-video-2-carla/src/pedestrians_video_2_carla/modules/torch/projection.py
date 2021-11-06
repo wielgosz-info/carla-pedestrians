@@ -55,7 +55,7 @@ class ProjectionModule(nn.Module):
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
 
-    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor]:
+    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Handles calculation of the pose projection.
 
@@ -66,8 +66,8 @@ class ProjectionModule(nn.Module):
         :param world_rot_change_batch: (N - batch_size, L - clip_length, 3 - rotation changes as euler angles in radians)
         :type world_rot_change_batch: Tensor
         :raises RuntimeError: when pose_change_batch dimensionality is incorrect
-        :return: [description]
-        :rtype: [type]
+        :return: Pose projection, absolute pose locations & absolute pose rotations
+        :rtype: Tuple[Tensor, Tensor, Tensor]
         """
         (batch_size, clip_length, points, features) = pose_change_batch.shape
 
@@ -98,9 +98,11 @@ class ProjectionModule(nn.Module):
         # so that we only get in the initial loc/rot and a sequence of changes
         absolute_loc = torch.empty(
             (batch_size, clip_length, points, features), device=pose_change_batch.device)
+        absolute_rot = torch.empty(
+            (batch_size, clip_length, points, 3, 3), device=pose_change_batch.device)
         pose: P3dPose = self.__pedestrians[0].current_pose
         for i in range(clip_length):
-            (absolute_loc[:, i], _, prev_relative_rot) = pose.forward(
+            (absolute_loc[:, i], absolute_rot[:, i], prev_relative_rot) = pose.forward(
                 pose_change_batch[:, i], prev_relative_loc, prev_relative_rot)
 
         world_rot_matrix_change_batch = euler_angles_to_matrix(
@@ -117,14 +119,14 @@ class ProjectionModule(nn.Module):
                 self.__world_locations,
                 self.__world_rotations
             )
-        return projections.reshape((batch_size, clip_length, points, 3)), absolute_loc
+        return projections.reshape((batch_size, clip_length, points, 3)), absolute_loc, absolute_rot
 
-    def forward(self, pose_inputs: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
-        projected_pose, absolute_pose_loc = self.project_pose(
+    def forward(self, pose_inputs: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+        (projected_pose, absolute_pose_loc, absolute_pose_rot) = self.project_pose(
             pose_inputs,
             world_loc_inputs,
             world_rot_inputs,
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        return (projected_pose, normalized_projection, absolute_pose_loc)
+        return (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot)
