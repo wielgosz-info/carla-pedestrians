@@ -19,7 +19,6 @@ def calculate_loss_cum_pose_changes(criterion: loss._Loss, pose_changes: Tensor,
     :return: Calculated loss.
     :rtype: Tensor
     """
-
     # calculate cumulative rotations
     (batch_size, clip_length, bones, *_) = pose_changes.shape
 
@@ -31,24 +30,28 @@ def calculate_loss_cum_pose_changes(criterion: loss._Loss, pose_changes: Tensor,
     prev_targets = torch.eye(3, device=pose_changes.device).reshape(
         (1, 3, 3)).repeat((batch_size*bones, 1, 1))
 
-    matrix_pose_changes = euler_angles_to_matrix(pose_changes, "XYZ")
-    matrix_targets = euler_angles_to_matrix(targets['pose_changes'], "XYZ")
+    matrix_pose_changes = euler_angles_to_matrix(
+        pose_changes, "XYZ").transpose(0, 1).reshape((clip_length, -1, 3, 3))
+    matrix_targets = euler_angles_to_matrix(targets['pose_changes'], "XYZ").transpose(
+        0, 1).reshape((clip_length, -1, 3, 3))
 
     for i in range(clip_length):
         prev_changes = torch.bmm(
             prev_changes,
-            matrix_pose_changes[:, i].reshape((-1, 3, 3))
+            matrix_pose_changes[i]
         )
         prev_targets = torch.bmm(
             prev_targets,
-            matrix_targets[:, i].reshape((-1, 3, 3))
+            matrix_targets[i]
         )
-        cumulative_changes.append(prev_changes.reshape((batch_size, bones, 3, 3)))
-        cumulative_targets.append(prev_targets.reshape((batch_size, bones, 3, 3)))
+        cumulative_changes.append(prev_changes)
+        cumulative_targets.append(prev_targets)
 
     loss = criterion(
-        torch.stack(cumulative_changes, dim=1),
-        torch.stack(cumulative_targets, dim=1),
+        torch.stack(cumulative_changes, dim=0).reshape((clip_length, batch_size, bones, 3, 3)).transpose(
+            0, 1),
+        torch.stack(cumulative_targets, dim=0).reshape((clip_length, batch_size, bones, 3, 3)).transpose(
+            0, 1),
     )
 
     return loss
