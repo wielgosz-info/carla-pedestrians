@@ -2,7 +2,7 @@ from typing import Callable
 import torch
 from torch.utils.data import IterableDataset, Dataset
 import h5py
-from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
+from pedestrians_video_2_carla.modules.projection.projection import ProjectionModule
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import numpy as np
 from torch.functional import Tensor

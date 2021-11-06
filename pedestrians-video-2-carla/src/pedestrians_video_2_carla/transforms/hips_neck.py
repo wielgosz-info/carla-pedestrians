@@ -1,15 +1,16 @@
 from enum import Enum
-from typing import Any, Callable, Union
+from typing import Any, Callable, Type, Union
 
 import torch
 from torch.functional import Tensor
+from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
 
 
 class HipsNeckExtractor(object):
-    def __init__(self, input_nodes: Enum) -> None:
+    def __init__(self, input_nodes: Type[Skeleton]) -> None:
         self.input_nodes = input_nodes
 
     def get_hips_point(self, sample: Tensor) -> Tensor:
@@ -21,7 +22,7 @@ class HipsNeckExtractor(object):
 
 # TODO: should specific extractor be here or in e.g. skeletons.nodes.openpose?
 class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
-    def __init__(self, input_nodes: Union[BODY_25_SKELETON, COCO_SKELETON] = BODY_25_SKELETON) -> None:
+    def __init__(self, input_nodes: Type[Union[BODY_25_SKELETON, COCO_SKELETON]] = BODY_25_SKELETON) -> None:
         super().__init__(input_nodes)
 
     def get_hips_point(self, sample: Tensor) -> Tensor:
@@ -37,7 +38,7 @@ class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
 
 # TODO: should specific extractor be here or in e.g. skeletons.nodes.carla?
 class CarlaHipsNeckExtractor(HipsNeckExtractor):
-    def __init__(self, input_nodes: CARLA_SKELETON = CARLA_SKELETON) -> None:
+    def __init__(self, input_nodes: Type[CARLA_SKELETON] = CARLA_SKELETON) -> None:
         super().__init__(input_nodes)
 
     def get_hips_point(self, sample: Tensor) -> Tensor:

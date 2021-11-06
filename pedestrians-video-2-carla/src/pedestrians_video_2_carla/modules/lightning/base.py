@@ -1,67 +1,56 @@
 
-from typing import Dict, Tuple
+from typing import List, Tuple, Type
 
 import pytorch_lightning as pl
-from pedestrians_video_2_carla.modules.torch.projection import ProjectionModule
-from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS, Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name
-
-from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON
+from pedestrians_video_2_carla.modules.loss import LossModes
+from pedestrians_video_2_carla.modules.projection.projection import \
+    ProjectionModule
+from pedestrians_video_2_carla.skeletons.nodes import (
+    Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name)
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from torch import nn
+from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON
 from torch.functional import Tensor
-from enum import Enum
-
-from pedestrians_video_2_carla.transforms.hips_neck import CarlaHipsNeckExtractor, HipsNeckNormalize
-
-
-class LossModes(Enum):
-    """
-    Enum for loss modes.
-    """
-    common_loc_2d = 0
-    loc_3d = 1
-    loc_2d_3d = 2
-    pose_changes = 3
 
 
 class LitBaseMapper(pl.LightningModule):
     def __init__(
         self,
-        input_nodes: Skeleton = BODY_25_SKELETON,
-        output_nodes: Skeleton = CARLA_SKELETON,
-        loss_mode: LossModes = LossModes.common_loc_2d,
+        input_nodes: Type[Skeleton] = BODY_25_SKELETON,
+        output_nodes: Type[Skeleton] = CARLA_SKELETON,
+        loss_modes: List[LossModes] = None,
         **kwargs
     ):
         super().__init__()
 
-        self._loss_mode = loss_mode
-        self._loss_fn = {
-            LossModes.common_loc_2d: self._calculate_loss_common_loc_2d,
-            LossModes.loc_3d: self._calculate_loss_loc_3d,
-            LossModes.loc_2d_3d: self._calculate_loss_loc_2d_3d,
-            LossModes.pose_changes: self._calculate_loss_pose_changes,
-        }[self._loss_mode]
+        if loss_modes is None or len(loss_modes) == 0:
+            loss_modes = [LossModes.common_loc_2d]
+        self._loss_modes = loss_modes
+
+        modes = []
+        for mode in self._loss_modes:
+            if len(mode.value) > 2:
+                for k in mode.value[2]:
+                    modes.append(LossModes[k])
+            modes.append(mode)
+        # TODO: resolve requirements chain and put modes in correct order, not just 'hopefully correct' one
+
+        self._losses_to_calculate = list(dict.fromkeys(modes))
 
         self.input_nodes = input_nodes
         self.output_nodes = output_nodes
 
-        # default layers
+        # default layer
         self.projection = ProjectionModule(
             **kwargs
         )
-        self.criterions = self._setup_criterions()
 
         self.save_hyperparameters({
-            'input_nodes': get_skeleton_name_by_type(input_nodes),
-            'output_nodes': get_skeleton_name_by_type(output_nodes),
-            'loss_mode': self._loss_mode.name,
-            'loss_criterion': '{}(reduction="{}")'.format(
-                self.criterions[self._loss_mode].__class__.__name__,
-                getattr(self.criterions[self._loss_mode], 'reduction', '')
-            )
+            'input_nodes': get_skeleton_name_by_type(self.input_nodes),
+            'output_nodes': get_skeleton_name_by_type(self.output_nodes),
+            'loss_modes': [mode.name for mode in self._loss_modes]
         })
 
-    @staticmethod
+    @ staticmethod
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
         parser.add_argument(
@@ -75,11 +64,19 @@ class LitBaseMapper(pl.LightningModule):
             default=CARLA_SKELETON
         )
         parser.add_argument(
-            '--loss_mode',
-            type=LossModes.__getitem__,
-            metavar='{}'.format(set(LossModes.__members__.keys())),
-            default=LossModes.common_loc_2d,
-            choices=list(LossModes)
+            '--loss_modes',
+            help="""
+                Set loss modes to use in the preferred order.
+                Choices: {}.
+                Default: ['common_loc_2d']
+                """.format(
+                set(LossModes.__members__.keys())),
+            metavar="MODE",
+            default=[],
+            choices=list(LossModes),
+            nargs="+",
+            action="extend",
+            type=LossModes.__getitem__
         )
         return parent_parser
 
@@ -116,16 +113,33 @@ class LitBaseMapper(pl.LightningModule):
         (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot) = self.projection(
             pose_changes
         )
-        loss_dict = self._loss_fn(
-            pose_changes=pose_changes,
-            projected_pose=projected_pose,
-            normalized_projection=normalized_projection,
-            absolute_pose_loc=absolute_pose_loc,
-            absolute_pose_rot=absolute_pose_rot,
-            frames=frames,
-            targets=targets,
-            meta=meta
-        )
+
+        # TODO: this will work for mono-type batches, but not for mixed-type batches;
+        # Figure if/how to do mixed-type batches - should we even support it?
+        # Maybe force reduction='none' in criterions and then reduce here?
+        loss_dict = {}
+
+        for mode in self._losses_to_calculate:
+            (loss_fn, criterion, *_) = mode.value
+            loss = loss_fn(
+                criterion=criterion,
+                input_nodes=self.input_nodes,
+                pose_changes=pose_changes,
+                projected_pose=projected_pose,
+                normalized_projection=normalized_projection,
+                absolute_pose_loc=absolute_pose_loc,
+                absolute_pose_rot=absolute_pose_rot,
+                frames=frames,
+                targets=targets,
+                meta=meta,
+                requirements={
+                    k.name: v
+                    for k, v in loss_dict.items()
+                    if k.name in mode.value[2]
+                } if len(mode.value) > 2 else None
+            )
+            if loss is not None:
+                loss_dict[mode] = loss
 
         for k, v in loss_dict.items():
             self.log('{}_loss/{}'.format(stage, k.name), v)
@@ -133,75 +147,15 @@ class LitBaseMapper(pl.LightningModule):
         self._log_videos(pose_changes, projected_pose, batch,
                          batch_idx, dataloader_idx, stage)
 
-        # return primary loss
-        return loss_dict[self._loss_mode]
+        # return primary loss - the first one available from loss_modes list
+        # also log it as 'primary' for monitoring purposes
+        # TODO: monitoring should be done based on the metric, not the loss
+        # so 'primary' loss should be removed in the future
+        for mode in self._loss_modes:
+            self.log('{}_loss/primary'.format(stage), loss_dict[mode])
+            return loss_dict[mode]
 
-    def _setup_criterions(self):
-        criterions = {
-            k: nn.MSELoss(reduction='sum') if k == LossModes.pose_changes else nn.MSELoss(
-                reduction='mean')
-            for k in LossModes
-        }
-        return criterions
-
-    def _calculate_loss_common_loc_2d(self, normalized_projection, frames, **kwargs) -> Dict[LossModes, Tensor]:
-        carla_indices, input_indices = self._get_common_indices()
-
-        common_projection = normalized_projection[..., carla_indices, 0:2]
-        common_input = frames[..., input_indices, 0:2]
-
-        loss = self.criterions[LossModes.common_loc_2d](
-            common_projection,
-            common_input
-        )
-
-        return {LossModes.common_loc_2d: loss}
-
-    def _get_common_indices(self):
-        if self.input_nodes == CARLA_SKELETON:
-            carla_indices = slice(None)
-            input_indices = slice(None)
-        else:
-            mappings = MAPPINGS[self.input_nodes]
-            (carla_indices, input_indices) = zip(
-                *[(c.value, o.value) for (c, o) in mappings])
-
-        return carla_indices, input_indices
-
-    def _calculate_loss_loc_3d(self, absolute_pose_loc, targets, **kwargs) -> Dict[LossModes, Tensor]:
-        transform = HipsNeckNormalize(CarlaHipsNeckExtractor(self.input_nodes))
-        loss = self.criterions[LossModes.loc_3d](
-            transform(absolute_pose_loc, dim=3),
-            transform(targets['absolute_pose_loc'], dim=3)
-        )
-        return {LossModes.loc_3d: loss}
-
-    def _calculate_loss_loc_2d_3d(self, normalized_projection, absolute_pose_loc, frames, targets, **kwargs) -> Dict[LossModes, Tensor]:
-        loss = {}
-        loss.update(self._calculate_loss_common_loc_2d(
-            normalized_projection, frames, **kwargs))
-        loss.update(self._calculate_loss_loc_3d(absolute_pose_loc, targets, **kwargs))
-
-        loss.update(
-            {LossModes.loc_2d_3d: loss[LossModes.common_loc_2d] +
-                loss[LossModes.loc_3d]}
-        )
-
-        return loss
-
-    def _calculate_loss_pose_changes(self, pose_changes, targets, normalized_projection, absolute_pose_loc, frames, **kwargs) -> Dict[LossModes, Tensor]:
-        loss = {
-            LossModes.pose_changes: self.criterions[LossModes.pose_changes](
-                pose_changes,
-                targets['pose_changes']
-            )
-        }
-
-        # TODO: add option to use loss like a metric (not used during the training) instead of this
-        loss.update(self._calculate_loss_loc_2d_3d(
-            normalized_projection, absolute_pose_loc, frames, targets))
-
-        return loss
+        raise RuntimeError("Couldn't calculate any loss.")
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):
         vid = vid.permute(0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
