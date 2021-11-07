@@ -13,6 +13,15 @@ from torch.functional import Tensor
 
 
 class LitBaseMapper(pl.LightningModule):
+    """
+    Base LightningModule - all other LightningModules should inherit from this.
+    It contains projection layer, loss modes handling and video logging.
+
+    Derived LightningModules should implement forward() and configure_optimizers() method.
+    If they use additional hyperparameters, they should also call self.save_hyperparameters({...})
+    in __init__() and (optionally) override add_model_specific_args() method.
+    """
+
     def __init__(
         self,
         input_nodes: Type[Skeleton] = BODY_25_SKELETON,
@@ -55,6 +64,13 @@ class LitBaseMapper(pl.LightningModule):
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
+        """
+        Add model specific commandline arguments.
+
+        By default, this method adds parameters for projection layer and loss modes.
+        If overriding, remember to call super().
+        """
+
         parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
         parser.add_argument(
             '--input_nodes',

@@ -1,17 +1,3 @@
-"""
-Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
-of 3D pose baseline from the following paper:
-
-```bibtex
-@inproceedings{martinez_2017_3dbaseline,
-  title={A simple yet effective baseline for 3d human pose estimation},
-  author={Martinez, Julieta and Hossain, Rayat and Romero, Javier and Little, James J.},
-  booktitle={ICCV},
-  year={2017}
-}
-```
-"""
-
 import torch
 from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 from pedestrians_video_2_carla.submodules.baseline_3d_pose.model import \
@@ -22,6 +8,20 @@ from .base import LitBaseMapper
 
 
 class LitBaseline3DPoseMapper(LitBaseMapper):
+    """
+    Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
+    of 3D pose baseline from the following paper:
+
+    ```bibtex
+    @inproceedings{martinez_2017_3dbaseline,
+    title={A simple yet effective baseline for 3d human pose estimation},
+    author={Martinez, Julieta and Hossain, Rayat and Romero, Javier and Little, James J.},
+    booktitle={ICCV},
+    year={2017}
+    }
+    ```
+    """
+
     def __init__(self,
                  linear_size=1024,
                  num_stage=2,
@@ -33,11 +33,10 @@ class LitBaseline3DPoseMapper(LitBaseMapper):
         )
 
         self.__input_nodes_len = len(self.input_nodes)
-        self.__input_features = 2  # (x,y) points
+        self.__input_features = 2  # (x, y) points
 
         self.__output_nodes_len = len(self.output_nodes)
-        # bones rotations (euler angles; radians; roll, pitch, yaw) to get into the required position
-        self.__output_features = 3
+        self.__output_features = 3  # (x, y, z) joints points
 
         self.__input_size = self.__input_nodes_len * self.__input_features
         self.__output_size = self.__output_nodes_len * self.__output_features

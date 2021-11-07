@@ -93,7 +93,7 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         :param rot: (N, 3, 3) Tensor containing pedestrian relative world rotation as rotation matrix
         :type rot: torch.Tensor
         :return: Points projected to 2D. Returned tensor has the same shape as input one: (..., 3),
-            but only [..., :2] are usable.
+            but only [..., :2] are usable. [..., 2] is unchanged depth.
         :rtype: torch.Tensor
         """
         batch_size = x.shape[0]

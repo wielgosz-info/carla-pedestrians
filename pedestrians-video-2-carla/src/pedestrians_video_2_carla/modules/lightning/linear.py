@@ -5,6 +5,10 @@ from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
 class LitLinearMapper(LitBaseMapper):
+    """
+    The simplest dummy model used to debug the flow.
+    """
+
     def __init__(self,
                  clip_length: int = 30,
                  **kwargs
@@ -14,7 +18,7 @@ class LitLinearMapper(LitBaseMapper):
         self.__clip_length = clip_length
 
         self.__input_nodes_len = len(self.input_nodes)
-        self.__input_features = 3  # OpenPose (x,y,confidence) points
+        self.__input_features = 3  # (x,y,confidence) points
 
         self.__output_nodes_len = len(self.output_nodes)
         # bones rotations (euler angles; radians; roll, pitch, yaw) to get into the required position
