@@ -1,6 +1,13 @@
 # CARLA Pedestrians
 Bringing more realistic pedestrians movements into CARLA.
 
+## Cloning
+This project contains submodules when there was no other option of getting the code in (not pip-installable code). So to ensure that all models run correctly, clone with:
+
+```sh
+git clone --recurse-submodules git@github.com:wielgosz-info/carla-pedestrians.git
+```
+
 ## (Cumbersome) Running Steps
 
 ### Step 0
@@ -30,11 +37,43 @@ Magic up the `/outputs/JAAD/annotations.csv` file. Automation script for that ma
 ### Step 3
 Run the CARLA server & the container with our code (`carla-pedestrians_client_1`).
 
+If you don't have the Nvidia GPU, there is CPU-only version available `docker-compose.cpu.yml`.
+Please note that currently running CARLA server requires GPU, so without it the `source_carla`
+`carla` renderers shouldn't be used, since it would result in errors.
+
 ```sh
 COMMIT=$(git rev-parse --short HEAD) docker-compose -f "docker-compose.yml" --env-file .env up -d --build
 ```
 
-### More steps in progress...
+### Step 4
+Run selected experiment inside `carla-pedestrians_client_1`, e.g.:
+
+```sh
+python3 -m pedestrians_video_2_carla \
+    --data_module_name=Carla2D3DDataModule \
+    --clip_length=180 \
+    --batch_size=64 \
+    --num_workers=32 \
+    --input_nodes=CARLA_SKELETON \
+    --output_nodes=CARLA_SKELETON \
+    --loss_modes rot_3d loc_2d_3d \
+    --renderers source_carla input_points projection_points carla \
+    --max_videos=8 \
+    --log_every_n_steps=50 \
+    --flush_logs_every_n_steps=100 \
+    --check_val_every_n_epoch=10 \
+    --max_epochs=300 \
+    --gpus=0,1 \
+    --accelerator=ddp
+```
+
+For full list of available options run:
+
+```sh
+python3 -m pedestrians_video_2_carla -h
+```
+
+Please note that data module and model specific options may change if you switch the DataModule or Model.
 
 ## Reference skeletons
 Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_carla/reference_skeletons` are extracted form [CARLA project Walkers *.uasset files](https://bitbucket.org/carla-simulator/carla-content).
