@@ -93,7 +93,7 @@ class CarlaRenderer(Renderer):
             abs_pose = bound_pedestrian.current_pose.empty
             for i, k in enumerate(abs_pose.keys()):
                 abs_pose[k] = carla.Transform(
-                    location=carla.Location(*pose_change_frame[i]))
+                    location=carla.Location(*pose_change_frame[i].numpy().tolist()))
             bound_pedestrian.apply_pose(abs_pose_snapshot=abs_pose)
 
         # TODO: teleport when implemented
