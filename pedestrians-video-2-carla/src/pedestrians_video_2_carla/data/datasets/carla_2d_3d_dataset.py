@@ -64,13 +64,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.projection = ProjectionModule(
             input_nodes=self.nodes,
             output_nodes=self.nodes,
-            projection_transform=self.transform,
-            enabled_renderers={
-                'source_videos': False,
-                'input': False,
-                'projection': False,
-                'carla': False
-            }
+            projection_transform=self.transform
         )
 
     def __iter__(self):
@@ -94,6 +88,12 @@ class Carla2D3DIterableDataset(IterableDataset):
         projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
             pose_changes
         )
+
+        # use the third dimension as 'confidence' of the projection
+        # so we're compatible with OpenPose
+        # this will also prevent the models from accidentally using
+        # the depth data that pytorch3d leaves in the projections
+        projection_2d[..., 2] = 1.0
 
         if self.transform:
             projection_2d = self.transform(projection_2d)
