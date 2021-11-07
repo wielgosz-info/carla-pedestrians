@@ -13,6 +13,8 @@ from .rot_3d import calculate_loss_rot_3d
 class LossModes(Enum):
     """
     Enum for loss modes.
+
+    For now this will not work with ddp_spawn, because it is not picklable, use ddp accelerator instead.
     """
     # Base functions with MSE
     common_loc_2d = (calculate_loss_common_loc_2d, nn.MSELoss(reduction='mean'))
@@ -25,3 +27,11 @@ class LossModes(Enum):
     loc_2d_3d = (calculate_loss_loc_2d_3d, None, [
         'common_loc_2d', 'loc_3d'
     ])
+
+    def __init__(self, loss_fn, criterion, dependencies=None):
+        self.loss_fn = loss_fn
+        self.criterion = criterion
+        self.dependencies = dependencies
+
+    def __hash__(self):
+        return hash(self.name)

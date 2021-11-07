@@ -1,7 +1,7 @@
 from typing import Callable
 import torch
 from torch.utils.data import IterableDataset, Dataset
-import h5py
+import h5pickle as h5py
 from pedestrians_video_2_carla.modules.projection.projection import ProjectionModule
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import numpy as np
@@ -26,7 +26,7 @@ class Carla2D3DDataset(Dataset):
 
     def __getitem__(self, idx: int) -> torch.Tensor:
         projection_2d = self.projection_2d[idx]
-        projection_2d = torch.from_numpy(projection_2d)
+        projection_2d = torch.tensor(projection_2d)
         if self.transform:
             projection_2d = self.transform(projection_2d)
 
