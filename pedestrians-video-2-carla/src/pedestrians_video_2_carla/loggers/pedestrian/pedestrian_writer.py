@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple
 import numpy as np
 import torch
 import torchvision
-from pedestrians_video_2_carla.data import DATASETS_BASE, OUTPUTS_BASE
 from pedestrians_video_2_carla.renderers import MergingMethod
 from pedestrians_video_2_carla.renderers.carla_renderer import CarlaRenderer
 from pedestrians_video_2_carla.renderers.points_renderer import PointsRenderer
@@ -12,16 +11,12 @@ from pedestrians_video_2_carla.renderers.renderer import Renderer
 from pedestrians_video_2_carla.renderers.source_videos_renderer import \
     SourceVideosRenderer
 from pedestrians_video_2_carla.skeletons.nodes import Skeleton
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    HipsNeckDeNormalize, HipsNeckExtractor)
-from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
-    ControlledPedestrian
-from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
-from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
-    P3dPoseProjection
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckExtractor
+from pedestrians_video_2_carla.transforms.reference_skeletons import ReferenceSkeletonsDenormalize
 from torch.functional import Tensor
 
 from .pedestrian_renderers import PedestrianRenderers
+from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 
 
 class PedestrianWriter(object):
@@ -36,6 +31,7 @@ class PedestrianWriter(object):
                  max_videos: int = 10,
                  merging_method: MergingMethod = MergingMethod.square,
                  source_videos_dir: str = None,
+                 projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
                  **kwargs) -> None:
         self._log_dir = log_dir
 
@@ -58,7 +54,11 @@ class PedestrianWriter(object):
         self._input_nodes = input_nodes
         self._output_nodes = output_nodes
 
-        self.__reference_projections = None
+        self.__denormalize = ReferenceSkeletonsDenormalize(
+            extractor=self._extractor,
+            autonormalize=False
+        )
+        self.__projection_type = projection_type
 
         # actual renderers
         self.__zeros_renderer = Renderer()
@@ -68,7 +68,9 @@ class PedestrianWriter(object):
         ) if PedestrianRenderers.source_videos in self._renderers else None
 
         self.__source_carla_renderer = CarlaRenderer(
-            fps=self._fps
+            fps=self._fps,
+            # this is true for Carla2D3DDataset; TODO: make it configurable when other dataset are connected
+            projection_type=ProjectionTypes.pose_changes
         ) if PedestrianRenderers.source_carla in self._renderers else None
 
         self.__input_renderer = PointsRenderer(
@@ -81,7 +83,8 @@ class PedestrianWriter(object):
         ) if PedestrianRenderers.projection_points in self._renderers else None
 
         self.__carla_renderer = CarlaRenderer(
-            fps=self._fps
+            fps=self._fps,
+            projection_type=self.__projection_type
         ) if PedestrianRenderers.carla in self._renderers else None
 
     @torch.no_grad()
@@ -126,62 +129,6 @@ class PedestrianWriter(object):
                 vid_callback(vid, vid_idx, self._fps, stage, meta)
 
     @torch.no_grad()
-    def _denormalize(self, frames: Tensor, meta: Dict[str, List[Any]]) -> Tensor:
-        # shortcut - we have only 4 possible skeletons
-        if self.__reference_projections is None:
-            types, projections = self._get_reference_projections(device=frames.device)
-            self.__reference_projections = {
-                t: p for t, p in zip(types, projections)
-            }
-
-        frame_projections = torch.stack([
-            self.__reference_projections[(age, gender)]
-            for (age, gender) in zip(meta['age'], meta['gender'])
-        ], dim=0)
-
-        return HipsNeckDeNormalize().from_projection(self._extractor, frame_projections)(frames)
-
-    @torch.no_grad()
-    def _get_reference_projections(self, device):
-        types = [
-            ('adult', 'female'),
-            ('adult', 'male'),
-            ('child', 'female'),
-            ('child', 'male')
-        ]
-        pedestrians = [
-            ControlledPedestrian(age=age, gender=gender,
-                                 pose_cls=P3dPose, device=device)
-            for (age, gender) in types
-        ]
-
-        movements = torch.zeros(
-            (len(pedestrians), 1, len(self._output_nodes), 3), device=device)
-        (relative_loc, relative_rot) = zip(*[
-            p.current_pose.tensors
-            for p in pedestrians
-        ])
-
-        # TODO: get camera settings from LitBaseMapper.projection
-        pose_projection = P3dPoseProjection(device=device, pedestrian=pedestrians[0])
-
-        # TODO: we're assuming no in-world movement for now!
-        world_locations = torch.zeros(
-            (len(pedestrians), 3), device=device)
-        world_rotations = torch.eye(3, device=device).reshape(
-            (1, 3, 3)).repeat((len(pedestrians), 1, 1))
-
-        return types, pose_projection.forward(
-            pedestrians[0].current_pose.forward(
-                movements,
-                torch.stack(relative_loc),
-                torch.stack(relative_rot)
-            )[0],
-            world_locations,
-            world_rotations
-        ).unsqueeze(1)
-
-    @torch.no_grad()
     def _render(self,
                 frames: Tensor,
                 targets: Tensor,
@@ -215,7 +162,7 @@ class PedestrianWriter(object):
         image_size = (800, 600)
         fov = 90.0
 
-        denormalized_frames = self._denormalize(frames, meta)
+        denormalized_frames = self.__denormalize.from_projection(frames, meta)
 
         source_videos = None
         # it only makes sense to render single source

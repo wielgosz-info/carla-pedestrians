@@ -18,6 +18,9 @@ def calculate_loss_rot_3d(criterion: loss._Loss, absolute_pose_rot: Tensor, targ
     :rtype: Tensor
     """
 
+    if absolute_pose_rot is None or 'absolute_pose_rot' not in targets:
+        return None
+
     loss = criterion(
         absolute_pose_rot,
         targets['absolute_pose_rot']

@@ -25,7 +25,7 @@ __license__ = "MIT"
 
 # TODO: get this from argparse
 def get_model_cls():
-    return LitLinearAutoencoderMapper
+    return LitBaseline3DPoseMapper
 
 
 def get_data_module_cls(data_module_name: str = 'Carla2D3DDataModule'):
@@ -144,6 +144,7 @@ def main(args: List[str]):
         save_dir=os.path.join(tb_logger.log_dir, 'videos'),
         name=tb_logger.name,
         version=tb_logger.version,
+        projection_type=model.projection.projection_type,
         **dict_args
     )
     checkpoint_callback = ModelCheckpoint(

@@ -11,3 +11,62 @@ of 3D pose baseline from the following paper:
 }
 ```
 """
+
+import torch
+from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.submodules.baseline_3d_pose.model import \
+    LinearModel as Baseline3DPoseModel
+from torch import nn
+
+from .base import LitBaseMapper
+
+
+class LitBaseline3DPoseMapper(LitBaseMapper):
+    def __init__(self,
+                 linear_size=1024,
+                 num_stage=2,
+                 p_dropout=0.5,
+                 **kwargs):
+        super().__init__(
+            projection_type=ProjectionTypes.absolute_loc,
+            **kwargs
+        )
+
+        self.__input_nodes_len = len(self.input_nodes)
+        self.__input_features = 2  # (x,y) points
+
+        self.__output_nodes_len = len(self.output_nodes)
+        # bones rotations (euler angles; radians; roll, pitch, yaw) to get into the required position
+        self.__output_features = 3
+
+        self.__input_size = self.__input_nodes_len * self.__input_features
+        self.__output_size = self.__output_nodes_len * self.__output_features
+
+        self.baseline = Baseline3DPoseModel(
+            linear_size=linear_size,
+            num_stage=2,
+            p_dropout=0.5
+        )
+
+        # hack a little bit to get the model working with our data
+        self.baseline.w1 = nn.Linear(self.__input_size, linear_size)
+        self.baseline.w2 = nn.Linear(linear_size, self.__output_size)
+
+        self.save_hyperparameters({
+            'linear_size': linear_size,
+            'num_stage': num_stage,
+            'p_dropout': p_dropout
+        })
+
+    def forward(self, x):
+        # the baseline model expects a single frame
+        original_shape = x.shape
+        x = x[..., 0:self.__input_features].reshape((-1, self.__input_size))
+        x = self.baseline(x)
+        x = x.view(*original_shape[0:-2],
+                   self.__output_nodes_len, self.__output_features)
+        return x
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer

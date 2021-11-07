@@ -4,7 +4,7 @@ from typing import List, Tuple, Type
 import pytorch_lightning as pl
 from pedestrians_video_2_carla.modules.loss import LossModes
 from pedestrians_video_2_carla.modules.projection.projection import \
-    ProjectionModule
+    ProjectionModule, ProjectionTypes
 from pedestrians_video_2_carla.skeletons.nodes import (
     Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name)
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
@@ -18,6 +18,7 @@ class LitBaseMapper(pl.LightningModule):
         input_nodes: Type[Skeleton] = BODY_25_SKELETON,
         output_nodes: Type[Skeleton] = CARLA_SKELETON,
         loss_modes: List[LossModes] = None,
+        projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
         **kwargs
     ):
         super().__init__()
@@ -41,13 +42,15 @@ class LitBaseMapper(pl.LightningModule):
 
         # default layer
         self.projection = ProjectionModule(
+            projection_type=projection_type,
             **kwargs
         )
 
         self.save_hyperparameters({
             'input_nodes': get_skeleton_name_by_type(self.input_nodes),
             'output_nodes': get_skeleton_name_by_type(self.output_nodes),
-            'loss_modes': [mode.name for mode in self._loss_modes]
+            'loss_modes': [mode.name for mode in self._loss_modes],
+            'projection_type': projection_type.name
         })
 
     @ staticmethod
@@ -152,8 +155,9 @@ class LitBaseMapper(pl.LightningModule):
         # TODO: monitoring should be done based on the metric, not the loss
         # so 'primary' loss should be removed in the future
         for mode in self._loss_modes:
-            self.log('{}_loss/primary'.format(stage), loss_dict[mode])
-            return loss_dict[mode]
+            if mode in loss_dict:
+                self.log('{}_loss/primary'.format(stage), loss_dict[mode])
+                return loss_dict[mode]
 
         raise RuntimeError("Couldn't calculate any loss.")
 

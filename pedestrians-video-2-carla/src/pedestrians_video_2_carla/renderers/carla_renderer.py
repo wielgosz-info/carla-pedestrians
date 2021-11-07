@@ -6,6 +6,7 @@ import carla
 import numpy as np
 import PIL
 import torch
+from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 from pedestrians_video_2_carla.renderers.renderer import Renderer
 from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
 from pedestrians_video_2_carla.carla_utils.setup import *
@@ -16,10 +17,11 @@ from torch.functional import Tensor
 
 
 class CarlaRenderer(Renderer):
-    def __init__(self, fps=30.0, fov=90.0, **kwargs) -> None:
+    def __init__(self, fps=30.0, fov=90.0, projection_type=ProjectionTypes.pose_changes, **kwargs) -> None:
         super().__init__(**kwargs)
         self.__fps = fps
         self.__fov = fov
+        self.__projection_type = projection_type
 
     @torch.no_grad()
     def render(self, pose_change: Tensor, meta: List[Dict[str, Any]], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
@@ -79,12 +81,20 @@ class CarlaRenderer(Renderer):
                      bound_pedestrian: ControlledPedestrian,
                      camera_queue: Queue
                      ):
-        (_, _, prev_relative_rot) = bound_pedestrian.current_pose.forward(
-            pose_change_frame.detach().unsqueeze(0), prev_relative_loc, prev_relative_rot)
+        if self.__projection_type == ProjectionTypes.pose_changes:
+            (_, _, prev_relative_rot) = bound_pedestrian.current_pose.forward(
+                pose_change_frame.detach().unsqueeze(0), prev_relative_loc, prev_relative_rot)
 
-        bound_pedestrian.current_pose.tensors = (
-            prev_relative_loc[0], prev_relative_rot[0])
-        bound_pedestrian.apply_pose()
+            bound_pedestrian.current_pose.tensors = (
+                prev_relative_loc[0], prev_relative_rot[0])
+            bound_pedestrian.apply_pose()
+        elif self.__projection_type == ProjectionTypes.absolute_loc:
+            prev_relative_rot = None
+            abs_pose = bound_pedestrian.current_pose.empty
+            for i, k in enumerate(abs_pose.keys()):
+                abs_pose[k] = carla.Transform(
+                    location=carla.Location(*pose_change_frame[i]))
+            bound_pedestrian.apply_pose(abs_pose_snapshot=abs_pose)
 
         # TODO: teleport when implemented
 

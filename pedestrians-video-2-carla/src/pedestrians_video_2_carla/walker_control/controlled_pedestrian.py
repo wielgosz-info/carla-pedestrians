@@ -176,18 +176,25 @@ class ControlledPedestrian(object):
         self._current_pose.move(rotations)
         return self.apply_pose(cue_tick)
 
-    def apply_pose(self, cue_tick=False) -> int:
+    def apply_pose(self, cue_tick=False, abs_pose_snapshot=None) -> int:
         """
         Applies the current absolute pose to the carla.Walker if it exists.
 
         :param cue_tick: should carla.World.tick() be called after sending control; defaults to False
         :type cue_tick: bool, optional
+        :param abs_pose_snapshot: if not None, will be used instead of self._current_pose.
+            This will **NOT** update the internal pose representation.
+        :type abs_pose_snapshot: OrderedDict[str, carla.Transform], optional
         :return: World frame number if cue_tick==True else 0
         :rtype: int
         """
         if self._walker is not None:
             control = carla.WalkerBoneControl()
-            control.bone_transforms = list(self._current_pose.absolute.items())
+
+            if abs_pose_snapshot is None:
+                abs_pose_snapshot = self._current_pose.absolute
+
+            control.bone_transforms = list(abs_pose_snapshot.items())
 
             self._walker.apply_control(control)
 

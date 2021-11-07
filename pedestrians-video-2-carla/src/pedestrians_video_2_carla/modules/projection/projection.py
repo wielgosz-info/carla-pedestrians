@@ -1,11 +1,9 @@
 from typing import Tuple, Union
 
-from pedestrians_video_2_carla.skeletons.nodes import MAPPINGS
-from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.nodes.openpose import (
-    BODY_25_SKELETON, COCO_SKELETON)
+
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckNormalize)
+from pedestrians_video_2_carla.transforms.reference_skeletons import ReferenceSkeletonsDenormalize
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
@@ -16,11 +14,21 @@ from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
 import torch
 from torch import nn
 from torch.functional import Tensor
+from enum import Enum
+
+
+class ProjectionTypes(Enum):
+    """
+    Enum for the different model types.
+    """
+    pose_changes = 0  # default, prefferred
+    absolute_loc = 1  # undesired, but possible; it will most likely deform the skeleton; incompatible with some loss functions
 
 
 class ProjectionModule(nn.Module):
     def __init__(self,
                  projection_transform=None,
+                 projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
                  **kwargs
                  ) -> None:
         super().__init__()
@@ -28,6 +36,16 @@ class ProjectionModule(nn.Module):
         if projection_transform is None:
             projection_transform = HipsNeckNormalize(CarlaHipsNeckExtractor())
         self.projection_transform = projection_transform
+
+        self.projection_type = projection_type
+
+        if self.projection_type == ProjectionTypes.pose_changes:
+            self.__calculate_abs = self._calculate_abs_from_pose_changes
+        elif self.projection_type == ProjectionTypes.absolute_loc:
+            self.__denormalize = ReferenceSkeletonsDenormalize(
+                autonormalize=True
+            )
+            self.__calculate_abs = self._calculate_abs_from_abs_output
 
         # set on every batch
         self.__pedestrians = None
@@ -55,34 +73,70 @@ class ProjectionModule(nn.Module):
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
 
-    def project_pose(self, pose_change_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
+    def project_pose(self, pose_inputs_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Handles calculation of the pose projection.
 
-        :param pose_change_batch: (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles in radians)
-        :type pose_change_batch: Tensor
+        :param pose_inputs_batch: (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles in radians)
+        :type pose_inputs_batch: Tensor
         :param world_loc_change_batch: (N - batch_size, L - clip_length, 3 - location changes)
         :type world_loc_change_batch: Tensor
         :param world_rot_change_batch: (N - batch_size, L - clip_length, 3 - rotation changes as euler angles in radians)
         :type world_rot_change_batch: Tensor
-        :raises RuntimeError: when pose_change_batch dimensionality is incorrect
+        :raises RuntimeError: when pose_inputs_batch dimensionality is incorrect
         :return: Pose projection, absolute pose locations & absolute pose rotations
         :rtype: Tuple[Tensor, Tensor, Tensor]
         """
-        (batch_size, clip_length, points, features) = pose_change_batch.shape
-
         # TODO: switch batch and clip length dimensions?
-        if pose_change_batch.ndim < 4:
+        if self.projection_type == ProjectionTypes.pose_changes and pose_inputs_batch.ndim < 4:
             raise RuntimeError(
                 'Pose changes should have shape of (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles)')
+        elif self.projection_type == ProjectionTypes.absolute_loc and pose_inputs_batch.ndim < 4:
+            raise RuntimeError(
+                'Absolute location should have shape of (N - batch_size, L - clip_length, B - bones, 3 - absolute location coordinates)')
 
         if world_loc_change_batch is None:
-            world_loc_change_batch = torch.zeros((*pose_change_batch.shape[:2], 3),
-                                                 device=pose_change_batch.device)  # no world loc change
+            world_loc_change_batch = torch.zeros((*pose_inputs_batch.shape[:2], 3),
+                                                 device=pose_inputs_batch.device)  # no world loc change
 
         if world_rot_change_batch is None:
-            world_rot_change_batch = torch.zeros((*pose_change_batch.shape[:2], 3),
-                                                 device=pose_change_batch.device)  # no world rot change
+            world_rot_change_batch = torch.zeros((*pose_inputs_batch.shape[:2], 3),
+                                                 device=pose_inputs_batch.device)  # no world rot change
+
+        absolute_loc, absolute_rot = self.__calculate_abs(pose_inputs_batch)
+
+        world_rot_matrix_change_batch = euler_angles_to_matrix(
+            world_rot_change_batch, "XYZ")
+        projections = torch.empty_like(absolute_loc)
+
+        # for every frame in clip
+        for i in range(pose_inputs_batch.shape[1]):
+            self.__world_rotations = torch.bmm(
+                self.__world_rotations,
+                world_rot_matrix_change_batch[:, i]
+            )
+            self.__world_locations += world_loc_change_batch[:, i]
+            projections[:, i] = self.__pose_projection.forward(
+                absolute_loc[:, i],
+                self.__world_locations,
+                self.__world_rotations
+            )
+
+        return projections.reshape((*pose_inputs_batch.shape[0:3], 3)), absolute_loc, absolute_rot
+
+    def _calculate_abs_from_abs_output(self, pose_inputs_batch):
+        # if the projection_type is absolute_loc, we need to convert it
+        # to something that actually scales back to the original skeleton size
+        # so self-normalize first, and denormalize with respect to reference pose later
+        absolute_loc = self.__denormalize.from_abs(pose_inputs_batch, {
+            'age': [p.age for p in self.__pedestrians],
+            'gender': [p.gender for p in self.__pedestrians]
+        })
+        absolute_rot = None
+        return absolute_loc, absolute_rot
+
+    def _calculate_abs_from_pose_changes(self, pose_inputs_batch):
+        (batch_size, clip_length, points, features) = pose_inputs_batch.shape
 
         (prev_relative_loc, prev_relative_rot) = zip(*[
             p.current_pose.tensors
@@ -97,29 +151,17 @@ class ProjectionModule(nn.Module):
         # TODO: wouldn't it be better if P3dPose and P3PoseProjection were directly sequence-aware?
         # so that we only get in the initial loc/rot and a sequence of changes
         absolute_loc = torch.empty(
-            (batch_size, clip_length, points, features), device=pose_change_batch.device)
+            (batch_size, clip_length, points, features), device=pose_inputs_batch.device)
         absolute_rot = torch.empty(
-            (batch_size, clip_length, points, 3, 3), device=pose_change_batch.device)
+            (batch_size, clip_length, points, 3, 3), device=pose_inputs_batch.device)
+
         pose: P3dPose = self.__pedestrians[0].current_pose
+
         for i in range(clip_length):
             (absolute_loc[:, i], absolute_rot[:, i], prev_relative_rot) = pose.forward(
-                pose_change_batch[:, i], prev_relative_loc, prev_relative_rot)
+                pose_inputs_batch[:, i], prev_relative_loc, prev_relative_rot)
 
-        world_rot_matrix_change_batch = euler_angles_to_matrix(
-            world_rot_change_batch, "XYZ")
-        projections = torch.empty_like(absolute_loc)
-        for i in range(clip_length):
-            self.__world_rotations = torch.bmm(
-                self.__world_rotations,
-                world_rot_matrix_change_batch[:, i]
-            )
-            self.__world_locations += world_loc_change_batch[:, i]
-            projections[:, i] = self.__pose_projection.forward(
-                absolute_loc[:, i],
-                self.__world_locations,
-                self.__world_rotations
-            )
-        return projections.reshape((batch_size, clip_length, points, 3)), absolute_loc, absolute_rot
+        return absolute_loc, absolute_rot
 
     def forward(self, pose_inputs: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         (projected_pose, absolute_pose_loc, absolute_pose_rot) = self.project_pose(
