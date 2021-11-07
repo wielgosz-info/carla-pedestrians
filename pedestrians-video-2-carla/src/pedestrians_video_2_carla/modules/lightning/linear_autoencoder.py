@@ -23,7 +23,7 @@ class LinearAE(LitBaseMapper):
         self.__input_features = 2  # (x, y)
 
         self.__output_nodes_len = len(self.output_nodes)
-        self.__output_features = 6
+        self.__output_features = 6  # Rotation 6D
 
         self.__input_size = self.__clip_length * self.__input_nodes_len * self.__input_features
         self.__output_size = self.__clip_length * self.__output_nodes_len * self.__output_features

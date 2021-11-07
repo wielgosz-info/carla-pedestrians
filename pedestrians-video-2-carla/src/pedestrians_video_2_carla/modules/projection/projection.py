@@ -151,7 +151,7 @@ class ProjectionModule(nn.Module):
         return absolute_loc, absolute_rot
 
     def _calculate_abs_from_pose_changes(self, pose_inputs_batch):
-        (batch_size, clip_length, points, features) = pose_inputs_batch.shape
+        (batch_size, clip_length, points, *_) = pose_inputs_batch.shape
 
         (prev_relative_loc, prev_relative_rot) = zip(*[
             p.current_pose.tensors
@@ -166,7 +166,7 @@ class ProjectionModule(nn.Module):
         # TODO: wouldn't it be better if P3dPose and P3PoseProjection were directly sequence-aware?
         # so that we only get in the initial loc/rot and a sequence of changes
         absolute_loc = torch.empty(
-            (batch_size, clip_length, points, features), device=pose_inputs_batch.device)
+            (batch_size, clip_length, points, 3), device=pose_inputs_batch.device)
         absolute_rot = torch.empty(
             (batch_size, clip_length, points, 3, 3), device=pose_inputs_batch.device)
 
