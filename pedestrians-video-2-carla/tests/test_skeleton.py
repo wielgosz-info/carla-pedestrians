@@ -21,7 +21,8 @@ def test_carla_linear(test_logs_dir):
         "--loss_modes",
         "common_loc_2d",
         "--renderers",
-        "none"
+        "none",
+        "--limit_val_batches=1"
     ], test_logs_dir)
 
     experiment_dir = os.path.join(test_logs_dir, "LitLinearMapper", "version_0")
@@ -46,9 +47,8 @@ def test_jaad_baseline(test_logs_dir):
         "--clip_length=32",
         "--input_nodes=BODY_25_SKELETON",
         "--output_nodes=CARLA_SKELETON",
-        "--max_epochs=3",
+        "--max_epochs=1",
         "--loss_modes=common_loc_2d",
-        "--check_val_every_n_epoch=3",
         "--max_videos=4",
         "--renderers",
         "source_videos",
@@ -64,10 +64,6 @@ def test_jaad_baseline(test_logs_dir):
     # assert video files were created
     assert os.path.exists(video_dir), 'Videos dir was not created'
 
-    # assert it created four video dirs in val
-    assert len(os.listdir(os.path.join(video_dir, 'val'))
-               ) == 4, 'Wrong amount of video subdirs was created'
-
 
 def test_carla_baseline(test_logs_dir):
     """
@@ -76,18 +72,25 @@ def test_carla_baseline(test_logs_dir):
     main([
         "--data_module_name=Carla2D3D",
         "--model_name=Baseline3DPose",
-        "--batch_size=2",
+        "--batch_size=8",
         "--num_workers=0",
         "--clip_length=32",
         "--input_nodes=CARLA_SKELETON",
         "--output_nodes=CARLA_SKELETON",
-        "--max_epochs=1",
+        "--max_epochs=3",
+        "--check_val_every_n_epoch=3",
         "--loss_modes=loc_2d_3d",
         "--max_videos=4",
         "--renderers",
         "input_points",
-        "projection_points"
+        "projection_points",
+        "--limit_val_batches=1"
     ], test_logs_dir)
+
+    video_dir = os.path.join(
+        test_logs_dir, "LitBaseline3DPoseMapper", "version_0", "videos")
+    # assert video files were created
+    assert os.path.exists(video_dir), 'Videos dir was not created'
 
 
 def test_carla_lstm(test_logs_dir):
@@ -107,7 +110,8 @@ def test_carla_lstm(test_logs_dir):
         "cum_pose_changes",
         "loc_2d_3d",
         "--renderers",
-        "none"
+        "none",
+        "--limit_val_batches=1"
     ], test_logs_dir)
 
 
@@ -127,4 +131,10 @@ def test_carla_linear_autoencoder(test_logs_dir):
         "--loss_modes",
         "rot_3d",
         "loc_2d_3d",
+        "--limit_val_batches=1"
     ], test_logs_dir)
+
+    video_dir = os.path.join(
+        test_logs_dir, "LitLinearAutoencoderMapper", "version_0", "videos")
+    # assert video files were created
+    assert os.path.exists(video_dir), 'Videos dir was not created'
