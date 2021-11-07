@@ -28,6 +28,7 @@ class LitBaseMapper(pl.LightningModule):
         output_nodes: Type[Skeleton] = CARLA_SKELETON,
         loss_modes: List[LossModes] = None,
         projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
+        needs_confidence: bool = False,
         **kwargs
     ):
         super().__init__()
@@ -35,6 +36,8 @@ class LitBaseMapper(pl.LightningModule):
         if loss_modes is None or len(loss_modes) == 0:
             loss_modes = [LossModes.common_loc_2d]
         self._loss_modes = loss_modes
+
+        self._needs_confidence = needs_confidence
 
         modes = []
         for mode in self._loss_modes:
@@ -127,7 +130,12 @@ class LitBaseMapper(pl.LightningModule):
     def _step(self, batch, batch_idx, dataloader_idx, stage):
         (frames, targets, meta) = batch
 
-        pose_changes = self.forward(frames.to(self.device))
+        if self._needs_confidence:
+            frames = frames.to(self.device)
+        else:
+            frames = frames[..., 0:2].clone().to(self.device)
+
+        pose_changes = self.forward(frames)
 
         (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot) = self.projection(
             pose_changes

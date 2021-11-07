@@ -60,9 +60,9 @@ class LitBaseline3DPoseMapper(LitBaseMapper):
     def forward(self, x):
         # the baseline model expects a single frame
         original_shape = x.shape
-        x = x[..., 0:self.__input_features].reshape((-1, self.__input_size))
+        x = x.view((-1, self.__input_size))
         x = self.baseline(x)
-        x = x.view(*original_shape[0:-2],
+        x = x.view(*original_shape[0:2],
                    self.__output_nodes_len, self.__output_features)
         return x
 

@@ -10,8 +10,8 @@ from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 from pedestrians_video_2_carla import __version__
 from pedestrians_video_2_carla.loggers.pedestrian import PedestrianLogger
-from pedestrians_video_2_carla.data.datamodules import *
-from pedestrians_video_2_carla.modules.lightning import *
+from pedestrians_video_2_carla.data.datamodules import DATA_MODULES
+from pedestrians_video_2_carla.modules.lightning import MODELS
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -23,16 +23,12 @@ __license__ = "MIT"
 # executable/script.
 
 
-# TODO: get this from argparse
-def get_model_cls():
-    return LitBaseline3DPoseMapper
+def get_model_cls(model_name: str = 'LinearAutoencoder'):
+    return MODELS[model_name]
 
 
-def get_data_module_cls(data_module_name: str = 'Carla2D3DDataModule'):
-    if data_module_name == 'Carla2D3DDataModule':
-        return Carla2D3DDataModule
-    elif data_module_name == 'JAADOpenPoseDataModule':
-        return JAADOpenPoseDataModule
+def get_data_module_cls(data_module_name: str = 'Carla2D3D'):
+    return DATA_MODULES[data_module_name]
 
 
 def add_program_args():
@@ -75,8 +71,16 @@ def add_program_args():
         "--data_module_name",
         dest="data_module_name",
         help="Data module class to use",
-        default="Carla2D3DDataModule",
-        choices=["Carla2D3DDataModule", "JAADOpenPoseDataModule"],
+        default="Carla2D3D",
+        choices=list(DATA_MODULES.keys()),
+        type=str,
+    )
+    parser.add_argument(
+        "--model_name",
+        dest="model_name",
+        help="Model class to use",
+        default="LinearAutoencoder",
+        choices=list(MODELS.keys()),
         type=str,
     )
     return parser
@@ -98,7 +102,7 @@ def setup_logging(loglevel):
     matplotlib_logger.setLevel(logging.INFO)
 
 
-def main(args: List[str]):
+def main(args: List[str], logs_root_dir: str = "lightning_logs"):
     """
     :param args: command line parameters as list of strings
           (for example  ``["--verbose"]``).
@@ -116,7 +120,7 @@ def main(args: List[str]):
 
     parser = pl.Trainer.add_argparse_args(parser)
 
-    model_cls = get_model_cls()
+    model_cls = get_model_cls(program_args.model_name)
     data_module_cls = get_data_module_cls(program_args.data_module_name)
 
     parser = data_module_cls.add_data_specific_args(parser)
@@ -137,7 +141,7 @@ def main(args: List[str]):
 
     # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
     tb_logger = TensorBoardLogger(
-        'lightning_logs',
+        logs_root_dir,
         name=model.__class__.__name__
     )
     pedestrian_logger = PedestrianLogger(

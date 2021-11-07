@@ -2,6 +2,7 @@ import logging
 from typing import List, Union
 
 import numpy as np
+from pedestrians_video_2_carla.renderers import source_videos_renderer
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckExtractor)
 from pytorch_lightning.loggers import LightningLoggerBase
@@ -79,6 +80,14 @@ class PedestrianLogger(LightningLoggerBase):
             self._renderers.remove(PedestrianRenderers.none)
         except ValueError:
             pass
+
+        if kwargs.get('source_videos_dir', None) is None:
+            try:
+                self._renderers.remove(PedestrianRenderers.source_videos)
+                logging.getLogger(__name__).warning(
+                    "No source videos dir was specified. Disabling source videos renderer.")
+            except ValueError:
+                pass
 
         if len(self._renderers) == 0:
             logging.getLogger(__name__).warning(

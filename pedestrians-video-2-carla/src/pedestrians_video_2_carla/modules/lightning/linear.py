@@ -13,7 +13,7 @@ class LitLinearMapper(LitBaseMapper):
                  clip_length: int = 30,
                  **kwargs
                  ):
-        super().__init__(**kwargs)
+        super().__init__(needs_confidence=True, **kwargs)
 
         self.__clip_length = clip_length
 
@@ -27,16 +27,17 @@ class LitLinearMapper(LitBaseMapper):
         self.__input_size = self.__clip_length * self.__input_nodes_len * self.__input_features
         self.__output_size = self.__clip_length * self.__output_nodes_len * self.__output_features
 
-        self.pose_linear = nn.Linear(
+        self.linear = nn.Linear(
             self.__input_size,
             self.__output_size
         )
 
     def forward(self, x):
-        x = x.reshape((-1, self.__input_size))
-        pose_change = self.pose_linear(x)
-        pose_change = pose_change.reshape(
-            (-1, self.__clip_length, self.__output_nodes_len, self.__output_features))
+        original_shape = x.shape
+        x = x.view((-1, self.__input_size))
+        pose_change = self.linear(x)
+        pose_change = pose_change.view(*original_shape[0:2],
+                                       self.__output_nodes_len, self.__output_features)
         return pose_change
 
     def configure_optimizers(self):

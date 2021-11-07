@@ -45,13 +45,12 @@ class LitLSTMMapper(LitBaseMapper):
 
     def forward(self, x):
         original_shape = x.shape
-        x = x[..., 0:self.__input_features].reshape(
-            *original_shape[0:2], self.__input_size)
+        x = x.view(*original_shape[0:2], self.__input_size)
         x = self.linear_1(x)
         x, _ = self.lstm_1(x)
         pose_change = self.linear_2(x)
-        pose_change = pose_change.reshape(
-            (original_shape[0:2], self.__output_nodes_len, self.__output_features))
+        pose_change = pose_change.view(*original_shape[0:2],
+                                       self.__output_nodes_len, self.__output_features)
         return pose_change
 
     def configure_optimizers(self):

@@ -45,13 +45,14 @@ class LitLinearAutoencoderMapper(LitBaseMapper):
         )
 
     def forward(self, x):
-        x = x[..., 0:self.__input_features].reshape((-1, self.__input_size))
+        original_shape = x.shape
+        x = x.view((-1, self.__input_size))
 
         x = self.__encoder(x)
-        x = self.__decoder(x)
+        pose_change = self.__decoder(x)
 
-        pose_change = x.reshape(
-            (-1, self.__clip_length, self.__output_nodes_len, self.__output_features))
+        pose_change = pose_change.view(*original_shape[0:2],
+                                       self.__output_nodes_len, self.__output_features)
         return pose_change
 
     def configure_optimizers(self):
