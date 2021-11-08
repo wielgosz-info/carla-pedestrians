@@ -57,6 +57,12 @@ class LitBaseline3DPoseMapper(LitBaseMapper):
             'p_dropout': p_dropout
         })
 
+        self.apply(self.init_weights)
+
+    def init_weights(self, m):
+        if type(m) == nn.Linear:
+            torch.nn.init.kaiming_normal_(m.weight)
+
     def forward(self, x):
         # the baseline model expects a single frame
         original_shape = x.shape
