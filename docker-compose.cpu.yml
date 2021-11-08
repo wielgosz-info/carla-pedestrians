@@ -19,6 +19,7 @@ services:
       - vscode:/home/carla-pedestrians-client/.vscode-server
       - vscode-insiders:/home/carla-pedestrians-client/.vscode-server-insiders
       - outputs:/outputs
+    shm_size: 2gb
 
 volumes:
   vscode:
