@@ -23,7 +23,7 @@ class P3dPose(Pose, torch.nn.Module):
         self.__last_rel = None
         self.__last_rel_get = None
 
-    def __pose_to_tensors(self, pose: OrderedDict[str, carla.Transform]) -> Tuple[Tensor, Tensor]:
+    def pose_to_tensors(self, pose: OrderedDict[str, carla.Transform]) -> Tuple[Tensor, Tensor]:
         """
         Converts pose from OrderedDict to Tensor.
 
@@ -45,7 +45,7 @@ class P3dPose(Pose, torch.nn.Module):
         return (torch.tensor(locations, device=self._device, dtype=torch.float32),
                 euler_angles_to_matrix(torch.tensor(rotations, device=self._device, dtype=torch.float32), "XYZ"))
 
-    def tensors_to_pose(self, p3d_locations: Tensor, p3d_rotations: Tensor = None) -> OrderedDict:
+    def tensors_to_pose(self, p3d_locations: Tensor, p3d_rotations: Tensor) -> OrderedDict:
         """
         Converts pose from Tensor to OrderedDict.
 
@@ -66,9 +66,8 @@ class P3dPose(Pose, torch.nn.Module):
         loc_list = list(
             p3d_locations.cpu().numpy().astype(float))
 
-        if p3d_rotations is not None:
-            rot_list = list(
-                -np.rad2deg(matrix_to_euler_angles(p3d_rotations, "XYZ").cpu().numpy()).astype(float))
+        rot_list = list(
+            -np.rad2deg(matrix_to_euler_angles(p3d_rotations, "XYZ").cpu().numpy()).astype(float))
 
         for (idx, bone_name) in enumerate(pose.keys()):
             loc = carla.Location(
@@ -76,20 +75,15 @@ class P3dPose(Pose, torch.nn.Module):
                 y=loc_list[idx][1],
                 z=-loc_list[idx][2]
             )
-            if p3d_rotations is not None:
-                rot = carla.Rotation(
-                    pitch=rot_list[idx][1],
-                    yaw=rot_list[idx][2],
-                    roll=rot_list[idx][0]
-                )
-                pose[bone_name] = carla.Transform(
-                    location=loc,
-                    rotation=rot
-                )
-            else:
-                pose[bone_name] = carla.Transform(
-                    location=loc
-                )
+            rot = carla.Rotation(
+                pitch=rot_list[idx][1],
+                yaw=rot_list[idx][2],
+                roll=rot_list[idx][0]
+            )
+            pose[bone_name] = carla.Transform(
+                location=loc,
+                rotation=rot
+            )
 
         return pose
 
@@ -238,7 +232,7 @@ class P3dPose(Pose, torch.nn.Module):
     def relative(self, new_pose_dict):
         # update our reference Tensors
         (self.__relative_p3d_locations,
-         self.__relative_p3d_rotations) = self.__pose_to_tensors(new_pose_dict)
+         self.__relative_p3d_rotations) = self.pose_to_tensors(new_pose_dict)
         # and set the timestamp
         self._last_rel_mod = time.time_ns()
 

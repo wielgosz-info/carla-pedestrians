@@ -13,7 +13,7 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from torch.functional import Tensor
-from pytorch3d.transforms.rotation_conversions import matrix_to_euler_angles
+from pytorch_lightning.utilities import rank_zero_warn
 
 
 class CarlaRenderer(Renderer):
@@ -31,6 +31,11 @@ class CarlaRenderer(Renderer):
                **kwargs
                ) -> List[np.ndarray]:
         rendered_videos = len(absolute_pose_loc)
+
+        if absolute_pose_rot is None:
+            rank_zero_warn(
+                "Absolute pose rotations are not available, falling back to reference rotations. " +
+                "Please note that this may result in weird rendering effects.")
 
         # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
         client, world = setup_client_and_world(fps=self.__fps)
@@ -67,10 +72,18 @@ class CarlaRenderer(Renderer):
         camera_rgb = setup_camera(
             world, camera_queue, bound_pedestrian, image_size, self.__fov)
 
+        if absolute_pose_rot_clip is None:
+            # for correct rendering, the rotations are required
+            # since we don't have them, try to salvage the situation
+            # by using the rotations from reference pose
+            (_, ref_abs_pose_rot) = bound_pedestrian.current_pose.pose_to_tensors(
+                bound_pedestrian.current_pose.absolute)
+            absolute_pose_rot_clip = [
+                ref_abs_pose_rot
+            ] * len(absolute_pose_loc_clip)
+
         video = []
-        for frame_idx, absolute_pose_loc_frame in enumerate(absolute_pose_loc_clip):
-            absolute_pose_rot_frame = absolute_pose_rot_clip[
-                frame_idx] if absolute_pose_rot_clip is not None else None
+        for absolute_pose_loc_frame, absolute_pose_rot_frame in zip(absolute_pose_loc_clip, absolute_pose_rot_clip):
             frame = self.render_frame(absolute_pose_loc_frame, absolute_pose_rot_frame,
                                       image_size, world, bound_pedestrian, camera_queue)
             video.append(frame)
