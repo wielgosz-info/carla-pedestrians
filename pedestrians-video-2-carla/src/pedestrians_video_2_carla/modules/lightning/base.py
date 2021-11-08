@@ -24,7 +24,7 @@ class LitBaseMapper(pl.LightningModule):
 
     def __init__(
         self,
-        input_nodes: Type[Skeleton] = BODY_25_SKELETON,
+        input_nodes: Type[Skeleton] = CARLA_SKELETON,
         output_nodes: Type[Skeleton] = CARLA_SKELETON,
         loss_modes: List[LossModes] = None,
         projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
@@ -78,7 +78,7 @@ class LitBaseMapper(pl.LightningModule):
         parser.add_argument(
             '--input_nodes',
             type=get_skeleton_type_by_name,
-            default=BODY_25_SKELETON
+            default=CARLA_SKELETON
         )
         parser.add_argument(
             '--output_nodes',

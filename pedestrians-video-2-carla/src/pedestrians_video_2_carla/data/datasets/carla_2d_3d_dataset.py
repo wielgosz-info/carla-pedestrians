@@ -69,41 +69,42 @@ class Carla2D3DIterableDataset(IterableDataset):
 
     def __iter__(self):
         # this is infinite generative dataset, it doesn't matter how many workers are there
-        pose_changes = torch.zeros((1, self.clip_length, len(self.nodes), 3))
-        for i in range(self.clip_length):
-            indices = np.random.choice(range(len(self.nodes)),
-                                       size=self.random_changes_each_frame, replace=False)
-            pose_changes[0, i, indices] = (torch.rand(
-                (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
+        while True:
+            pose_changes = torch.zeros((1, self.clip_length, len(self.nodes), 3))
+            for i in range(self.clip_length):
+                indices = np.random.choice(range(len(self.nodes)),
+                                        size=self.random_changes_each_frame, replace=False)
+                pose_changes[0, i, indices] = (torch.rand(
+                    (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
 
-        # TODO: we should probably take care of the "correct" pedestrians data distribution
-        # need to find some pedestrian statistics
-        age = np.random.choice(['adult', 'child'], size=1)[0]
-        gender = np.random.choice(['male', 'female'], size=1)[0]
+            # TODO: we should probably take care of the "correct" pedestrians data distribution
+            # need to find some pedestrian statistics
+            age = np.random.choice(['adult', 'child'], size=1)[0]
+            gender = np.random.choice(['male', 'female'], size=1)[0]
 
-        self.projection.on_batch_start((pose_changes, None, {
-            'age': [age],
-            'gender': [gender]
-        }), 0, None)
-        projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
-            pose_changes
-        )
+            self.projection.on_batch_start((pose_changes, None, {
+                'age': [age],
+                'gender': [gender]
+            }), 0, None)
+            projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
+                pose_changes
+            )
 
-        # use the third dimension as 'confidence' of the projection
-        # so we're compatible with OpenPose
-        # this will also prevent the models from accidentally using
-        # the depth data that pytorch3d leaves in the projections
-        projection_2d[..., 2] = 1.0
+            # use the third dimension as 'confidence' of the projection
+            # so we're compatible with OpenPose
+            # this will also prevent the models from accidentally using
+            # the depth data that pytorch3d leaves in the projections
+            projection_2d[..., 2] = 1.0
 
-        if self.transform:
-            projection_2d = self.transform(projection_2d)
+            if self.transform:
+                projection_2d = self.transform(projection_2d)
 
-        yield (
-            projection_2d.squeeze(dim=0),
-            {
-                'pose_changes': pose_changes.squeeze(dim=0),
-                'absolute_pose_loc': absolute_pose_loc.squeeze(dim=0),
-                'absolute_pose_rot': absolute_pose_rot.squeeze(dim=0)
-            },
-            {'age': age, 'gender': gender}
-        )
+            yield (
+                projection_2d.squeeze(dim=0),
+                {
+                    'pose_changes': pose_changes.squeeze(dim=0),
+                    'absolute_pose_loc': absolute_pose_loc.squeeze(dim=0),
+                    'absolute_pose_rot': absolute_pose_rot.squeeze(dim=0)
+                },
+                {'age': age, 'gender': gender}
+            )

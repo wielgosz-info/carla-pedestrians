@@ -22,7 +22,8 @@ def test_carla_linear(test_logs_dir):
         "common_loc_2d",
         "--renderers",
         "none",
-        "--limit_val_batches=1"
+        "--limit_val_batches=1",
+        "--limit_train_batches=1"
     ], test_logs_dir)
 
     experiment_dir = os.path.join(test_logs_dir, "LitLinearMapper", "version_0")
@@ -84,7 +85,8 @@ def test_carla_baseline(test_logs_dir):
         "--renderers",
         "input_points",
         "projection_points",
-        "--limit_val_batches=1"
+        "--limit_val_batches=1",
+        "--limit_train_batches=1"
     ], test_logs_dir)
 
     video_dir = os.path.join(
@@ -111,7 +113,8 @@ def test_carla_lstm(test_logs_dir):
         "loc_2d_3d",
         "--renderers",
         "none",
-        "--limit_val_batches=1"
+        "--limit_val_batches=1",
+        "--limit_train_batches=1"
     ], test_logs_dir)
 
 
@@ -131,7 +134,8 @@ def test_carla_linear_autoencoder(test_logs_dir):
         "--loss_modes",
         "rot_3d",
         "loc_2d_3d",
-        "--limit_val_batches=1"
+        "--limit_val_batches=1",
+        "--limit_train_batches=1"
     ], test_logs_dir)
 
     video_dir = os.path.join(
