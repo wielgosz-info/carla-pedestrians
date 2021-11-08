@@ -58,7 +58,7 @@ RUN pip install --no-cache-dir \
 # Python, CUDA and PyTorch versions specified in URL must match
 RUN pip install --no-cache-dir \
     -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu111_pyt191/download.html \
-    pytorch3d
+    pytorch3d==0.6.0
 
 # Copy client files so that we can do editable pip install
 COPY . /app

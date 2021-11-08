@@ -65,7 +65,7 @@ RUN pip install --no-cache-dir \
 # PyTorch3D
 # Python, CUDA and PyTorch versions specified in URL must match
 RUN pip install --no-cache-dir \
-    "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+    "git+https://github.com/facebookresearch/pytorch3d.git@v0.6.0"
 
 # Copy client files so that we can do editable pip install
 COPY . /app
