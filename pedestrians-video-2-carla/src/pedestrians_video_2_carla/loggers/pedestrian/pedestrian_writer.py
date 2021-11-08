@@ -31,7 +31,6 @@ class PedestrianWriter(object):
                  max_videos: int = 10,
                  merging_method: MergingMethod = MergingMethod.square,
                  source_videos_dir: str = None,
-                 projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
                  **kwargs) -> None:
         self._log_dir = log_dir
 
@@ -58,7 +57,6 @@ class PedestrianWriter(object):
             extractor=self._extractor,
             autonormalize=False
         )
-        self.__projection_type = projection_type
 
         # actual renderers
         self.__zeros_renderer = Renderer()
@@ -68,9 +66,7 @@ class PedestrianWriter(object):
         ) if PedestrianRenderers.source_videos in self._renderers else None
 
         self.__source_carla_renderer = CarlaRenderer(
-            fps=self._fps,
-            # this is true for Carla2D3DDataset; TODO: make it configurable when other dataset are connected
-            projection_type=ProjectionTypes.pose_changes
+            fps=self._fps
         ) if PedestrianRenderers.source_carla in self._renderers else None
 
         self.__input_renderer = PointsRenderer(
@@ -83,15 +79,15 @@ class PedestrianWriter(object):
         ) if PedestrianRenderers.projection_points in self._renderers else None
 
         self.__carla_renderer = CarlaRenderer(
-            fps=self._fps,
-            projection_type=self.__projection_type
+            fps=self._fps
         ) if PedestrianRenderers.carla in self._renderers else None
 
     @torch.no_grad()
     def log_videos(self,
                    batch: Tensor,
                    projected_pose: Tensor,
-                   pose_change: Tensor,
+                   absolute_pose_loc: Tensor,
+                   absolute_pose_rot: Tensor,
                    step: int,
                    batch_idx: int,
                    dataloader_idx: int,
@@ -109,7 +105,8 @@ class PedestrianWriter(object):
                 {k: v[self.__videos_slice] for k, v in targets.items()},
                 {k: v[self.__videos_slice] for k, v in meta.items()},
                 projected_pose[self.__videos_slice],
-                pose_change[self.__videos_slice],
+                absolute_pose_loc[self.__videos_slice],
+                absolute_pose_rot[self.__videos_slice] if absolute_pose_rot is not None else None,
                 batch_idx,
                 dataloader_idx)):
             video_dir = os.path.join(self._log_dir, stage, meta['video_id'])
@@ -134,7 +131,8 @@ class PedestrianWriter(object):
                 targets: Tensor,
                 meta: Dict[str, List[Any]],
                 projected_pose: Tensor,
-                pose_change: Tensor,
+                absolute_pose_loc: Tensor,
+                absolute_pose_rot: Tensor,
                 batch_idx: int,
                 dataloader_idx: int = None
                 ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
@@ -145,10 +143,12 @@ class PedestrianWriter(object):
         :type frames: Tensor
         :param meta: Meta data for each clips
         :type meta: Dict[str, List[Any]]
-        :param projected_pose: Output of the projection layer
+        :param projected_pose: Output of the projection layer.
         :type projected_pose: Tensor
-        :param pose_change: Output from the .forward
-        :type pose_change: Tensor
+        :param absolute_pose_loc: Output from the .forward converted to absolute pose locations. Get it from projection layer.
+        :type absolute_pose_loc: Tensor
+        :param absolute_pose_rot: Output from the .forward converted to absolute pose rotations. May be None.
+        :type absolute_pose_rot: Tensor
         :param batch_idx: Batch index
         :type batch_idx: int
         :param dataloader_idx: Dataloader index. Can be None.
@@ -166,9 +166,9 @@ class PedestrianWriter(object):
 
         source_videos = None
         # it only makes sense to render single source
-        if self.__source_carla_renderer is not None and targets['pose_changes'] is not None:
+        if self.__source_carla_renderer is not None and targets['absolute_pose_loc'] is not None:
             source_videos = self.__source_carla_renderer.render(
-                targets['pose_changes'], meta, image_size
+                targets['absolute_pose_loc'], targets['absolute_pose_rot'], meta, image_size
             )
         elif self.__source_videos_renderer is not None:
             source_videos = self.__source_videos_renderer.render(
@@ -187,7 +187,7 @@ class PedestrianWriter(object):
         carla_videos = None
         if self.__carla_renderer is not None:
             carla_videos = self.__carla_renderer.render(
-                pose_change, meta, image_size
+                absolute_pose_loc, absolute_pose_rot, meta, image_size
             )
 
         if self._merging_method == MergingMethod.square:

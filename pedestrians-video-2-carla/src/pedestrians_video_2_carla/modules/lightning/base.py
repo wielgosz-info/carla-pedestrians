@@ -171,8 +171,15 @@ class LitBaseMapper(pl.LightningModule):
         for k, v in loss_dict.items():
             self.log('{}_loss/{}'.format(stage, k.name), v)
 
-        self._log_videos(pose_changes, projected_pose, batch,
-                         batch_idx, dataloader_idx, stage)
+        self._log_videos(
+            projected_pose=projected_pose,
+            absolute_pose_loc=absolute_pose_loc,
+            absolute_pose_rot=absolute_pose_rot,
+            batch=batch,
+            batch_idx=batch_idx,
+            dataloader_idx=dataloader_idx,
+            stage=stage
+        )
 
         # return primary loss - the first one available from loss_modes list
         # also log it as 'primary' for monitoring purposes
@@ -192,11 +199,30 @@ class LitBaseMapper(pl.LightningModule):
             vid, self.global_step, fps=fps
         )
 
-    def _log_videos(self, pose_change: Tensor, projected_pose: Tensor, batch: Tuple, batch_idx: int, dataloader_idx: int, stage: str, log_to_tb: bool = False):
+    def _log_videos(self,
+                    projected_pose: Tensor,
+                    absolute_pose_loc: Tensor,
+                    absolute_pose_rot: Tensor,
+                    batch: Tuple,
+                    batch_idx: int,
+                    dataloader_idx: int,
+                    stage: str,
+                    log_to_tb: bool = False
+                    ):
         if log_to_tb:
             vid_callback = self._log_to_tensorboard
         else:
             vid_callback = None
 
         self.logger[1].experiment.log_videos(
-            batch, projected_pose, pose_change, self.global_step, batch_idx, dataloader_idx, stage, vid_callback, force=(stage != 'train'))
+            batch,
+            projected_pose,
+            absolute_pose_loc,
+            absolute_pose_rot,
+            self.global_step,
+            batch_idx,
+            dataloader_idx,
+            stage,
+            vid_callback,
+            force=(stage != 'train')
+        )

@@ -1,12 +1,11 @@
 import logging
 from queue import Empty, Queue
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import carla
 import numpy as np
 import PIL
 import torch
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 from pedestrians_video_2_carla.renderers.renderer import Renderer
 from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
 from pedestrians_video_2_carla.carla_utils.setup import *
@@ -14,25 +13,32 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from torch.functional import Tensor
+from pytorch3d.transforms.rotation_conversions import matrix_to_euler_angles
 
 
 class CarlaRenderer(Renderer):
-    def __init__(self, fps=30.0, fov=90.0, projection_type=ProjectionTypes.pose_changes, **kwargs) -> None:
+    def __init__(self, fps=30.0, fov=90.0, **kwargs) -> None:
         super().__init__(**kwargs)
         self.__fps = fps
         self.__fov = fov
-        self.__projection_type = projection_type
 
     @torch.no_grad()
-    def render(self, pose_change: Tensor, meta: List[Dict[str, Any]], image_size: Tuple[int, int] = (800, 600), **kwargs) -> List[np.ndarray]:
-        rendered_videos = len(pose_change)
+    def render(self,
+               absolute_pose_loc: Tensor,
+               absolute_pose_rot: Tensor,
+               meta: List[Dict[str, Any]],
+               image_size: Tuple[int, int] = (800, 600),
+               **kwargs
+               ) -> List[np.ndarray]:
+        rendered_videos = len(absolute_pose_loc)
 
         # prepare connection to carla as needed - TODO: should this be in (logging) epoch start?
         client, world = setup_client_and_world(fps=self.__fps)
 
-        for clip_idx in range(len(pose_change)):
+        for clip_idx in range(rendered_videos):
             video = self.render_clip(
-                pose_change[clip_idx],
+                absolute_pose_loc[clip_idx],
+                absolute_pose_rot[clip_idx] if absolute_pose_rot is not None else None,
                 meta['age'][clip_idx],
                 meta['gender'][clip_idx],
                 image_size,
@@ -46,22 +52,27 @@ class CarlaRenderer(Renderer):
             destroy_client_and_world(client, world)
 
     @torch.no_grad()
-    def render_clip(self, pose_changes_clip, age, gender, image_size, world, rendered_videos):
-        # easiest way to get (sparse) rendering is to re-calculate all pose changes
+    def render_clip(self,
+                    absolute_pose_loc_clip: Tensor,
+                    absolute_pose_rot_clip: Union[Tensor, None],
+                    age: str,
+                    gender: str,
+                    image_size: Tuple[int, int],
+                    world: carla.World,
+                    rendered_videos: int
+                    ):
         bound_pedestrian = ControlledPedestrian(
-            world, age, gender, P3dPose, max_spawn_tries=10+rendered_videos, device=pose_changes_clip.device)
+            world, age, gender, P3dPose, max_spawn_tries=10+rendered_videos, device=absolute_pose_loc_clip.device)
         camera_queue = Queue()
         camera_rgb = setup_camera(
             world, camera_queue, bound_pedestrian, image_size, self.__fov)
-        (prev_relative_loc, prev_relative_rot) = bound_pedestrian.current_pose.tensors
-        # P3dPose.forward expects batches, so
-        prev_relative_loc = prev_relative_loc.unsqueeze(0)
-        prev_relative_rot = prev_relative_rot.unsqueeze(0)
 
         video = []
-        for pose_change_frame in pose_changes_clip:
-            (frame, prev_relative_rot) = self.render_frame(pose_change_frame, prev_relative_loc, prev_relative_rot,
-                                                           image_size, world, bound_pedestrian, camera_queue)
+        for frame_idx, absolute_pose_loc_frame in enumerate(absolute_pose_loc_clip):
+            absolute_pose_rot_frame = absolute_pose_rot_clip[
+                frame_idx] if absolute_pose_rot_clip is not None else None
+            frame = self.render_frame(absolute_pose_loc_frame, absolute_pose_rot_frame,
+                                      image_size, world, bound_pedestrian, camera_queue)
             video.append(frame)
 
         camera_rgb.stop()
@@ -73,28 +84,16 @@ class CarlaRenderer(Renderer):
 
     @torch.no_grad()
     def render_frame(self,
-                     pose_change_frame: Tensor,
-                     prev_relative_loc: Tensor,
-                     prev_relative_rot: Tensor,
+                     absolute_pose_loc_frame: Tensor,
+                     absolute_pose_rot_frame: Tensor,
                      image_size: Tuple[int, int],
                      world: carla.World,
                      bound_pedestrian: ControlledPedestrian,
                      camera_queue: Queue
                      ):
-        if self.__projection_type == ProjectionTypes.pose_changes:
-            (_, _, prev_relative_rot) = bound_pedestrian.current_pose.forward(
-                pose_change_frame.detach().unsqueeze(0), prev_relative_loc, prev_relative_rot)
-
-            bound_pedestrian.current_pose.tensors = (
-                prev_relative_loc[0], prev_relative_rot[0])
-            bound_pedestrian.apply_pose()
-        elif self.__projection_type == ProjectionTypes.absolute_loc:
-            prev_relative_rot = None
-            abs_pose = bound_pedestrian.current_pose.empty
-            for i, k in enumerate(abs_pose.keys()):
-                abs_pose[k] = carla.Transform(
-                    location=carla.Location(*pose_change_frame[i].numpy().tolist()))
-            bound_pedestrian.apply_pose(abs_pose_snapshot=abs_pose)
+        abs_pose = bound_pedestrian.current_pose.tensors_to_pose(
+            absolute_pose_loc_frame, absolute_pose_rot_frame)
+        bound_pedestrian.apply_pose(abs_pose_snapshot=abs_pose)
 
         # TODO: teleport when implemented
 
@@ -124,4 +123,4 @@ class CarlaRenderer(Renderer):
                 carla_img = torch.tensor(
                     np.array(img)[..., ::-1].copy(), dtype=torch.uint8)
 
-        return (carla_img, prev_relative_rot)
+        return carla_img

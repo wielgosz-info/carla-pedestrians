@@ -2,17 +2,17 @@ import logging
 from typing import List, Union
 
 import numpy as np
-from pedestrians_video_2_carla.renderers import source_videos_renderer
+from pedestrians_video_2_carla.modules.projection.projection import \
+    ProjectionTypes
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckExtractor)
 from pytorch_lightning.loggers import LightningLoggerBase
 from pytorch_lightning.loggers.base import rank_zero_experiment
-from pytorch_lightning.utilities import rank_zero_only
+from pytorch_lightning.utilities import rank_zero_only, rank_zero_warn
 
-from .pedestrian_renderers import PedestrianRenderers
 from .disabled_pedestrian_writer import DisabledPedestrianWriter
+from .pedestrian_renderers import PedestrianRenderers
 from .pedestrian_writer import PedestrianWriter
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 
 
 class PedestrianLogger(LightningLoggerBase):
@@ -67,8 +67,7 @@ class PedestrianLogger(LightningLoggerBase):
             self._video_saving_frequency_reduction
 
         if self._reduced_log_every_n_steps <= 1:
-            logging.getLogger(__name__).warning(
-                "Video logging interval set to 0. Disabling video output.")
+            rank_zero_warn("Video logging interval set to 0. Disabling video output.")
             self._writer_cls = DisabledPedestrianWriter
 
         # If renderers were not specified, use default. To disable, 'none' renderer must be passed explicitly.
@@ -84,14 +83,13 @@ class PedestrianLogger(LightningLoggerBase):
         if kwargs.get('source_videos_dir', None) is None:
             try:
                 self._renderers.remove(PedestrianRenderers.source_videos)
-                logging.getLogger(__name__).warning(
+                rank_zero_warn(
                     "No source videos dir was specified. Disabling source videos renderer.")
             except ValueError:
                 pass
 
         if len(self._renderers) == 0:
-            logging.getLogger(__name__).warning(
-                "No renderers specified. Disabling video output.")
+            rank_zero_warn("No renderers specified. Disabling video output.")
             self._writer_cls = DisabledPedestrianWriter
 
         if extractor is None:
