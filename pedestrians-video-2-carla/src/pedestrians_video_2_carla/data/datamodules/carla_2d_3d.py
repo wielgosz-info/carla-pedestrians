@@ -4,13 +4,12 @@ from typing import Optional
 
 import h5py
 import numpy as np
-from pedestrians_video_2_carla.data import OUTPUTS_BASE
+from pytorch_lightning.utilities.warnings import rank_zero_warn
 from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
     Carla2D3DDataset, Carla2D3DIterableDataset)
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckNormalize)
-from torch.utils.data.dataloader import DataLoader
 from tqdm import trange
 
 
@@ -23,6 +22,9 @@ class Carla2D3DDataModule(BaseDataModule):
         self.max_change_in_deg = max_change_in_deg
 
         super().__init__(**kwargs)
+
+        if kwargs.get("limit_train_batches", None) is None:
+            rank_zero_warn("No limit on train batches was set (--limit_train_batches), this will result in infinite training.")
 
         self.save_hyperparameters({
             'random_changes_each_frame': self.random_changes_each_frame,
