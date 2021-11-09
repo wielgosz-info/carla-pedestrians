@@ -62,7 +62,8 @@ class LitBaseMapper(pl.LightningModule):
             'input_nodes': get_skeleton_name_by_type(self.input_nodes),
             'output_nodes': get_skeleton_name_by_type(self.output_nodes),
             'loss_modes': [mode.name for mode in self._loss_modes],
-            'projection_type': projection_type.name
+            'projection_type': projection_type.name,
+            'model_name': self.__class__.__name__
         })
 
     @ staticmethod
