@@ -134,6 +134,9 @@ pedestrians-video-2-carla/issues_mwe
 # Logs
 lightning_logs/
 
+# shared data
+subsets/
+
 # Checkpoints
 *.pt
 
