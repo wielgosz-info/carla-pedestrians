@@ -23,6 +23,8 @@ class ProjectionTypes(Enum):
     """
     pose_changes = 0  # default, prefferred
     absolute_loc = 1  # undesired, but possible; it will most likely deform the skeleton; incompatible with some loss functions
+    # undesired, but possible; it will most likely deform the skeleton; incompatible with some loss functions
+    absolute_loc_rot = 2
 
 
 class ProjectionModule(nn.Module):
@@ -41,11 +43,14 @@ class ProjectionModule(nn.Module):
 
         if self.projection_type == ProjectionTypes.pose_changes:
             self.__calculate_abs = self._calculate_abs_from_pose_changes
-        elif self.projection_type == ProjectionTypes.absolute_loc:
+        elif self.projection_type == ProjectionTypes.absolute_loc or self.projection_type == ProjectionTypes.absolute_loc_rot:
             self.__denormalize = ReferenceSkeletonsDenormalize(
                 autonormalize=True
             )
-            self.__calculate_abs = self._calculate_abs_from_abs_output
+            if self.projection_type == ProjectionTypes.absolute_loc:
+                self.__calculate_abs = self._calculate_abs_from_abs_loc_output
+            else:
+                self.__calculate_abs = self._calculate_abs_from_abs_loc_rot_output
 
         # set on every batch
         self.__pedestrians = None
@@ -73,12 +78,14 @@ class ProjectionModule(nn.Module):
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
             (1, 3, 3)).repeat((batch_size, 1, 1))
 
-    def project_pose(self, pose_inputs_batch: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
+    def project_pose(self, pose_inputs_batch: Union[Tensor, Tuple[Tensor, Tensor]], world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None) -> Tuple[Tensor, Tensor, Tensor]:
         """
         Handles calculation of the pose projection.
 
-        :param pose_inputs_batch: (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles in radians)
-        :type pose_inputs_batch: Tensor
+        :param pose_inputs_batch: (N - batch_size, L - clip_length, B - bones, 3 - rotations as euler angles in radians) pose changes
+            OR (N - batch_size, L - clip_length, B - bones, 3 - x, y, z) absolute pose locations
+            OR (N - batch_size, L - clip_length, B - bones, 3 - x, y, z) absolute pose locations + (N - batch_size, L - clip_length, B - bones, 3, 3 - rotation matrix)
+        :type pose_inputs_batch: Union[Tensor, Tuple[Tensor, Tensor]]
         :param world_loc_change_batch: (N - batch_size, L - clip_length, 3 - location changes)
         :type world_loc_change_batch: Tensor
         :param world_rot_change_batch: (N - batch_size, L - clip_length, 3 - rotation changes as euler angles in radians)
@@ -94,23 +101,26 @@ class ProjectionModule(nn.Module):
         elif self.projection_type == ProjectionTypes.absolute_loc and pose_inputs_batch.ndim < 4:
             raise RuntimeError(
                 'Absolute location should have shape of (N - batch_size, L - clip_length, B - bones, 3 - absolute location coordinates)')
-
-        if world_loc_change_batch is None:
-            world_loc_change_batch = torch.zeros((*pose_inputs_batch.shape[:2], 3),
-                                                 device=pose_inputs_batch.device)  # no world loc change
-
-        if world_rot_change_batch is None:
-            world_rot_change_batch = torch.zeros((*pose_inputs_batch.shape[:2], 3),
-                                                 device=pose_inputs_batch.device)  # no world rot change
+        elif self.projection_type == ProjectionTypes.absolute_loc_rot and not isinstance(pose_inputs_batch, tuple):
+            raise RuntimeError(
+                'Absolute location with rotation should be a Tuple of tensors.')
 
         absolute_loc, absolute_rot = self.__calculate_abs(pose_inputs_batch)
+
+        if world_loc_change_batch is None:
+            world_loc_change_batch = torch.zeros((*absolute_loc.shape[:2], 3),
+                                                 device=absolute_loc.device)  # no world loc change
+
+        if world_rot_change_batch is None:
+            world_rot_change_batch = torch.zeros((*absolute_loc.shape[:2], 3),
+                                                 device=absolute_loc.device)  # no world rot change
 
         world_rot_matrix_change_batch = euler_angles_to_matrix(
             world_rot_change_batch, "XYZ")
         projections = torch.empty_like(absolute_loc)
 
         # for every frame in clip
-        for i in range(pose_inputs_batch.shape[1]):
+        for i in range(absolute_loc.shape[1]):
             self.__world_rotations = torch.bmm(
                 self.__world_rotations,
                 world_rot_matrix_change_batch[:, i]
@@ -122,9 +132,9 @@ class ProjectionModule(nn.Module):
                 self.__world_rotations
             )
 
-        return projections.reshape((*pose_inputs_batch.shape[0:3], 3)), absolute_loc, absolute_rot
+        return projections, absolute_loc, absolute_rot
 
-    def _calculate_abs_from_abs_output(self, pose_inputs_batch):
+    def _calculate_abs_from_abs_loc_output(self, pose_inputs_batch):
         # if the projection_type is absolute_loc, we need to convert it
         # to something that actually scales back to the original skeleton size
         # so self-normalize first, and denormalize with respect to reference pose later
@@ -133,6 +143,11 @@ class ProjectionModule(nn.Module):
             'gender': [p.gender for p in self.__pedestrians]
         })
         absolute_rot = None
+        return absolute_loc, absolute_rot
+
+    def _calculate_abs_from_abs_loc_rot_output(self, pose_inputs_batch):
+        absolute_loc, _ = self._calculate_abs_from_abs_loc_output(pose_inputs_batch[0])
+        absolute_rot = pose_inputs_batch[1]
         return absolute_loc, absolute_rot
 
     def _calculate_abs_from_pose_changes(self, pose_inputs_batch):
@@ -163,7 +178,7 @@ class ProjectionModule(nn.Module):
 
         return absolute_loc, absolute_rot
 
-    def forward(self, pose_inputs: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    def forward(self, pose_inputs: Union[Tensor, Tuple[Tensor, Tensor]], world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         (projected_pose, absolute_pose_loc, absolute_pose_rot) = self.project_pose(
             pose_inputs,
             world_loc_inputs,
