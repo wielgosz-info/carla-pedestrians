@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
+from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
 
 
 class LinearAEResidual(LitBaseMapper):
@@ -75,7 +76,7 @@ class LinearAEResidual(LitBaseMapper):
 
         pose_change = pose_change.view(*original_shape[0:2],
                                        self.__output_nodes_len, self.__output_features)
-        return pose_change
+        return euler_angles_to_matrix(pose_change, "XYZ")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
