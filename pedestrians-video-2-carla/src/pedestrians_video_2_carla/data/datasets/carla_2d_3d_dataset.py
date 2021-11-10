@@ -54,12 +54,20 @@ class Carla2D3DDataset(Dataset):
 
 
 class Carla2D3DIterableDataset(IterableDataset):
-    def __init__(self, clip_length: int = 30, random_changes_each_frame=3, max_change_in_deg=5, nodes: CARLA_SKELETON = CARLA_SKELETON, transform: Callable[[Tensor], Tensor] = None, **kwargs) -> None:
+    def __init__(self,
+                 batch_size: int = 64,
+                 clip_length: int = 30,
+                 random_changes_each_frame=3,
+                 max_change_in_deg=5,
+                 nodes: CARLA_SKELETON = CARLA_SKELETON,
+                 transform: Callable[[Tensor], Tensor] = None,
+                 **kwargs) -> None:
         self.transform = transform
         self.nodes = nodes
         self.clip_length = clip_length
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_rad = np.deg2rad(max_change_in_deg)
+        self.batch_size = batch_size
 
         self.projection = ProjectionModule(
             input_nodes=self.nodes,
@@ -70,10 +78,22 @@ class Carla2D3DIterableDataset(IterableDataset):
     def __iter__(self):
         # this is infinite generative dataset, it doesn't matter how many workers are there
         while True:
+            inputs, targets, meta = self.__generate_batch()
+            for idx in range(self.batch_size):
+                yield (
+                    inputs[idx],
+                    {k: v[idx] for k, v in targets.items()},
+                    {k: v[idx] for k, v in meta.items()}
+                )
+
+    def __generate_batch_naive(self):
+        # avg. exec time: 451.4229417300201 (over 10 calls)
+        batch = []
+        for _ in range(self.batch_size):
             pose_changes = torch.zeros((1, self.clip_length, len(self.nodes), 3))
             for i in range(self.clip_length):
                 indices = np.random.choice(range(len(self.nodes)),
-                                        size=self.random_changes_each_frame, replace=False)
+                                           size=self.random_changes_each_frame, replace=False)
                 pose_changes[0, i, indices] = (torch.rand(
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
 
@@ -99,7 +119,7 @@ class Carla2D3DIterableDataset(IterableDataset):
             if self.transform:
                 projection_2d = self.transform(projection_2d)
 
-            yield (
+            batch.append((
                 projection_2d.squeeze(dim=0),
                 {
                     'pose_changes': pose_changes.squeeze(dim=0),
@@ -107,4 +127,77 @@ class Carla2D3DIterableDataset(IterableDataset):
                     'absolute_pose_rot': absolute_pose_rot.squeeze(dim=0)
                 },
                 {'age': age, 'gender': gender}
-            )
+            ))
+        return (
+            torch.stack(batch[0]),
+            {k: torch.stack(v[k]) for k, v in batch[1].items()},
+            {k: torch.stack(v[k]) for k, v in batch[2].items()},
+        )
+
+    def __generate_batch(self):
+        # avg. exec time: 16.516127769998274 (over 10 calls)
+        nodes_size = len(self.nodes)
+        nodes_nums = np.arange(nodes_size)
+        pose_changes = torch.zeros(
+            (self.batch_size, self.clip_length, nodes_size, 3))
+
+        for idx in range(self.batch_size):
+            for i in range(self.clip_length):
+                indices = np.random.choice(nodes_nums,
+                                           size=self.random_changes_each_frame, replace=False)
+                pose_changes[idx, i, indices] = (torch.rand(
+                    (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
+
+        # TODO: we should probably take care of the "correct" pedestrians data distribution
+        # need to find some pedestrian statistics
+        age = np.random.choice(['adult', 'child'], size=self.batch_size)
+        gender = np.random.choice(['male', 'female'], size=self.batch_size)
+
+        self.projection.on_batch_start((pose_changes, None, {
+            'age': age,
+            'gender': gender
+        }), 0, None)
+        projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
+            pose_changes
+        )
+
+        # use the third dimension as 'confidence' of the projection
+        # so we're compatible with OpenPose
+        # this will also prevent the models from accidentally using
+        # the depth data that pytorch3d leaves in the projections
+        projection_2d[..., 2] = 1.0
+
+        if self.transform:
+            projection_2d = self.transform(projection_2d)
+
+        return (
+            projection_2d,
+            {
+                'pose_changes': pose_changes,
+                'absolute_pose_loc': absolute_pose_loc,
+                'absolute_pose_rot': absolute_pose_rot
+            },
+            {'age': age, 'gender': gender}
+        )
+
+
+if __name__ == "__main__":
+    from pedestrians_video_2_carla.utils.timing import timing, print_timing
+    from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize, CarlaHipsNeckExtractor
+
+    nodes = CARLA_SKELETON
+    iter_dataset = Carla2D3DIterableDataset(
+        batch_size=256,
+        clip_length=180,
+        transform=HipsNeckNormalize(CarlaHipsNeckExtractor(nodes)),
+        nodes=nodes
+    )
+
+    @timing
+    def test_iter():
+        return next(iter(iter_dataset))
+
+    for i in range(10):
+        test_iter()
+
+    print_timing()

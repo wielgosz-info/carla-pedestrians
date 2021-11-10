@@ -24,7 +24,8 @@ class Carla2D3DDataModule(BaseDataModule):
         super().__init__(**kwargs)
 
         if kwargs.get("limit_train_batches", None) is None:
-            rank_zero_warn("No limit on train batches was set (--limit_train_batches), this will result in infinite training.")
+            rank_zero_warn(
+                "No limit on train batches was set (--limit_train_batches), this will result in infinite training.")
 
         self.save_hyperparameters({
             'random_changes_each_frame': self.random_changes_each_frame,
@@ -114,7 +115,8 @@ class Carla2D3DDataModule(BaseDataModule):
                 nodes=self.nodes,
                 transform=self.transform,
                 random_changes_each_frame=self.random_changes_each_frame,
-                max_change_in_deg=self.max_change_in_deg
+                max_change_in_deg=self.max_change_in_deg,
+                batch_size=self.batch_size,
             )
             self.val_set = Carla2D3DDataset(
                 os.path.join(self._subsets_dir, 'val.hdf5'),
