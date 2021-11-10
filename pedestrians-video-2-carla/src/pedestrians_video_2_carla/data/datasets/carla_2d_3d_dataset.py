@@ -73,7 +73,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.projection = ProjectionModule(
             input_nodes=self.nodes,
             output_nodes=self.nodes,
-            projection_transform=self.transform
+            projection_transform=lambda x: x,
         )
 
     def __iter__(self):

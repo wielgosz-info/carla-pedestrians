@@ -11,6 +11,12 @@ from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckNormalize)
 from tqdm import trange
+import yaml
+
+try:
+    from yaml import CDumper as Dumper
+except ImportError:
+    from yaml import Dumper
 
 
 class Carla2D3DDataModule(BaseDataModule):
@@ -71,7 +77,7 @@ class Carla2D3DDataModule(BaseDataModule):
         iterable_dataset = Carla2D3DIterableDataset(
             clip_length=self.clip_length,
             nodes=self.nodes,
-            transform=self.transform,
+            transform=None,  # we want raw data in dataset
             random_changes_each_frame=self.random_changes_each_frame,
             max_change_in_deg=self.max_change_in_deg
         )
@@ -107,6 +113,19 @@ class Carla2D3DDataModule(BaseDataModule):
                     f.create_dataset("carla_2d_3d/meta/{}".format(k),
                                      data=[mapping[s] for s in v], dtype=np.uint16)
                     f["carla_2d_3d/meta/{}".format(k)].attrs["labels"] = labels
+
+        # save settings
+        settings = {
+            'data_module_name': self.__class__.__name__,
+            'nodes': self.nodes.__class__.__name__,
+            'clip_length': self.clip_length,
+            'random_changes_each_frame': self.random_changes_each_frame,
+            'max_change_in_deg': self.max_change_in_deg,
+            'val_set_size': val_set_size,
+            'test_set_size': test_set_size,
+        }
+        with open(os.path.join(self._subsets_dir, 'dparams.yaml'), 'w') as f:
+            yaml.dump(settings, f, Dumper=Dumper)
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
