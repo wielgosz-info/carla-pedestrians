@@ -12,5 +12,5 @@ import pytest
 pytest_plugins = [
     "tests.fixtures.torch",
     "tests.fixtures.walker_control",
-    "tests.fixtures.logs",
+    "tests.fixtures.flow",
 ]

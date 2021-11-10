@@ -144,13 +144,15 @@ def main(args: List[str], logs_root_dir: str = "lightning_logs"):
         logs_root_dir,
         name=model.__class__.__name__
     )
+
+    dict_args.setdefault('projection_type', model.projection.projection_type)
     pedestrian_logger = PedestrianLogger(
         save_dir=os.path.join(tb_logger.log_dir, 'videos'),
         name=tb_logger.name,
         version=tb_logger.version,
-        projection_type=model.projection.projection_type,
         **dict_args
     )
+
     checkpoint_callback = ModelCheckpoint(
         dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
         monitor="val_loss/primary",

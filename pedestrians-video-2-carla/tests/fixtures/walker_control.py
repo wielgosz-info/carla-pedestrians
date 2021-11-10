@@ -28,11 +28,14 @@ def pedestrian(pose_cls, device):
     return ControlledPedestrian(None, 'adult', 'female', pose_cls=pose_cls, device=device)
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def carla_world():
-    client, world = setup_client_and_world()
-    yield world
-    destroy_client_and_world(client, world, {})
+    try:
+        client, world = setup_client_and_world()
+        yield world
+        destroy_client_and_world(client, world, {})
+    except RuntimeError as e:
+        pytest.skip("Could not connect to CARLA. Original error: {}".format(e))
 
 
 @pytest.fixture
