@@ -8,6 +8,7 @@ from .common_loc_2d import calculate_loss_common_loc_2d
 from .loc_2d_3d import calculate_loss_loc_2d_3d
 from .cum_pose_changes import calculate_loss_cum_pose_changes
 from .rot_3d import calculate_loss_rot_3d
+from .loc_2d_loc_rot_3d import calculate_loss_loc_2d_loc_rot_3d
 
 
 class LossModes(Enum):
@@ -26,6 +27,9 @@ class LossModes(Enum):
     # Complex loss depending on other losses
     loc_2d_3d = (calculate_loss_loc_2d_3d, None, [
         'common_loc_2d', 'loc_3d'
+    ])
+    loc_2d_loc_rot_3d = (calculate_loss_loc_2d_loc_rot_3d, None, [
+        'common_loc_2d', 'loc_3d', 'rot_3d'
     ])
 
     def __init__(self, loss_fn, criterion, dependencies=None):
