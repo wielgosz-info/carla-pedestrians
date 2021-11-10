@@ -4,7 +4,7 @@ from torch import nn
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
-class LitLSTMMapper(LitBaseMapper):
+class LSTM(LitBaseMapper):
     """
     Very basic Linear + LSTM + Linear model.
     """

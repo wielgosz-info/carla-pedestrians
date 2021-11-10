@@ -7,7 +7,7 @@ import os
 
 def test_carla_linear(test_logs_dir):
     """
-    Test the overall flow using LitLinearMapper model.
+    Test the overall flow using Linear model.
     """
     main([
         "--data_module_name=Carla2D3D",
@@ -26,7 +26,7 @@ def test_carla_linear(test_logs_dir):
         "--limit_train_batches=1"
     ], test_logs_dir)
 
-    experiment_dir = os.path.join(test_logs_dir, "LitLinearMapper", "version_0")
+    experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -38,7 +38,7 @@ def test_carla_linear(test_logs_dir):
 
 def test_jaad_baseline(test_logs_dir):
     """
-    Test the overall flow using LitBaseline3DPoseMapper model and JAADOpenPoseDataModule.
+    Test the overall flow using JAADOpenPoseDataModule, ProjectionTypes.absolute_loc model and source videos rendering.
     """
     main([
         "--data_module_name=JAADOpenPose",
@@ -61,14 +61,14 @@ def test_jaad_baseline(test_logs_dir):
     ], test_logs_dir)
 
     video_dir = os.path.join(
-        test_logs_dir, "LitBaseline3DPoseMapper", "version_0", "videos")
+        test_logs_dir, "Baseline3DPose", "version_0", "videos")
     # assert video files were created
     assert os.path.exists(video_dir), 'Videos dir was not created'
 
 
 def test_carla_baseline(test_logs_dir):
     """
-    Test the overall flow using LitBaseline3DPoseMapper model.
+    Test the overall flow using Carla2D3DDataModule, ProjectionTypes.absolute_loc model and points renderer.
     """
     main([
         "--data_module_name=Carla2D3D",
@@ -90,14 +90,14 @@ def test_carla_baseline(test_logs_dir):
     ], test_logs_dir)
 
     video_dir = os.path.join(
-        test_logs_dir, "LitBaseline3DPoseMapper", "version_0", "videos")
+        test_logs_dir, "Baseline3DPose", "version_0", "videos")
     # assert video files were created
     assert os.path.exists(video_dir), 'Videos dir was not created'
 
 
 def test_carla_lstm(test_logs_dir):
     """
-    Test the overall flow using LitLSTMMapper model.
+    Test the overall flow using cum_pose_changes loss and no rendering.
     """
     main([
         "--data_module_name=Carla2D3D",
@@ -120,11 +120,11 @@ def test_carla_lstm(test_logs_dir):
 
 def test_carla_linear_autoencoder(test_logs_dir):
     """
-    Test the overall flow using LitLinearAutoencoderMapper model.
+    Test the overall flow using ProjectionTypes.pose_changes model, rot_3d loss and default rendering.
     """
     main([
         "--data_module_name=Carla2D3D",
-        "--model_name=LinearAutoencoder",
+        "--model_name=LinearAE",
         "--batch_size=2",
         "--num_workers=0",
         "--clip_length=32",
@@ -139,6 +139,6 @@ def test_carla_linear_autoencoder(test_logs_dir):
     ], test_logs_dir)
 
     video_dir = os.path.join(
-        test_logs_dir, "LitLinearAutoencoderMapper", "version_0", "videos")
+        test_logs_dir, "LinearAE", "version_0", "videos")
     # assert video files were created
     assert os.path.exists(video_dir), 'Videos dir was not created'

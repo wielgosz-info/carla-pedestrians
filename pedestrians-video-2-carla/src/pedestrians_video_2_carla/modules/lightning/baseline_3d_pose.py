@@ -7,7 +7,7 @@ from torch import nn
 from .base import LitBaseMapper
 
 
-class LitBaseline3DPoseMapper(LitBaseMapper):
+class Baseline3DPose(LitBaseMapper):
     """
     Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
     of 3D pose baseline from the following paper:

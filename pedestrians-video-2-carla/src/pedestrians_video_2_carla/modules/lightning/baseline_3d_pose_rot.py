@@ -8,7 +8,7 @@ from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 from .base import LitBaseMapper
 
 
-class LitBaseline3DPoseRot(LitBaseMapper):
+class Baseline3DPoseRot(LitBaseMapper):
     """
     Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
     of 3D pose baseline from the following paper:

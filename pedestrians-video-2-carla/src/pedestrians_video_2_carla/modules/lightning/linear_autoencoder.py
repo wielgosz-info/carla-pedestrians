@@ -4,7 +4,7 @@ from torch import nn
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
-class LitLinearAutoencoderMapper(LitBaseMapper):
+class LinearAE(LitBaseMapper):
     """
     Very basic (and huge) autoencoder utilizing only linear layers and ReLU.
     Inputs are flattened to a vector of size (clip_length * input_nodes_len * input_features).

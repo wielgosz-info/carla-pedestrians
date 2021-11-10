@@ -51,7 +51,7 @@ Run selected experiment inside `carla-pedestrians_client_1`, e.g.:
 ```sh
 python3 -m pedestrians_video_2_carla \
     --data_module_name=Carla2D3D \
-    --model_name=LinearAutoencoder \
+    --model_name=LinearAE \
     --clip_length=180 \
     --batch_size=64 \
     --num_workers=32 \
@@ -65,7 +65,10 @@ python3 -m pedestrians_video_2_carla \
     --check_val_every_n_epoch=10 \
     --max_epochs=300 \
     --gpus=0,1 \
-    --accelerator=ddp
+    --accelerator=ddp \
+    --limit_train_batches=32 \
+    --log_every_n_steps=16 \
+    --flush_logs_every_n_steps=64
 ```
 
 For full list of available options run:

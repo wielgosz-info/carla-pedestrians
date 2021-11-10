@@ -4,7 +4,7 @@ from torch import nn
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
-class LitLinearAEResidual(LitBaseMapper):
+class LinearAEResidual(LitBaseMapper):
     """
     Residual bottleneck autoencoder.
     Inputs are flattened to a vector of size (clip_length * input_nodes_len * input_features).
@@ -55,8 +55,8 @@ class LitLinearAEResidual(LitBaseMapper):
         )
 
         self.__residual_bottleneck = nn.Sequential(
-           nn.Linear(self.__input_size, self.__input_size // 8),
-           nn.BatchNorm1d(self.__input_size // 8),
+            nn.Linear(self.__input_size, self.__input_size // 8),
+            nn.BatchNorm1d(self.__input_size // 8),
         )
 
         self.apply(self.init_weights)

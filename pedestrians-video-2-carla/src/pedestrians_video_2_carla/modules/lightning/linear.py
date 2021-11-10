@@ -4,7 +4,7 @@ from torch import nn
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
 
-class LitLinearMapper(LitBaseMapper):
+class Linear(LitBaseMapper):
     """
     The simplest dummy model used to debug the flow.
     """
