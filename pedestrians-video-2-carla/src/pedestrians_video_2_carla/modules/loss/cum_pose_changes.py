@@ -30,9 +30,8 @@ def calculate_loss_cum_pose_changes(criterion: loss._Loss, pose_changes: Tensor,
     prev_targets = torch.eye(3, device=pose_changes.device).reshape(
         (1, 3, 3)).repeat((batch_size*bones, 1, 1))
 
-    matrix_pose_changes = euler_angles_to_matrix(
-        pose_changes, "XYZ").transpose(0, 1).reshape((clip_length, -1, 3, 3))
-    matrix_targets = euler_angles_to_matrix(targets['pose_changes'], "XYZ").transpose(
+    matrix_pose_changes = pose_changes.transpose(0, 1).reshape((clip_length, -1, 3, 3))
+    matrix_targets = targets['pose_changes'].transpose(
         0, 1).reshape((clip_length, -1, 3, 3))
 
     for i in range(clip_length):
