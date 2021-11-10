@@ -51,7 +51,7 @@ class LSTM(LitBaseMapper):
         pose_change = self.linear_2(x)
         pose_change = pose_change.view(*original_shape[0:2],
                                        self.__output_nodes_len, self.__output_features)
-        return rotation_6d_to_matrix(pose_change, "XYZ")
+        return rotation_6d_to_matrix(pose_change)
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=1e-4)

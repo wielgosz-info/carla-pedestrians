@@ -38,7 +38,7 @@ class Linear(LitBaseMapper):
         pose_change = self.linear(x)
         pose_change = pose_change.view(*original_shape[0:2],
                                        self.__output_nodes_len, self.__output_features)
-        return rotation_6d_to_matrix(pose_change, "XYZ")
+        return rotation_6d_to_matrix(pose_change)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
