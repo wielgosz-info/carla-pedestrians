@@ -43,8 +43,8 @@ class Baseline3DPose(LitBaseMapper):
 
         self.baseline = Baseline3DPoseModel(
             linear_size=linear_size,
-            num_stage=2,
-            p_dropout=0.5
+            num_stage=num_stage,
+            p_dropout=p_dropout
         )
 
         # hack a little bit to get the model working with our data
@@ -62,6 +62,28 @@ class Baseline3DPose(LitBaseMapper):
     def init_weights(self, m):
         if type(m) == nn.Linear:
             torch.nn.init.kaiming_normal_(m.weight)
+
+    @ staticmethod
+    def add_model_specific_args(parent_parser):
+        parent_parser = LitBaseMapper.add_model_specific_args(parent_parser)
+
+        parser = parent_parser.add_argument_group("Baseline3DPose Lightning Module")
+        parser.add_argument(
+            '--num_stage',
+            default=2,
+            type=int,
+        )
+        parser.add_argument(
+            '--linear_size',
+            default=1024,
+            type=int,
+        )
+        parser.add_argument(
+            '--p_dropout',
+            default=0.5,
+            type=float,
+        )
+        return parent_parser
 
     def forward(self, x):
         # the baseline model expects a single frame
