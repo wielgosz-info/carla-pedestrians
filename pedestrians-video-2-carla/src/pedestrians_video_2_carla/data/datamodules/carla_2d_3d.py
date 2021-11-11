@@ -120,7 +120,7 @@ class Carla2D3DDataModule(BaseDataModule):
         # save settings
         settings = {
             'data_module_name': self.__class__.__name__,
-            'nodes': self.nodes.__class__.__name__,
+            'nodes': self.nodes.__name__,
             'clip_length': self.clip_length,
             'random_changes_each_frame': self.random_changes_each_frame,
             'max_change_in_deg': self.max_change_in_deg,
