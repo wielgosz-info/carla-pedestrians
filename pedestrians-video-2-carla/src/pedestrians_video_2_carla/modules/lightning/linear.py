@@ -12,7 +12,6 @@ class Linear(LitBaseMapper):
     """
 
     def __init__(self,
-                 clip_length: int = 30,
                  projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
                  needs_confidence: bool = False,
                  **kwargs
@@ -22,8 +21,6 @@ class Linear(LitBaseMapper):
             projection_type=projection_type,
             **kwargs
         )
-
-        self.__clip_length = clip_length
 
         self.__input_nodes_len = len(self.input_nodes)
         self.__input_features = 3 if needs_confidence else 2
@@ -40,8 +37,8 @@ class Linear(LitBaseMapper):
             self.__output_features = 9  # x,y,z + rotation 6D
             self.__transform = lambda x: (x[..., :3], rotation_6d_to_matrix(x[..., 3:]))
 
-        self.__input_size = self.__clip_length * self.__input_nodes_len * self.__input_features
-        self.__output_size = self.__clip_length * self.__output_nodes_len * self.__output_features
+        self.__input_size = self.__input_nodes_len * self.__input_features
+        self.__output_size = self.__output_nodes_len * self.__output_features
 
         self.linear = nn.Linear(
             self.__input_size,
