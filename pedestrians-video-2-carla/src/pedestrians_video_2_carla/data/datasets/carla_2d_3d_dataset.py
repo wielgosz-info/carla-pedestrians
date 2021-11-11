@@ -79,7 +79,7 @@ class Carla2D3DIterableDataset(IterableDataset):
     def __iter__(self):
         # this is infinite generative dataset, it doesn't matter how many workers are there
         while True:
-            inputs, targets, meta = self.__generate_batch()
+            inputs, targets, meta = self.generate_batch()
             for idx in range(self.batch_size):
                 yield (
                     inputs[idx],
@@ -87,7 +87,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                     {k: v[idx] for k, v in meta.items()}
                 )
 
-    def __generate_batch(self):
+    def generate_batch(self):
         nodes_size = len(self.nodes)
         nodes_nums = np.arange(nodes_size)
         pose_changes = torch.zeros(

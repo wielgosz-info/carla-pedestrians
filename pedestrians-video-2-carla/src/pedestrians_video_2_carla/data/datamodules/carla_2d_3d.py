@@ -5,6 +5,7 @@ from typing import Optional
 import h5py
 import numpy as np
 from pytorch_lightning.utilities.warnings import rank_zero_warn
+import torch
 from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
     Carla2D3DDataset, Carla2D3DIterableDataset)
@@ -75,6 +76,7 @@ class Carla2D3DDataModule(BaseDataModule):
 
         # generate and save validation & test sets so they are reproducible
         iterable_dataset = Carla2D3DIterableDataset(
+            batch_size=self.batch_size,
             clip_length=self.clip_length,
             nodes=self.nodes,
             transform=None,  # we want raw data in dataset
@@ -86,12 +88,12 @@ class Carla2D3DDataModule(BaseDataModule):
         val_set_size = 2 * self.batch_size
         test_set_size = 3 * self.batch_size
 
-        sizes = [val_set_size, test_set_size]
+        sizes = [2, 3]
         names = ['val', 'test']
         for (size, name) in zip(sizes, names):
-            clips_set = tuple(zip(*[next(iter(iterable_dataset))
+            clips_set = tuple(zip(*[iterable_dataset.generate_batch()
                               for _ in trange(size, desc=f'Generating {name} set')]))
-            projection_2d = np.stack(clips_set[0], axis=0)
+            projection_2d = torch.cat(clips_set[0], dim=0).cpu().numpy()
             targets = {k: [dic[k] for dic in clips_set[1]] for k in clips_set[1][0]}
             meta = {k: [dic[k] for dic in clips_set[2]] for k in clips_set[2][0]}
 
@@ -100,18 +102,19 @@ class Carla2D3DDataModule(BaseDataModule):
                                  chunks=(1, *projection_2d.shape[1:]))
 
                 for k, v in targets.items():
-                    stacked_v = np.stack(v, axis=0)
+                    stacked_v = np.concatenate(v, axis=0)
                     f.create_dataset(f"carla_2d_3d/targets/{k}", data=stacked_v,
                                      chunks=(1, *stacked_v.shape[1:]))
 
                 for k, v in meta.items():
-                    unique = list(set(v))
+                    stacked_v = np.concatenate(v, axis=0)
+                    unique = list(set(stacked_v))
                     labels = np.array([
                         s.encode("latin-1") for s in unique
                     ], dtype=h5py.string_dtype('ascii', 30))
                     mapping = {s: i for i, s in enumerate(unique)}
                     f.create_dataset("carla_2d_3d/meta/{}".format(k),
-                                     data=[mapping[s] for s in v], dtype=np.uint16)
+                                     data=[mapping[s] for s in stacked_v], dtype=np.uint16)
                     f["carla_2d_3d/meta/{}".format(k)].attrs["labels"] = labels
 
         # save settings
