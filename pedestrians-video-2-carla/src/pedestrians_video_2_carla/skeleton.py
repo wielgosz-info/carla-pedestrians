@@ -5,7 +5,7 @@ import os
 from typing import List
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 from pedestrians_video_2_carla import __version__
@@ -159,13 +159,15 @@ def main(args: List[str], logs_root_dir: str = "lightning_logs"):
         mode="min",
         save_top_k=1
     )
+    lr_monitor = LearningRateMonitor(logging_interval='step')
 
     # training
     trainer = pl.Trainer.from_argparse_args(args, logger=[
         tb_logger,
         pedestrian_logger,
     ], callbacks=[
-        checkpoint_callback
+        checkpoint_callback,
+        lr_monitor
     ])
 
     if args.mode == 'train':
