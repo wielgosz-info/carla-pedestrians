@@ -58,7 +58,7 @@ class ProjectionModule(nn.Module):
         self.__world_locations = None
         self.__world_rotations = None
 
-    def on_batch_start(self, batch, batch_idx, dataloader_idx):
+    def on_batch_start(self, batch, batch_idx):
         (frames, _, meta) = batch
         batch_size = len(frames)
 

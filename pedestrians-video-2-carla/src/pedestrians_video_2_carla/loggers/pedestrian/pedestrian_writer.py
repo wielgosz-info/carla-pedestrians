@@ -90,7 +90,6 @@ class PedestrianWriter(object):
                    absolute_pose_rot: Tensor,
                    step: int,
                    batch_idx: int,
-                   dataloader_idx: int,
                    stage: str,
                    vid_callback: Callable = None,
                    force: bool = False,
@@ -107,8 +106,7 @@ class PedestrianWriter(object):
                 projected_pose[self.__videos_slice],
                 absolute_pose_loc[self.__videos_slice],
                 absolute_pose_rot[self.__videos_slice] if absolute_pose_rot is not None else None,
-                batch_idx,
-                dataloader_idx)):
+                batch_idx)):
             video_dir = os.path.join(self._log_dir, stage, meta['video_id'])
             os.makedirs(video_dir, exist_ok=True)
 
@@ -133,8 +131,7 @@ class PedestrianWriter(object):
                 projected_pose: Tensor,
                 absolute_pose_loc: Tensor,
                 absolute_pose_rot: Tensor,
-                batch_idx: int,
-                dataloader_idx: int = None
+                batch_idx: int
                 ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
         """
         Prepares video data. **It doesn't save anything!**
@@ -151,8 +148,6 @@ class PedestrianWriter(object):
         :type absolute_pose_rot: Tensor
         :param batch_idx: Batch index
         :type batch_idx: int
-        :param dataloader_idx: Dataloader index. Can be None.
-        :type dataloader_idx: int
         :return: List of videos and metadata
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
@@ -225,9 +220,7 @@ class PedestrianWriter(object):
                     ), axis=1)
                 )
             vid_meta = {
-                'video_id': 'video{}_{:0>2d}_{:0>2d}'.format(
-                    '_{:0>2d}'.format(
-                        dataloader_idx) if dataloader_idx is not None else '',
+                'video_id': 'video_{:0>2d}_{:0>2d}'.format(
                     batch_idx,
                     vid_idx
                 ),

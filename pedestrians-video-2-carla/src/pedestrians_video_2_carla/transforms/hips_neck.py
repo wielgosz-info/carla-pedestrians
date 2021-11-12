@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Any, Callable, Type, Union
 
 import torch
+import numpy as np
 from torch.functional import Tensor
 from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 
@@ -64,7 +65,7 @@ class HipsNeckNormalize(object):
     def __call__(self, sample: Tensor, dim=2, *args: Any, **kwargs: Any) -> Tensor:
         hips = self.extractor.get_hips_point(sample)[..., 0:dim]
         neck = self.extractor.get_neck_point(sample)[..., 0:dim]
-        dist = torch.linalg.vector_norm(neck - hips, dim=-1)
+        dist = torch.linalg.norm(neck - hips, dim=-1)
 
         normalized_sample = torch.empty_like(sample)
         normalized_sample[..., 0:dim] = (sample[..., 0:dim] -
@@ -73,8 +74,14 @@ class HipsNeckNormalize(object):
         if dim == 2:
             normalized_sample[..., 2] = sample[..., 2]
 
-        normalized_sample = torch.nan_to_num(
-            normalized_sample, nan=0, posinf=0, neginf=0)
+        if getattr(torch, 'nan_to_num', False):
+            normalized_sample = torch.nan_to_num(
+                normalized_sample, nan=0, posinf=0, neginf=0)
+        else:
+            normalized_sample = torch.where(torch.isnan(
+                normalized_sample), torch.tensor(0.0, device=normalized_sample.device), normalized_sample)
+            normalized_sample = torch.where(torch.isinf(
+                normalized_sample), torch.tensor(0.0, device=normalized_sample.device), normalized_sample)
 
         # if confidence is 0, we will assume the point overlaps with hips
         # so that values that were originally 0,0 (not detected)
@@ -104,6 +111,6 @@ class HipsNeckDeNormalize(object):
     def from_projection(self, extractor: HipsNeckExtractor, projected_pose: Tensor) -> Callable:
         hips = extractor.get_hips_point(projected_pose)
         neck = extractor.get_neck_point(projected_pose)
-        dist = torch.linalg.vector_norm(neck - hips, dim=-1)
+        dist = torch.linalg.norm(neck - hips, dim=-1)
 
         return lambda sample, dim=2: self(sample, dist[..., 0:dim], hips[..., 0:dim], dim)

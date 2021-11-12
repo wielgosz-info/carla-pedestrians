@@ -103,32 +103,32 @@ class LitBaseMapper(pl.LightningModule):
         )
         return parent_parser
 
-    def _on_batch_start(self, batch, batch_idx, dataloader_idx):
-        self.projection.on_batch_start(batch, batch_idx, dataloader_idx)
+    def _on_batch_start(self, batch, batch_idx):
+        self.projection.on_batch_start(batch, batch_idx)
 
-    def on_train_batch_start(self, batch, batch_idx, dataloader_idx):
-        self._on_batch_start(batch, batch_idx, dataloader_idx)
+    def on_train_batch_start(self, batch, batch_idx, *args, **kwargs):
+        self._on_batch_start(batch, batch_idx)
 
-    def on_validation_batch_start(self, batch, batch_idx, dataloader_idx):
-        self._on_batch_start(batch, batch_idx, dataloader_idx)
+    def on_validation_batch_start(self, batch, batch_idx, *args, **kwargs):
+        self._on_batch_start(batch, batch_idx)
 
-    def on_test_batch_start(self, batch, batch_idx, dataloader_idx):
-        self._on_batch_start(batch, batch_idx, dataloader_idx)
+    def on_test_batch_start(self, batch, batch_idx, *args, **kwargs):
+        self._on_batch_start(batch, batch_idx)
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=None):
-        self._on_batch_start(batch, batch_idx, dataloader_idx)
+    def predict_step(self, batch, batch_idx):
+        self._on_batch_start(batch, batch_idx)
         return self(batch)
 
     def training_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, None, 'train')
 
-    def validation_step(self, batch, batch_idx, dataloader_idx=None):
-        return self._step(batch, batch_idx, dataloader_idx, 'val')
+    def validation_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, 'val')
 
-    def test_step(self, batch, batch_idx, dataloader_idx=None):
-        return self._step(batch, batch_idx, dataloader_idx, 'test')
+    def test_step(self, batch, batch_idx):
+        return self._step(batch, batch_idx, 'test')
 
-    def _step(self, batch, batch_idx, dataloader_idx, stage):
+    def _step(self, batch, batch_idx, stage):
         (frames, targets, meta) = batch
 
         if self._needs_confidence:
@@ -170,7 +170,7 @@ class LitBaseMapper(pl.LightningModule):
                 loss_dict[mode] = loss
 
         for k, v in loss_dict.items():
-            self.log('{}_loss/{}'.format(stage, k.name), v)
+            self.log('{}_loss/{}'.format(stage, k.name), v, batch_size=len(frames))
 
         self._log_videos(
             projected_pose=projected_pose,
@@ -178,7 +178,6 @@ class LitBaseMapper(pl.LightningModule):
             absolute_pose_rot=absolute_pose_rot,
             batch=batch,
             batch_idx=batch_idx,
-            dataloader_idx=dataloader_idx,
             stage=stage
         )
 
@@ -206,7 +205,6 @@ class LitBaseMapper(pl.LightningModule):
                     absolute_pose_rot: Tensor,
                     batch: Tuple,
                     batch_idx: int,
-                    dataloader_idx: int,
                     stage: str,
                     log_to_tb: bool = False
                     ):
@@ -222,7 +220,6 @@ class LitBaseMapper(pl.LightningModule):
             absolute_pose_rot,
             self.global_step,
             batch_idx,
-            dataloader_idx,
             stage,
             vid_callback,
             force=(stage != 'train')

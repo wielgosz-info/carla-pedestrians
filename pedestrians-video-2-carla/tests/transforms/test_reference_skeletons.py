@@ -7,8 +7,7 @@ def test_reference_skeletons_denormalization_identity(device):
 
     abs_reference = denormalizer.get_abs(device)
 
-    abs_tensor = torch.stack([torch.tensor(ref)
-                             for ref in abs_reference.values()], dim=0)
+    abs_tensor = torch.stack(tuple(abs_reference.values()), dim=0,)
     meta = {
         'age': [],
         'gender': []
@@ -21,7 +20,7 @@ def test_reference_skeletons_denormalization_identity(device):
 
     assert torch.allclose(abs_tensor, denormalized), "Abs poses are not equal"
 
-    abs_tensor_scaled = abs_tensor * torch.rand((1))
+    abs_tensor_scaled = abs_tensor * torch.rand((1), device=device)
     denormalized_scaled = denormalizer.from_abs(abs_tensor_scaled, meta)
 
     assert torch.allclose(

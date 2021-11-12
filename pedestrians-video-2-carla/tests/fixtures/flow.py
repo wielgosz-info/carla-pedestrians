@@ -17,6 +17,18 @@ def test_logs_dir():
     shutil.rmtree(logs_dir)
 
 
+@pytest.fixture(scope="session")
+def test_outputs_dir():
+    """
+    Create a directory for the test logs.
+    """
+    import tempfile
+    outputs_dir = tempfile.mkdtemp()
+    yield outputs_dir
+    import shutil
+    shutil.rmtree(outputs_dir)
+
+
 @pytest.fixture(params=list(LossModes.__members__.keys()))
 def loss_mode(request, projection_type):
     supported = LossModes.get_supported_loss_modes(ProjectionTypes[projection_type])
