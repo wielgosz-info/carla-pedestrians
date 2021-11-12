@@ -53,6 +53,8 @@ The preferred way of running is via Docker. If conda is used, in addition to cre
     COMMIT=$(git rev-parse --short HEAD) SETUPTOOLS_SCM_PRETEND_VERSION="0.0.post0.dev38+${COMMIT}.dirty" pip install -e .
     ```
 
+4. Run `pytest tests` to see if everything is working.
+
 Please note that conda env is not actively maintained.
 
 <!-- pyscaffold-notes -->

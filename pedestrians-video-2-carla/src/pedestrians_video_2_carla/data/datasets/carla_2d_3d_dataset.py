@@ -109,7 +109,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.projection.on_batch_start((pose_changes_matrix, None, {
             'age': age,
             'gender': gender
-        }), 0, None)
+        }), 0)
         projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
             pose_changes_matrix
         )

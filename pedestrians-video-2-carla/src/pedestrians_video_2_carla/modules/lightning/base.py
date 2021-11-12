@@ -120,7 +120,7 @@ class LitBaseMapper(pl.LightningModule):
         return self(batch)
 
     def training_step(self, batch, batch_idx):
-        return self._step(batch, batch_idx, None, 'train')
+        return self._step(batch, batch_idx, 'train')
 
     def validation_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, 'val')
