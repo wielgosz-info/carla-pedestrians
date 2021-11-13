@@ -101,7 +101,7 @@ class Baseline3DPoseRot(LitBaseMapper):
         lr_scheduler = {
             'scheduler': ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, cooldown=10),
             'interval': 'epoch',
-            'monitor': 'val_loss'
+            'monitor': 'train_loss/primary'
         }
 
         config = {
