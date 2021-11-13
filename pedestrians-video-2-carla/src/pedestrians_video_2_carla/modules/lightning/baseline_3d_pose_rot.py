@@ -4,7 +4,7 @@ from pedestrians_video_2_carla.submodules.baseline_3d_pose.model import \
     LinearModel as Baseline3DPoseModel
 from torch import nn
 from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 from .base import LitBaseMapper
 
 
@@ -99,7 +99,14 @@ class Baseline3DPoseRot(LitBaseMapper):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
 
         lr_scheduler = {
-            'scheduler': StepLR(optimizer, step_size=100, gamma=0.1)
+            'scheduler': ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, cooldown=10),
+            'interval': 'epoch',
+            'monitor': 'val_loss'
         }
 
-        return [optimizer], [lr_scheduler]
+        config = {
+            'lr_scheduler': lr_scheduler,
+            'optimizer': optimizer
+        }
+
+        return config
