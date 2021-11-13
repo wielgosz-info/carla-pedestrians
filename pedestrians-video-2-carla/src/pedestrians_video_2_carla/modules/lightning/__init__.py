@@ -4,6 +4,7 @@ from .linear_autoencoder import LinearAE
 from .baseline_3d_pose import Baseline3DPose
 from .linear_ae_residual import LinearAEResidual
 from .baseline_3d_pose_rot import Baseline3DPoseRot
+from .seq2seq import Seq2Seq
 
 MODELS = {
     m.__name__: m
@@ -13,6 +14,7 @@ MODELS = {
         Baseline3DPoseRot,
         LSTM,
         LinearAE,
-        LinearAEResidual
+        LinearAEResidual,
+        Seq2Seq
     ]
 }
