@@ -110,7 +110,8 @@ class Carla2D3DIterableDataset(IterableDataset):
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
         pose_changes_batch = euler_angles_to_matrix(pose_changes, "XYZ")
 
-        world_rot_change[:, :, 1] = (torch.rand(
+        # only change yaw
+        world_rot_change[:, :, 2] = (torch.rand(
             (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
         world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
