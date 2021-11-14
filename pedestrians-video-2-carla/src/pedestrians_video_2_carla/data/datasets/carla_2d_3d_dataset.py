@@ -15,6 +15,7 @@ class Carla2D3DDataset(Dataset):
 
         self.projection_2d = set_file['carla_2d_3d/projection_2d']
         self.pose_changes = set_file['carla_2d_3d/targets/pose_changes']
+        self.world_rot_changes = set_file['carla_2d_3d/targets/world_rot_changes']
         self.absolute_pose_loc = set_file['carla_2d_3d/targets/absolute_pose_loc']
         self.absolute_pose_rot = set_file['carla_2d_3d/targets/absolute_pose_rot']
         self.meta = set_file['carla_2d_3d/meta']
@@ -34,6 +35,9 @@ class Carla2D3DDataset(Dataset):
         pose_changes_matrix = self.pose_changes[idx]
         pose_changes_matrix = torch.from_numpy(pose_changes_matrix)
 
+        world_rot_change_batch = self.world_rot_changes[idx]
+        world_rot_change_batch = torch.from_numpy(world_rot_change_batch)
+
         absolute_pose_loc = self.absolute_pose_loc[idx]
         absolute_pose_loc = torch.from_numpy(absolute_pose_loc)
 
@@ -47,6 +51,7 @@ class Carla2D3DDataset(Dataset):
             projection_2d,
             {
                 'pose_changes': pose_changes_matrix,
+                'world_rot_changes': world_rot_change_batch,
                 'absolute_pose_loc': absolute_pose_loc,
                 'absolute_pose_rot': absolute_pose_rot,
             },
@@ -60,6 +65,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                  clip_length: int = 30,
                  random_changes_each_frame=3,
                  max_change_in_deg=5,
+                 max_world_rot_change_in_deg=5,
                  nodes: CARLA_SKELETON = CARLA_SKELETON,
                  transform: Callable[[Tensor], Tensor] = None,
                  **kwargs) -> None:
@@ -68,6 +74,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.clip_length = clip_length
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_rad = np.deg2rad(max_change_in_deg)
+        self.max_world_rot_change_in_rad = np.deg2rad(max_world_rot_change_in_deg)
         self.batch_size = batch_size
 
         self.projection = ProjectionModule(
@@ -92,6 +99,8 @@ class Carla2D3DIterableDataset(IterableDataset):
         nodes_nums = np.arange(nodes_size)
         pose_changes = torch.zeros(
             (self.batch_size, self.clip_length, nodes_size, 3))
+        world_rot_change = torch.zeros(
+            (self.batch_size, self.clip_length, 3))
 
         for idx in range(self.batch_size):
             for i in range(self.clip_length):
@@ -99,19 +108,24 @@ class Carla2D3DIterableDataset(IterableDataset):
                                            size=self.random_changes_each_frame, replace=False)
                 pose_changes[idx, i, indices] = (torch.rand(
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
-        pose_changes_matrix = euler_angles_to_matrix(pose_changes, "XYZ")
+        pose_changes_batch = euler_angles_to_matrix(pose_changes, "XYZ")
+
+        world_rot_change[:, :, 1] = (torch.rand(
+            (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
+        world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
         # TODO: we should probably take care of the "correct" pedestrians data distribution
         # need to find some pedestrian statistics
         age = np.random.choice(['adult', 'child'], size=self.batch_size)
         gender = np.random.choice(['male', 'female'], size=self.batch_size)
 
-        self.projection.on_batch_start((pose_changes_matrix, None, {
+        self.projection.on_batch_start((pose_changes_batch, None, {
             'age': age,
             'gender': gender
         }), 0)
         projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
-            pose_changes_matrix
+            pose_inputs_batch=pose_changes_batch,
+            world_rot_change_batch=world_rot_change_batch
         )
 
         # use the third dimension as 'confidence' of the projection
@@ -126,7 +140,8 @@ class Carla2D3DIterableDataset(IterableDataset):
         return (
             projection_2d,
             {
-                'pose_changes': pose_changes_matrix,
+                'pose_changes': pose_changes_batch,
+                'world_rot_changes': world_rot_change_batch,
                 'absolute_pose_loc': absolute_pose_loc,
                 'absolute_pose_rot': absolute_pose_rot
             },

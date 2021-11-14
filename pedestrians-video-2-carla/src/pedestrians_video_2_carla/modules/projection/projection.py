@@ -112,18 +112,16 @@ class ProjectionModule(nn.Module):
                                                  device=absolute_loc.device)  # no world loc change
 
         if world_rot_change_batch is None:
-            world_rot_change_batch = torch.zeros((*absolute_loc.shape[:2], 3),
-                                                 device=absolute_loc.device)  # no world rot change
+            world_rot_change_batch = torch.eye(3, device=absolute_loc.device).reshape(
+                (1, 1, 3, 3)).repeat((*absolute_loc.shape[:2], 1, 1))  # no world rot change
 
-        world_rot_matrix_change_batch = euler_angles_to_matrix(
-            world_rot_change_batch, "XYZ")
         projections = torch.empty_like(absolute_loc)
 
         # for every frame in clip
         for i in range(absolute_loc.shape[1]):
             self.__world_rotations = torch.bmm(
                 self.__world_rotations,
-                world_rot_matrix_change_batch[:, i]
+                world_rot_change_batch[:, i]
             )
             self.__world_locations += world_loc_change_batch[:, i]
             projections[:, i] = self.__pose_projection.forward(
