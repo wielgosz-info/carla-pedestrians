@@ -8,8 +8,8 @@ from pedestrians_video_2_carla.modules.projection.projection import \
 from pedestrians_video_2_carla.skeletons.nodes import (
     Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name)
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON
 from torch.functional import Tensor
+import platform
 
 
 class LitBaseMapper(pl.LightningModule):
@@ -63,7 +63,8 @@ class LitBaseMapper(pl.LightningModule):
             'output_nodes': get_skeleton_name_by_type(self.output_nodes),
             'loss_modes': [mode.name for mode in self._loss_modes],
             'projection_type': projection_type.name,
-            'model_name': self.__class__.__name__
+            'model_name': self.__class__.__name__,
+            'host': platform.node(),
         })
 
     @ staticmethod
