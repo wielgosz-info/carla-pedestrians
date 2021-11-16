@@ -5,6 +5,7 @@ from .baseline_3d_pose import Baseline3DPose
 from .linear_ae_residual import LinearAEResidual
 from .baseline_3d_pose_rot import Baseline3DPoseRot
 from .seq2seq import Seq2Seq
+from .linear_ae_residual_tanh import LinearAEResidualTanh
 
 MODELS = {
     m.__name__: m
@@ -15,6 +16,7 @@ MODELS = {
         LSTM,
         LinearAE,
         LinearAEResidual,
-        Seq2Seq
+        Seq2Seq, 
+        LinearAEResidualTanh
     ]
 }
