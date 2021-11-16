@@ -23,11 +23,11 @@ __license__ = "MIT"
 # executable/script.
 
 
-def get_model_cls(model_name: str = 'LinearAutoencoder'):
+def get_model_cls(model_name: str = "LinearAutoencoder"):
     return MODELS[model_name]
 
 
-def get_data_module_cls(data_module_name: str = 'Carla2D3D'):
+def get_data_module_cls(data_module_name: str = "Carla2D3D"):
     return DATA_MODULES[data_module_name]
 
 
@@ -79,8 +79,14 @@ def add_program_args():
         "--model_name",
         dest="model_name",
         help="Model class to use",
-        default="LinearAutoencoder",
+        default="Linear",
         choices=list(MODELS.keys()),
+        type=str,
+    )
+    parser.add_argument(
+        "--logs_dir",
+        dest="logs_dir",
+        default=os.path.join(os.getcwd(), "lightning_logs"),
         type=str,
     )
     return parser
@@ -98,11 +104,11 @@ def setup_logging(loglevel):
         level=loglevel, stream=sys.stdout, format=logformat, datefmt="%Y-%m-%d %H:%M:%S"
     )
 
-    matplotlib_logger = logging.getLogger('matplotlib')
+    matplotlib_logger = logging.getLogger("matplotlib")
     matplotlib_logger.setLevel(logging.INFO)
 
 
-def main(args: List[str], logs_root_dir: str = "lightning_logs"):
+def main(args: List[str]):
     """
     :param args: command line parameters as list of strings
           (for example  ``["--verbose"]``).
@@ -113,6 +119,9 @@ def main(args: List[str], logs_root_dir: str = "lightning_logs"):
     tmp_args = args[:]
     try:
         tmp_args.remove("-h")
+    except ValueError:
+        pass
+    try:
         tmp_args.remove("--help")
     except ValueError:
         pass
@@ -140,39 +149,34 @@ def main(args: List[str], logs_root_dir: str = "lightning_logs"):
     model = model_cls(**dict_args)
 
     # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
-    tb_logger = TensorBoardLogger(
-        logs_root_dir,
-        name=model.__class__.__name__
-    )
+    tb_logger = TensorBoardLogger(args.logs_dir, name=model.__class__.__name__)
 
-    dict_args.setdefault('projection_type', model.projection.projection_type)
+    dict_args.setdefault("projection_type", model.projection.projection_type)
     pedestrian_logger = PedestrianLogger(
-        save_dir=os.path.join(tb_logger.log_dir, 'videos'),
+        save_dir=os.path.join(tb_logger.log_dir, "videos"),
         name=tb_logger.name,
         version=tb_logger.version,
         **dict_args
     )
 
     checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(tb_logger.log_dir, 'checkpoints'),
+        dirpath=os.path.join(tb_logger.log_dir, "checkpoints"),
         monitor="val_loss/primary",
         mode="min",
-        save_top_k=1
+        save_top_k=1,
     )
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     # training
-    trainer = pl.Trainer.from_argparse_args(args, logger=[
-        tb_logger,
-        pedestrian_logger,
-    ], callbacks=[
-        checkpoint_callback,
-        lr_monitor
-    ])
+    trainer = pl.Trainer.from_argparse_args(
+        args,
+        logger=[tb_logger, pedestrian_logger,],
+        callbacks=[checkpoint_callback, lr_monitor],
+    )
 
-    if args.mode == 'train':
+    if args.mode == "train":
         trainer.fit(model=model, datamodule=dm)
-    elif args.mode == 'test':
+    elif args.mode == "test":
         trainer.test(model=model, datamodule=dm)
 
 

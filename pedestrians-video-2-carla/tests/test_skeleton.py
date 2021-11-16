@@ -27,8 +27,9 @@ def test_flow(test_logs_dir, test_outputs_dir, loss_mode, projection_type):
         "--renderers",
         "none",
         "--projection_type={}".format(projection_type),
-        "--outputs_dir={}".format(test_outputs_dir)
-    ], test_logs_dir)
+        "--outputs_dir={}".format(test_outputs_dir),
+        "--logs_dir={}".format(test_logs_dir)
+    ])
 
     experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
 
@@ -57,8 +58,9 @@ def test_flow_needs_confidence(test_logs_dir, test_outputs_dir, projection_type)
         "none",
         "--projection_type={}".format(projection_type),
         "--needs_confidence",
-        "--outputs_dir={}".format(test_outputs_dir)
-    ], test_logs_dir)
+        "--outputs_dir={}".format(test_outputs_dir),
+        "--logs_dir={}".format(test_logs_dir)
+    ])
 
     experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
 
@@ -85,8 +87,9 @@ def test_renderer(test_logs_dir, test_outputs_dir, renderer):
         "common_loc_2d",
         "--renderers",
         renderer,
-        "--outputs_dir={}".format(test_outputs_dir)
-    ], test_logs_dir)
+        "--outputs_dir={}".format(test_outputs_dir),
+        "--logs_dir={}".format(test_logs_dir)
+    ])
 
     experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
 
@@ -132,7 +135,8 @@ def test_source_videos_jaad(test_logs_dir, test_outputs_dir):
         "--source_videos_dir={}".format(source_videos_dir),
         "--outputs_dir={}".format(test_outputs_dir),
         "--openpose_dir={}".format(test_outputs_dir),
-    ], test_logs_dir)
+        "--logs_dir={}".format(test_logs_dir)
+    ])
 
     video_dir = os.path.join(
         test_logs_dir, "Linear", "version_0", "videos", "val")
