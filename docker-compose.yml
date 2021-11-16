@@ -45,6 +45,7 @@ services:
       - vscode:/home/carla-pedestrians-client/.vscode-server
       - vscode-insiders:/home/carla-pedestrians-client/.vscode-server-insiders
       - outputs:/outputs
+      - ${RUNS_DIR_OR_VOLUME}:/runs
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,graphics,utility
