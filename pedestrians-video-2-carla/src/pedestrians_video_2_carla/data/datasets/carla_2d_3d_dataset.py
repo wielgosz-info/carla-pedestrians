@@ -66,6 +66,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                  random_changes_each_frame=3,
                  max_change_in_deg=5,
                  max_world_rot_change_in_deg=0,
+                 max_root_yaw_change_in_deg=0,
                  nodes: CARLA_SKELETON = CARLA_SKELETON,
                  transform: Callable[[Tensor], Tensor] = None,
                  **kwargs) -> None:
@@ -75,6 +76,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_rad = np.deg2rad(max_change_in_deg)
         self.max_world_rot_change_in_rad = np.deg2rad(max_world_rot_change_in_deg)
+        self.max_root_yaw_change_in_rad = np.deg2rad(max_root_yaw_change_in_deg)
         self.batch_size = batch_size
 
         self.projection = ProjectionModule(
@@ -108,6 +110,14 @@ class Carla2D3DIterableDataset(IterableDataset):
                                            size=self.random_changes_each_frame, replace=False)
                 pose_changes[idx, i, indices] = (torch.rand(
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
+
+        # temporary root rotation
+        # TODO: remove this once we have a proper world rotation handled,
+        # it will interfere with pedestrian moving through the scene
+        if self.max_root_yaw_change_in_rad != 0.0:
+            pose_changes[:, :, 0, 1] = (torch.rand(
+                (self.batch_size, self.clip_length)) * 2 - 1) * self.max_root_yaw_change_in_rad
+
         pose_changes_batch = euler_angles_to_matrix(pose_changes, "XYZ")
 
         # only change yaw

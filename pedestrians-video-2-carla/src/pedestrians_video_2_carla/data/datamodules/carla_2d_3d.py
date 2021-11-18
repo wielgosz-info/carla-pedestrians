@@ -25,10 +25,12 @@ class Carla2D3DDataModule(BaseDataModule):
                  random_changes_each_frame: Optional[int] = 3,
                  max_change_in_deg: Optional[int] = 5,
                  max_world_rot_change_in_deg: Optional[int] = 0,
+                 max_root_yaw_change_in_deg: Optional[int] = 0,
                  **kwargs):
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_deg = max_change_in_deg
         self.max_world_rot_change_in_deg = max_world_rot_change_in_deg
+        self.max_root_yaw_change_in_deg = max_root_yaw_change_in_deg
 
         super().__init__(**kwargs)
 
@@ -40,6 +42,7 @@ class Carla2D3DDataModule(BaseDataModule):
             'random_changes_each_frame': self.random_changes_each_frame,
             'max_change_in_deg': self.max_change_in_deg,
             'max_world_rot_change_in_deg': self.max_world_rot_change_in_deg,
+            'max_root_yaw_change_in_deg': self.max_root_yaw_change_in_deg,
         })
 
     def _calculate_settings_digest(self):
@@ -48,6 +51,7 @@ class Carla2D3DDataModule(BaseDataModule):
             self.random_changes_each_frame,
             self.max_change_in_deg,
             self.max_world_rot_change_in_deg,
+            self.max_root_yaw_change_in_deg,
         ]]).encode()).hexdigest()
 
     def _setup_data_transform(self):
@@ -79,6 +83,13 @@ class Carla2D3DDataModule(BaseDataModule):
             metavar='DEGREES',
             help="Max random [+/-] world rotation yaw change in degrees. IMPLEMENTATION IN PROGRESS, DO NOT USE."
         )
+        parser.add_argument(
+            "--max_root_yaw_change_in_deg",
+            type=int,
+            default=0,
+            metavar='DEGREES',
+            help="Max random [+/-] 'world' rotation yaw change in degrees. TEMPORARY IMPLEMENTATION."
+        )
         return parent_parser
 
     def prepare_data(self) -> None:
@@ -94,6 +105,7 @@ class Carla2D3DDataModule(BaseDataModule):
             random_changes_each_frame=self.random_changes_each_frame,
             max_change_in_deg=self.max_change_in_deg,
             max_world_rot_change_in_deg=self.max_world_rot_change_in_deg,
+            max_root_yaw_change_in_deg=self.max_root_yaw_change_in_deg,
         )
 
         # for now, we generate 2 validation batches and 3 test batches
@@ -137,6 +149,7 @@ class Carla2D3DDataModule(BaseDataModule):
             'random_changes_each_frame': self.random_changes_each_frame,
             'max_change_in_deg': self.max_change_in_deg,
             'max_world_rot_change_in_deg': self.max_world_rot_change_in_deg,
+            'max_root_yaw_change_in_deg': self.max_root_yaw_change_in_deg,
             'val_set_size': val_set_size,
             'test_set_size': test_set_size,
         }
@@ -151,6 +164,8 @@ class Carla2D3DDataModule(BaseDataModule):
                 transform=self.transform,
                 random_changes_each_frame=self.random_changes_each_frame,
                 max_change_in_deg=self.max_change_in_deg,
+                max_world_rot_change_in_deg=self.max_world_rot_change_in_deg,
+                max_root_yaw_change_in_deg=self.max_root_yaw_change_in_deg,
                 batch_size=self.batch_size,
             )
             self.val_set = Carla2D3DDataset(
