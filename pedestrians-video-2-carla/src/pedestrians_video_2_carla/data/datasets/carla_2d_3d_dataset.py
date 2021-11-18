@@ -65,7 +65,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                  clip_length: int = 30,
                  random_changes_each_frame=3,
                  max_change_in_deg=5,
-                 max_world_rot_change_in_deg=5,
+                 max_world_rot_change_in_deg=0,
                  nodes: CARLA_SKELETON = CARLA_SKELETON,
                  transform: Callable[[Tensor], Tensor] = None,
                  **kwargs) -> None:
@@ -111,8 +111,9 @@ class Carla2D3DIterableDataset(IterableDataset):
         pose_changes_batch = euler_angles_to_matrix(pose_changes, "XYZ")
 
         # only change yaw
-        world_rot_change[:, :, 2] = (torch.rand(
-            (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
+        if self.max_world_rot_change_in_rad != 0.0:
+            world_rot_change[:, :, 2] = (torch.rand(
+                (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
         world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
         # TODO: we should probably take care of the "correct" pedestrians data distribution

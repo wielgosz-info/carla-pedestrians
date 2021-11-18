@@ -24,7 +24,7 @@ class Carla2D3DDataModule(BaseDataModule):
     def __init__(self,
                  random_changes_each_frame: Optional[int] = 3,
                  max_change_in_deg: Optional[int] = 5,
-                 max_world_rot_change_in_deg: Optional[int] = 5,
+                 max_world_rot_change_in_deg: Optional[int] = 0,
                  **kwargs):
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_deg = max_change_in_deg
@@ -75,9 +75,9 @@ class Carla2D3DDataModule(BaseDataModule):
         parser.add_argument(
             "--max_world_rot_change_in_deg",
             type=int,
-            default=5,
+            default=0,
             metavar='DEGREES',
-            help="Max random [+/-] world rotation yaw change in degrees."
+            help="Max random [+/-] world rotation yaw change in degrees. IMPLEMENTATION IN PROGRESS, DO NOT USE."
         )
         return parent_parser
 
