@@ -137,10 +137,10 @@ class LitBaseMapper(pl.LightningModule):
         else:
             frames = frames[..., 0:2].clone().to(self.device)
 
-        pose_changes = self.forward(frames)
+        pose_inputs = self.forward(frames, targets if self.training else None)
 
         (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot) = self.projection(
-            pose_changes
+            pose_inputs
         )
 
         # TODO: this will work for mono-type batches, but not for mixed-type batches;
@@ -153,7 +153,7 @@ class LitBaseMapper(pl.LightningModule):
             loss = loss_fn(
                 criterion=criterion,
                 input_nodes=self.input_nodes,
-                pose_changes=pose_changes,
+                pose_changes=pose_inputs,
                 projected_pose=projected_pose,
                 normalized_projection=normalized_projection,
                 absolute_pose_loc=absolute_pose_loc,

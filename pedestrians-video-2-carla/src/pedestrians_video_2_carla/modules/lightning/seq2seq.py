@@ -1,10 +1,21 @@
-from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
+from enum import Enum
+from typing import Dict, Optional
+from pytorch3d.transforms.rotation_conversions import matrix_to_rotation_6d, rotation_6d_to_matrix
 import torch
 from torch import nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.functional import Tensor
 
 from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
+
+
+class TeacherMode(Enum):
+    """
+    Enum for teacher mode.
+    """
+    no_force = 0
+    clip_force = 1
+    frames_force = 2
 
 
 class Encoder(nn.Module):
@@ -58,8 +69,17 @@ class Seq2Seq(LitBaseMapper):
     Sequence to sequence model
     """
 
-    def __init__(self, hidden_size=64, num_layers=2, p_dropout=0.2, **kwargs):
+    def __init__(self,
+                 hidden_size=64,
+                 num_layers=2,
+                 p_dropout=0.2,
+                 teacher_mode: TeacherMode = TeacherMode.no_force,
+                 teacher_force_ratio: float = 0.2,
+                 **kwargs):
         super().__init__(**kwargs)
+
+        self.teacher_mode = teacher_mode
+        self.teacher_force_ratio = teacher_force_ratio
 
         self.encoder = Encoder(
             hid_dim=hidden_size, n_layers=num_layers, dropout=p_dropout,
@@ -78,7 +98,9 @@ class Seq2Seq(LitBaseMapper):
         self.save_hyperparameters({
             'hidden_size': hidden_size,
             'num_layers': num_layers,
-            'p_dropout': p_dropout
+            'p_dropout': p_dropout,
+            'teacher_mode': self.teacher_mode.name,
+            'teacher_force_ratio': self.teacher_force_ratio
         })
 
     @ staticmethod
@@ -101,9 +123,29 @@ class Seq2Seq(LitBaseMapper):
             default=0.2,
             type=float,
         )
+        parser.add_argument(
+            '--teacher_mode',
+            help="""
+                Set teacher mode for decoder training.
+                """.format(
+                set(TeacherMode.__members__.keys())),
+            default=TeacherMode.no_force,
+            choices=list(TeacherMode),
+            type=TeacherMode.__getitem__
+        )
+        parser.add_argument(
+            '--teacher_force_ratio',
+            help="""
+                Set teacher force ratio for decoder training.
+                Only used if teacher_mode is not TeacherMode.NO_FORCE.
+                """,
+            default=0.2,
+            type=float
+        )
+
         return parent_parser
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, targets: Dict[str, Tensor] = None) -> Tensor:
         original_shape = x.shape
 
         # convert to sequence-first format
@@ -122,8 +164,10 @@ class Seq2Seq(LitBaseMapper):
         # first input to the decoder is the <sos> tokens
         input = torch.zeros((batch_size, self.decoder.output_size), device=x.device)
 
-        for t in range(0, clip_length):
+        needs_forcing, target_pose_changes, force_indices = self.__teacher_forcing(
+            targets)
 
+        for t in range(0, clip_length):
             # insert input token embedding, previous hidden and previous cell states
             # receive output tensor (predictions) and new hidden and cell states
             output, hidden, cell = self.decoder(input, hidden, cell)
@@ -131,10 +175,45 @@ class Seq2Seq(LitBaseMapper):
             outputs[t] = output
             input = output
 
+            if needs_forcing:
+                input[force_indices[t]] = target_pose_changes[t, force_indices[t]]
+
         # convert back to batch-first format
         outputs = outputs.permute(1, 0, 2)
 
         return rotation_6d_to_matrix(outputs.view(*original_shape[:3], 6))
+
+    def __teacher_forcing(self, targets):
+        needs_forcing = self.training and self.teacher_mode != TeacherMode.no_force and targets is not None and self.teacher_force_ratio > 0
+        target_pose_changes = None
+        force_indices = None
+
+        if needs_forcing:
+            self.log('teacher_force_ratio', self.teacher_force_ratio)
+
+            target_pose_changes = matrix_to_rotation_6d(targets['pose_changes'])
+
+            (batch_size, clip_length, *_) = target_pose_changes.shape
+
+            target_pose_changes = target_pose_changes.permute(
+                1, 0, *range(2, target_pose_changes.dim())).reshape((clip_length, batch_size, self.decoder.output_size))
+
+            if self.teacher_mode == TeacherMode.clip_force:
+                # randomly select clips that should be taken from targets
+                force_indices = (torch.rand(
+                    (1, batch_size), device=target_pose_changes.device) < self.teacher_force_ratio).repeat((clip_length, 1))
+            elif self.teacher_mode == TeacherMode.frames_force:
+                # randomly select frames that should be taken from targets
+                force_indices = torch.rand(
+                    (clip_length, batch_size), device=target_pose_changes.device) < self.teacher_force_ratio
+
+        return needs_forcing, target_pose_changes, force_indices
+
+    def training_epoch_end(self, *args, **kwargs) -> None:
+        # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
+        # similar to what can be done for lr
+        self.teacher_force_ratio = (self.teacher_force_ratio -
+                                    0.02) if self.teacher_force_ratio > 0.02 else 0
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=1e-2)
