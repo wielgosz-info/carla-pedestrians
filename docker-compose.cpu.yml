@@ -4,12 +4,13 @@ services:
   client:
     build:
       context: pedestrians-video-2-carla
-      dockerfile: Dockerfile.cpu
+      dockerfile: Dockerfile
       args:
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
         USERNAME: carla-pedestrians-client
         COMMIT: ${COMMIT}
+        PLATFORM: cpu
     image: wielgoszinfo/carla-pedestrians-client:latest
     user: ${USER_ID}:${GROUP_ID}
     volumes:

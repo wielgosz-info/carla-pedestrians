@@ -36,6 +36,7 @@ services:
         GROUP_ID: ${GROUP_ID:-1000}
         USERNAME: carla-pedestrians-client
         COMMIT: ${COMMIT}
+        PLATFORM: nvidia
     image: wielgoszinfo/carla-pedestrians-client:latest
     user: ${USER_ID}:${GROUP_ID}
     volumes:
