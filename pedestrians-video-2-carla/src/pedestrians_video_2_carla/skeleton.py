@@ -149,7 +149,8 @@ def main(args: List[str]):
     model = model_cls(**dict_args)
 
     # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
-    tb_logger = TensorBoardLogger(args.logs_dir, name=model.__class__.__name__)
+    tb_logger = TensorBoardLogger(
+        args.logs_dir, name=model.__class__.__name__, default_hp_metric=False)
 
     dict_args.setdefault("projection_type", model.projection.projection_type)
     pedestrian_logger = PedestrianLogger(
@@ -170,7 +171,7 @@ def main(args: List[str]):
     # training
     trainer = pl.Trainer.from_argparse_args(
         args,
-        logger=[tb_logger, pedestrian_logger,],
+        logger=[tb_logger, pedestrian_logger, ],
         callbacks=[checkpoint_callback, lr_monitor],
     )
 

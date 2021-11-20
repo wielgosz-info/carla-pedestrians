@@ -65,7 +65,7 @@ class HipsNeckNormalize(object):
     def __call__(self, sample: Tensor, dim=2, *args: Any, **kwargs: Any) -> Tensor:
         hips = self.extractor.get_hips_point(sample)[..., 0:dim]
         neck = self.extractor.get_neck_point(sample)[..., 0:dim]
-        dist = torch.linalg.norm(neck - hips, dim=-1)
+        dist = torch.linalg.norm(neck - hips, dim=-1, ord=2)
 
         normalized_sample = torch.empty_like(sample)
         normalized_sample[..., 0:dim] = (sample[..., 0:dim] -
@@ -111,6 +111,6 @@ class HipsNeckDeNormalize(object):
     def from_projection(self, extractor: HipsNeckExtractor, projected_pose: Tensor) -> Callable:
         hips = extractor.get_hips_point(projected_pose)
         neck = extractor.get_neck_point(projected_pose)
-        dist = torch.linalg.norm(neck - hips, dim=-1)
+        dist = torch.linalg.norm(neck - hips, dim=-1, ord=2)
 
         return lambda sample, dim=2: self(sample, dist[..., 0:dim], hips[..., 0:dim], dim)

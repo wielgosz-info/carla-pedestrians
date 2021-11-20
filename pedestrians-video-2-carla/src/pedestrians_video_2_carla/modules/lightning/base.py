@@ -2,6 +2,7 @@
 from typing import List, Tuple, Type
 
 import pytorch_lightning as pl
+from pedestrians_video_2_carla.metrics.mpjpe import MPJPE
 from pedestrians_video_2_carla.modules.loss import LossModes
 from pedestrians_video_2_carla.modules.projection.projection import \
     ProjectionModule, ProjectionTypes
@@ -10,6 +11,7 @@ from pedestrians_video_2_carla.skeletons.nodes import (
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from torch.functional import Tensor
 import platform
+from torchmetrics import MetricCollection
 
 
 class LitBaseMapper(pl.LightningModule):
@@ -58,6 +60,11 @@ class LitBaseMapper(pl.LightningModule):
             **kwargs
         )
 
+        # default metrics
+        self.metrics = MetricCollection([
+            MPJPE(dist_sync_on_step=True),
+        ])
+
         self.save_hyperparameters({
             'input_nodes': get_skeleton_name_by_type(self.input_nodes),
             'output_nodes': get_skeleton_name_by_type(self.output_nodes),
@@ -104,6 +111,12 @@ class LitBaseMapper(pl.LightningModule):
         )
         return parent_parser
 
+    def on_train_start(self):
+        self.logger[0].log_hyperparams(self.hparams, {
+            "hp/{}".format(k): 0
+            for k in self.metrics.keys()
+        })
+
     def _on_batch_start(self, batch, batch_idx):
         self.projection.on_batch_start(batch, batch_idx)
 
@@ -128,6 +141,12 @@ class LitBaseMapper(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         return self._step(batch, batch_idx, 'test')
+
+    def validation_step_end(self, outputs):
+        self._eval_step_end(outputs, 'val')
+
+    def test_step_end(self, outputs):
+        self._eval_step_end(outputs, 'test')
 
     def _step(self, batch, batch_idx, stage):
         (frames, targets, meta) = batch
@@ -189,9 +208,25 @@ class LitBaseMapper(pl.LightningModule):
         for mode in self._loss_modes:
             if mode in loss_dict:
                 self.log('{}_loss/primary'.format(stage), loss_dict[mode])
-                return loss_dict[mode]
+                return {
+                    'loss': loss_dict[mode],
+                    'preds': {
+                        'pose_changes': pose_inputs.detach(),
+                        'world_rot_changes': None,  # TODO: implement this; should those be changes or abs?
+                        'world_loc_changes': None,  # TODO: implement this; should those be changes or abs?
+                        'absolute_pose_loc': absolute_pose_loc.detach(),
+                        'absolute_pose_rot': absolute_pose_rot.detach(),
+                    },
+                    'targets': targets
+                }
 
         raise RuntimeError("Couldn't calculate any loss.")
+
+    def _eval_step_end(self, outputs, stage):
+        # calculate and log metrics
+        m = self.metrics(outputs['preds'], outputs['targets'])
+        for k, v in m.items():
+            self.log('hp/{}'.format(k), v)
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):
         vid = vid.permute(0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
