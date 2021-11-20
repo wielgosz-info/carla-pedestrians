@@ -84,7 +84,7 @@ class LinearAEResidualTanh(LitBaseMapper):
         )
         return parent_parser
 
-    def forward(self, x):
+    def forward(self, x, *args, **kwargs):
         original_shape = x.shape
         x = x.view((-1, self.__input_size))
 

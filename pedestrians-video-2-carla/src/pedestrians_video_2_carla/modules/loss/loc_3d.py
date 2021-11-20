@@ -5,6 +5,7 @@ from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckNormalize)
 from torch.functional import Tensor
 from torch.nn.modules import loss
+from pytorch_lightning.utilities.warnings import rank_zero_warn
 
 
 def calculate_loss_loc_3d(criterion: loss._Loss, input_nodes: Type[CARLA_SKELETON], absolute_pose_loc: Tensor, targets: Dict[str, Tensor], **kwargs) -> Tensor:
@@ -22,9 +23,14 @@ def calculate_loss_loc_3d(criterion: loss._Loss, input_nodes: Type[CARLA_SKELETO
     :return: Calculated loss.
     :rtype: Tensor
     """
-    transform = HipsNeckNormalize(CarlaHipsNeckExtractor(input_nodes))
-    loss = criterion(
-        transform(absolute_pose_loc, dim=3),
-        transform(targets['absolute_pose_loc'], dim=3)
-    )
+    try:
+        transform = HipsNeckNormalize(CarlaHipsNeckExtractor(input_nodes))
+        loss = criterion(
+            transform(absolute_pose_loc, dim=3),
+            transform(targets['absolute_pose_loc'], dim=3)
+        )
+    except AttributeError:
+        rank_zero_warn('This loss is not supported for {}, only CARLA_SKELETON is supported.'.format(
+            input_nodes.__name__))
+        return None
     return loss

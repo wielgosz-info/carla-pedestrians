@@ -1,12 +1,18 @@
 from typing import Optional
 from pedestrians_video_2_carla.data import OUTPUTS_BASE
 import os
-import math
+import hashlib
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 
 from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+import yaml
+
+try:
+    from yaml import CDumper as Dumper
+except ImportError:
+    from yaml import Dumper
 
 
 class BaseDataModule(LightningDataModule):
@@ -45,19 +51,31 @@ class BaseDataModule(LightningDataModule):
 
         # TODO: add self.transform repr to hyperparams
         self.save_hyperparameters({
-            'data_module_name': self.__class__.__name__,
-            'batch_size': self.batch_size,
-            'clip_length': self.clip_length,
+            **self.settings,
             'settings_digest': self._settings_digest
         })
 
+    @property
+    def settings(self):
+        return {
+            'data_module_name': self.__class__.__name__,
+            'batch_size': self.batch_size,
+            'clip_length': self.clip_length,
+            'nodes': self.nodes.__name__,
+        }
+
     def _calculate_settings_digest(self):
-        raise NotImplementedError()
+        return hashlib.md5('-'.join(['{}={}'.format(k, str(s))
+                                     for k, s in self.settings.items()]).encode()).hexdigest()
+
+    def save_settings(self):
+        with open(os.path.join(self._subsets_dir, 'dparams.yaml'), 'w') as f:
+            yaml.dump(self.settings, f, Dumper=Dumper)
 
     def _setup_data_transform(self):
         return None
 
-    @staticmethod
+    @ staticmethod
     def add_data_specific_args(parent_parser):
         parser = parent_parser.add_argument_group('Base DataModule')
         parser.add_argument(

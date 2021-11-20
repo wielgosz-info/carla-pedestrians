@@ -71,7 +71,7 @@ class LSTM(LitBaseMapper):
         )
         return parent_parser
 
-    def forward(self, x):
+    def forward(self, x, *args, **kwargs):
         original_shape = x.shape
         x = x.view(*original_shape[0:2], self.__input_size)
         x = self.linear_1(x)

@@ -85,7 +85,7 @@ class Baseline3DPose(LitBaseMapper):
         )
         return parent_parser
 
-    def forward(self, x):
+    def forward(self, x, *args, **kwargs):
         # the baseline model expects a single frame
         original_shape = x.shape
         x = x.view((-1, self.__input_size))

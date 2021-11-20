@@ -145,7 +145,7 @@ class Seq2Seq(LitBaseMapper):
 
         return parent_parser
 
-    def forward(self, x: Tensor, targets: Dict[str, Tensor] = None) -> Tensor:
+    def forward(self, x: Tensor, targets: Dict[str, Tensor] = None, *args, **kwargs) -> Tensor:
         original_shape = x.shape
 
         # convert to sequence-first format

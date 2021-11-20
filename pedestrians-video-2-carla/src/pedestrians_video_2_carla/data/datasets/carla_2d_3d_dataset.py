@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional, Type
 import torch
 from torch.utils.data import IterableDataset, Dataset
 import h5pickle as h5py
@@ -61,14 +61,15 @@ class Carla2D3DDataset(Dataset):
 
 class Carla2D3DIterableDataset(IterableDataset):
     def __init__(self,
-                 batch_size: int = 64,
-                 clip_length: int = 30,
-                 random_changes_each_frame=3,
-                 max_change_in_deg=5,
-                 max_world_rot_change_in_deg=0,
-                 max_root_yaw_change_in_deg=0,
-                 nodes: CARLA_SKELETON = CARLA_SKELETON,
-                 transform: Callable[[Tensor], Tensor] = None,
+                 batch_size: Optional[int] = 64,
+                 clip_length: Optional[int] = 30,
+                 random_changes_each_frame: Optional[int] = 3,
+                 max_change_in_deg: Optional[int] = 5,
+                 max_world_rot_change_in_deg: Optional[int] = 0,
+                 max_root_yaw_change_in_deg: Optional[int] = 0,
+                 missing_point_probability: Optional[float] = 0.0,
+                 nodes: Optional[Type[CARLA_SKELETON]] = CARLA_SKELETON,
+                 transform: Optional[Callable[[Tensor], Tensor]] = None,
                  **kwargs) -> None:
         self.transform = transform
         self.nodes = nodes
@@ -77,6 +78,7 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.max_change_in_rad = np.deg2rad(max_change_in_deg)
         self.max_world_rot_change_in_rad = np.deg2rad(max_world_rot_change_in_deg)
         self.max_root_yaw_change_in_rad = np.deg2rad(max_root_yaw_change_in_deg)
+        self.missing_point_probability = missing_point_probability
         self.batch_size = batch_size
 
         self.projection = ProjectionModule(
@@ -145,6 +147,12 @@ class Carla2D3DIterableDataset(IterableDataset):
         # this will also prevent the models from accidentally using
         # the depth data that pytorch3d leaves in the projections
         projection_2d[..., 2] = 1.0
+
+        if self.missing_point_probability > 0.0:
+            missing_indices = torch.rand(
+                (self.batch_size, self.clip_length, nodes_size)) < self.missing_point_probability
+            projection_2d[missing_indices] = torch.tensor(
+                [0.0, 0.0, 0.0], device=projection_2d.device)
 
         if self.transform:
             projection_2d = self.transform(projection_2d)

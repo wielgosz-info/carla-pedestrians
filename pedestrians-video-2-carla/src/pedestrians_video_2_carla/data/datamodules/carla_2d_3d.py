@@ -1,4 +1,3 @@
-import hashlib
 import os
 from typing import Optional
 
@@ -12,25 +11,16 @@ from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
 from pedestrians_video_2_carla.transforms.hips_neck import (
     CarlaHipsNeckExtractor, HipsNeckNormalize)
 from tqdm import trange
-import yaml
-
-try:
-    from yaml import CDumper as Dumper
-except ImportError:
-    from yaml import Dumper
 
 
 class Carla2D3DDataModule(BaseDataModule):
     def __init__(self,
-                 random_changes_each_frame: Optional[int] = 3,
-                 max_change_in_deg: Optional[int] = 5,
-                 max_world_rot_change_in_deg: Optional[int] = 0,
-                 max_root_yaw_change_in_deg: Optional[int] = 0,
+                 val_batches: Optional[int] = 2,
+                 test_batches: Optional[int] = 3,
                  **kwargs):
-        self.random_changes_each_frame = random_changes_each_frame
-        self.max_change_in_deg = max_change_in_deg
-        self.max_world_rot_change_in_deg = max_world_rot_change_in_deg
-        self.max_root_yaw_change_in_deg = max_root_yaw_change_in_deg
+        self.val_batches = val_batches
+        self.test_batches = test_batches
+        self.kwargs = kwargs
 
         super().__init__(**kwargs)
 
@@ -38,21 +28,18 @@ class Carla2D3DDataModule(BaseDataModule):
             rank_zero_warn(
                 "No limit on train batches was set (--limit_train_batches), this will result in infinite training.")
 
-        self.save_hyperparameters({
-            'random_changes_each_frame': self.random_changes_each_frame,
-            'max_change_in_deg': self.max_change_in_deg,
-            'max_world_rot_change_in_deg': self.max_world_rot_change_in_deg,
-            'max_root_yaw_change_in_deg': self.max_root_yaw_change_in_deg,
-        })
-
-    def _calculate_settings_digest(self):
-        return hashlib.md5(''.join([str(s) for s in [
-            self.clip_length,
-            self.random_changes_each_frame,
-            self.max_change_in_deg,
-            self.max_world_rot_change_in_deg,
-            self.max_root_yaw_change_in_deg,
-        ]]).encode()).hexdigest()
+    @property
+    def settings(self):
+        return {
+            **super().settings,
+            'random_changes_each_frame': self.kwargs.get('random_changes_each_frame'),
+            'max_change_in_deg': self.kwargs.get('max_change_in_deg'),
+            'max_world_rot_change_in_deg': self.kwargs.get('max_world_rot_change_in_deg'),
+            'max_root_yaw_change_in_deg': self.kwargs.get('max_root_yaw_change_in_deg'),
+            'missing_point_probability': self.kwargs.get('missing_point_probability'),
+            'val_set_size': self.val_batches * self.batch_size,
+            'test_set_size': self.test_batches * self.batch_size,
+        }
 
     def _setup_data_transform(self):
         return HipsNeckNormalize(CarlaHipsNeckExtractor(self.nodes))
@@ -90,6 +77,16 @@ class Carla2D3DDataModule(BaseDataModule):
             metavar='DEGREES',
             help="Max random [+/-] 'world' rotation yaw change in degrees. TEMPORARY IMPLEMENTATION."
         )
+        parser.add_argument(
+            "--missing_point_probability",
+            type=float,
+            default=0.0,
+            metavar='PROB',
+            help="""
+                Probability that a joint/node will be missing ("not detected") in a skeleton in a frame.
+                Missing nodes are selected separately for each frame.
+            """
+        )
         return parent_parser
 
     def prepare_data(self) -> None:
@@ -98,23 +95,19 @@ class Carla2D3DDataModule(BaseDataModule):
 
         # generate and save validation & test sets so they are reproducible
         iterable_dataset = Carla2D3DIterableDataset(
-            batch_size=self.batch_size,
-            clip_length=self.clip_length,
             nodes=self.nodes,
-            transform=None,  # we want raw data in dataset
-            random_changes_each_frame=self.random_changes_each_frame,
-            max_change_in_deg=self.max_change_in_deg,
-            max_world_rot_change_in_deg=self.max_world_rot_change_in_deg,
-            max_root_yaw_change_in_deg=self.max_root_yaw_change_in_deg,
+            **{
+                **self.kwargs,
+                'transform': None  # we want raw data in dataset
+            },
         )
 
-        # for now, we generate 2 validation batches and 3 test batches
-        val_set_size = 2 * self.batch_size
-        test_set_size = 3 * self.batch_size
-
-        sizes = [2, 3]
+        sizes = [self.val_batches, self.test_batches]
         names = ['val', 'test']
         for (size, name) in zip(sizes, names):
+            if size <= 0:
+                continue
+
             clips_set = tuple(zip(*[iterable_dataset.generate_batch()
                               for _ in trange(size, desc=f'Generating {name} set')]))
             projection_2d = torch.cat(clips_set[0], dim=0).cpu().numpy()
@@ -142,31 +135,14 @@ class Carla2D3DDataModule(BaseDataModule):
                     f["carla_2d_3d/meta/{}".format(k)].attrs["labels"] = labels
 
         # save settings
-        settings = {
-            'data_module_name': self.__class__.__name__,
-            'nodes': self.nodes.__name__,
-            'clip_length': self.clip_length,
-            'random_changes_each_frame': self.random_changes_each_frame,
-            'max_change_in_deg': self.max_change_in_deg,
-            'max_world_rot_change_in_deg': self.max_world_rot_change_in_deg,
-            'max_root_yaw_change_in_deg': self.max_root_yaw_change_in_deg,
-            'val_set_size': val_set_size,
-            'test_set_size': test_set_size,
-        }
-        with open(os.path.join(self._subsets_dir, 'dparams.yaml'), 'w') as f:
-            yaml.dump(settings, f, Dumper=Dumper)
+        self.save_settings()
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage == "fit" or stage is None:
             self.train_set = Carla2D3DIterableDataset(
-                clip_length=self.clip_length,
                 nodes=self.nodes,
                 transform=self.transform,
-                random_changes_each_frame=self.random_changes_each_frame,
-                max_change_in_deg=self.max_change_in_deg,
-                max_world_rot_change_in_deg=self.max_world_rot_change_in_deg,
-                max_root_yaw_change_in_deg=self.max_root_yaw_change_in_deg,
-                batch_size=self.batch_size,
+                **self.kwargs,
             )
             self.val_set = Carla2D3DDataset(
                 os.path.join(self._subsets_dir, 'val.hdf5'),

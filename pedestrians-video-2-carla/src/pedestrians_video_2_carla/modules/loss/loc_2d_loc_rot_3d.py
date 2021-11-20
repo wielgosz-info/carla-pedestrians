@@ -12,7 +12,10 @@ def calculate_loss_loc_2d_loc_rot_3d(requirements: Dict[str, Tensor], **kwargs) 
     :return: The sum of the 'common_loc_2d', 'loc_3d', and 'rot_3d' losses.
     :rtype: Tensor
     """
-    loss = requirements['common_loc_2d'] + \
-        requirements['loc_3d'] + requirements['rot_3d']
+    try:
+        loss = requirements['common_loc_2d'] + \
+            requirements['loc_3d'] + requirements['rot_3d']
+    except KeyError:
+        return None
 
     return loss
