@@ -8,8 +8,6 @@ import torch
 from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
     Carla2D3DDataset, Carla2D3DIterableDataset)
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckNormalize)
 from tqdm import trange
 
 
@@ -40,9 +38,6 @@ class Carla2D3DDataModule(BaseDataModule):
             'val_set_size': self.val_batches * self.batch_size,
             'test_set_size': self.test_batches * self.batch_size,
         }
-
-    def _setup_data_transform(self):
-        return HipsNeckNormalize(CarlaHipsNeckExtractor(self.nodes))
 
     @staticmethod
     def add_data_specific_args(parent_parser):

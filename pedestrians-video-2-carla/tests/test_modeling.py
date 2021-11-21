@@ -1,19 +1,19 @@
 """
 Sanity checks to see if the overall flow is working.
 """
-from pedestrians_video_2_carla.skeleton import main
+from pedestrians_video_2_carla.modeling import main
 import os
 import shutil
 import glob
 
 
-def test_flow(test_logs_dir, test_outputs_dir, loss_mode, projection_type):
+def test_flow(test_logs_dir, test_outputs_dir, loss_mode, movements_output_type):
     """
     Test the overall flow using Linear model.
     """
     main([
         "--data_module_name=Carla2D3D",
-        "--model_name=Linear",
+        "--movements_model_name=Linear",
         "--batch_size=2",
         "--num_workers=0",
         "--clip_length=32",
@@ -26,24 +26,25 @@ def test_flow(test_logs_dir, test_outputs_dir, loss_mode, projection_type):
         loss_mode,
         "--renderers",
         "none",
-        "--projection_type={}".format(projection_type),
+        "--movements_output_type={}".format(movements_output_type),
         "--outputs_dir={}".format(test_outputs_dir),
         "--logs_dir={}".format(test_logs_dir)
     ])
 
-    experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
+    experiment_dir = os.path.join(
+        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
 
 
-def test_flow_needs_confidence(test_logs_dir, test_outputs_dir, projection_type):
+def test_flow_needs_confidence(test_logs_dir, test_outputs_dir, movements_output_type):
     """
     Test the basic flow using Linear model with needs_confidence flag enabled.
     """
     main([
         "--data_module_name=Carla2D3D",
-        "--model_name=Linear",
+        "--movements_model_name=Linear",
         "--batch_size=2",
         "--num_workers=0",
         "--clip_length=32",
@@ -56,13 +57,14 @@ def test_flow_needs_confidence(test_logs_dir, test_outputs_dir, projection_type)
         "common_loc_2d",
         "--renderers",
         "none",
-        "--projection_type={}".format(projection_type),
+        "--movements_output_type={}".format(movements_output_type),
         "--needs_confidence",
         "--outputs_dir={}".format(test_outputs_dir),
         "--logs_dir={}".format(test_logs_dir)
     ])
 
-    experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
+    experiment_dir = os.path.join(
+        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -74,7 +76,7 @@ def test_renderer(test_logs_dir, test_outputs_dir, renderer):
     """
     main([
         "--data_module_name=Carla2D3D",
-        "--model_name=Linear",
+        "--movements_model_name=Linear",
         "--batch_size=2",
         "--num_workers=0",
         "--clip_length=32",
@@ -91,7 +93,8 @@ def test_renderer(test_logs_dir, test_outputs_dir, renderer):
         "--logs_dir={}".format(test_logs_dir)
     ])
 
-    experiment_dir = os.path.join(test_logs_dir, "Linear", "version_0")
+    experiment_dir = os.path.join(
+        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -119,7 +122,7 @@ def test_source_videos_jaad(test_logs_dir, test_outputs_dir):
 
     main([
         "--data_module_name=JAADOpenPose",
-        "--model_name=Linear",
+        "--movements_model_name=Linear",
         "--batch_size=8",
         "--num_workers=0",
         "--clip_length=32",
@@ -139,10 +142,35 @@ def test_source_videos_jaad(test_logs_dir, test_outputs_dir):
     ])
 
     video_dir = os.path.join(
-        test_logs_dir, "Linear", "version_0", "videos", "val")
+        test_logs_dir, "ZeroTrajectory", "Linear", "version_0", "videos", "val")
 
     assert os.path.exists(video_dir), 'Videos dir was not created'
 
     videos = glob.glob(os.path.join(video_dir, '**', '*.mp4'))
 
     assert len(videos) == 4, 'Video files were not created'
+
+
+def test_models(test_logs_dir, test_outputs_dir, movements_model_name, trajectory_model_name):
+    """
+    Test the overall flow using Linear model.
+    """
+    main([
+        "--data_module_name=Carla2D3D",
+        "--movements_model_name={}".format(movements_model_name),
+        "--trajectory_model_name={}".format(trajectory_model_name),
+        "--batch_size=2",
+        "--num_workers=0",
+        "--clip_length=32",
+        "--input_nodes=CARLA_SKELETON",
+        "--output_nodes=CARLA_SKELETON",
+        "--max_epochs=1",
+        "--limit_val_batches=1",
+        "--limit_train_batches=1",
+        "--loss_modes",
+        "common_loc_2d",
+        "--renderers",
+        "none",
+        "--outputs_dir={}".format(test_outputs_dir),
+        "--logs_dir={}".format(test_logs_dir)
+    ])

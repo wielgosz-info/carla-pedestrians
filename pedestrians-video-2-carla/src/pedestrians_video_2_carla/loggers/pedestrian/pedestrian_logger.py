@@ -2,10 +2,10 @@ import logging
 from typing import List, Union
 
 import numpy as np
-from pedestrians_video_2_carla.modules.projection.projection import \
-    ProjectionTypes
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckExtractor)
+from pedestrians_video_2_carla.modules.base.output_types import \
+    MovementsModelOutputType
+from pedestrians_video_2_carla.skeletons.nodes.carla import CarlaHipsNeckExtractor
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckExtractor
 from pytorch_lightning.loggers import LightningLoggerBase
 from pytorch_lightning.loggers.base import rank_zero_experiment
 from pytorch_lightning.utilities import rank_zero_only, rank_zero_warn
@@ -28,7 +28,7 @@ class PedestrianLogger(LightningLoggerBase):
                  video_saving_frequency_reduction: int = 10,
                  renderers: List[PedestrianRenderers] = None,
                  extractor: HipsNeckExtractor = None,
-                 projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
+                 movements_output_type: MovementsModelOutputType = MovementsModelOutputType.pose_changes,
                  **kwargs):
         """
         Initialize PedestrianLogger.
@@ -96,7 +96,7 @@ class PedestrianLogger(LightningLoggerBase):
             extractor = CarlaHipsNeckExtractor()
         self._extractor = extractor
 
-        self._projection_type = projection_type
+        self._movements_output_type = movements_output_type
 
     @staticmethod
     def add_logger_specific_args(parent_parser):
@@ -159,7 +159,7 @@ class PedestrianLogger(LightningLoggerBase):
                 renderers=self._renderers,
                 reduced_log_every_n_steps=self._reduced_log_every_n_steps,
                 extractor=self._extractor,
-                projection_type=self._projection_type,
+                movements_output_type=self._movements_output_type,
                 **self._kwargs
             )
 

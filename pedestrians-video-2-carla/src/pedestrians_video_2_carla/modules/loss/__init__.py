@@ -2,7 +2,7 @@ from enum import Enum
 
 from torch import nn
 
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
 
 from .pose_changes import calculate_loss_pose_changes
 from .loc_3d import calculate_loss_loc_3d
@@ -39,22 +39,22 @@ class LossModes(Enum):
     ])
 
     @staticmethod
-    def get_supported_loss_modes(projection_type: ProjectionTypes):
+    def get_supported_loss_modes(movements_output_type: MovementsModelOutputType):
         """
         Returns a list of supported loss modes for a given projection type.
         """
         return {
-            ProjectionTypes.pose_changes: list(LossModes),
-            ProjectionTypes.absolute_loc_rot: [
+            MovementsModelOutputType.pose_changes: list(LossModes),
+            MovementsModelOutputType.absolute_loc_rot: [
                 LossModes.common_loc_2d,
                 LossModes.loc_3d,
                 LossModes.rot_3d,
                 LossModes.loc_2d_3d,
                 LossModes.loc_2d_loc_rot_3d,
             ],
-            ProjectionTypes.absolute_loc: [
+            MovementsModelOutputType.absolute_loc: [
                 LossModes.common_loc_2d,
                 LossModes.loc_3d,
                 LossModes.loc_2d_3d,
             ]
-        }[projection_type]
+        }[movements_output_type]

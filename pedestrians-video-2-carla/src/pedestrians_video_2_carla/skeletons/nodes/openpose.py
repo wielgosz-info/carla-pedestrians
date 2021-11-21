@@ -1,5 +1,9 @@
+from typing import Type, Union
+
+from torch.functional import Tensor
 from pedestrians_video_2_carla.skeletons.nodes import register_skeleton, Skeleton
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckExtractor
 
 
 class BODY_25_SKELETON(Skeleton):
@@ -29,6 +33,10 @@ class BODY_25_SKELETON(Skeleton):
     toeEnd__R = 23
     heel__R = 24
 
+    @classmethod
+    def get_extractor(cls) -> Type[HipsNeckExtractor]:
+        return OpenPoseHipsNeckExtractor(cls)
+
 
 class COCO_SKELETON(Skeleton):
     head__C = 0
@@ -49,6 +57,25 @@ class COCO_SKELETON(Skeleton):
     eye__L = 15
     ear__R = 16
     ear__L = 17
+
+    @classmethod
+    def get_extractor(cls) -> Type[HipsNeckExtractor]:
+        return OpenPoseHipsNeckExtractor(cls)
+
+
+class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
+    def __init__(self, input_nodes: Type[Union[BODY_25_SKELETON, COCO_SKELETON]] = BODY_25_SKELETON) -> None:
+        super().__init__(input_nodes)
+
+    def get_hips_point(self, sample: Tensor) -> Tensor:
+        try:
+            return sample[..., self.input_nodes.hips__C.value, :]
+        except AttributeError:
+            # since COCO does not have hips point, we're using mean of tights
+            return sample[..., [self.input_nodes.thigh__L.value, self.input_nodes.thigh__R.value], :].mean(axis=-2)
+
+    def get_neck_point(self, sample: Tensor) -> Tensor:
+        return sample[..., self.input_nodes.neck__C.value, :]
 
 
 register_skeleton('BODY_25_SKELETON', BODY_25_SKELETON, [

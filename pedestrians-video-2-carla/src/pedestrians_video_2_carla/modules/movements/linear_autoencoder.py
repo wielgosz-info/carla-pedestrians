@@ -1,11 +1,10 @@
 from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 import torch
 from torch import nn
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 
-from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
 
-
-class LinearAE(LitBaseMapper):
+class LinearAE(MovementsModel):
     """
     Very basic (and huge) autoencoder utilizing only linear layers and ReLU.
     Inputs are flattened to a vector of size (clip_length * input_nodes_len * input_features).
@@ -58,4 +57,9 @@ class LinearAE(LitBaseMapper):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
-        return optimizer
+
+        config = {
+            'optimizer': optimizer,
+        }
+
+        return config

@@ -1,11 +1,9 @@
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List
 
 import torch
-from pedestrians_video_2_carla.skeletons.nodes import Skeleton
-from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckDeNormalize, HipsNeckExtractor,
-    HipsNeckNormalize)
+from pedestrians_video_2_carla.skeletons.nodes.carla import CarlaHipsNeckExtractor
+from pedestrians_video_2_carla.transforms.hips_neck import (HipsNeckDeNormalize, HipsNeckExtractor,
+                                                            HipsNeckNormalize)
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose

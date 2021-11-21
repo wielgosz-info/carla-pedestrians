@@ -8,8 +8,6 @@ from pedestrians_video_2_carla.data import OUTPUTS_BASE
 from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.data.datasets.openpose_dataset import \
     OpenPoseDataset
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    OpenPoseHipsNeckExtractor, HipsNeckNormalize)
 from tqdm import tqdm
 
 
@@ -61,9 +59,6 @@ class JAADOpenPoseDataModule(BaseDataModule):
             'annotations_usecols': self.annotations_usecols,
             'annotations_filters': self.annotations_filters
         }
-
-    def _setup_data_transform(self):
-        return HipsNeckNormalize(OpenPoseHipsNeckExtractor(self.nodes))
 
     @staticmethod
     def add_data_specific_args(parent_parser):

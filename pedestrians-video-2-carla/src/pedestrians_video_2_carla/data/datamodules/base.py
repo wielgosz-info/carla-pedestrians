@@ -9,6 +9,8 @@ from pedestrians_video_2_carla.skeletons.nodes import Skeleton
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import yaml
 
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize
+
 try:
     from yaml import CDumper as Dumper
 except ImportError:
@@ -73,7 +75,7 @@ class BaseDataModule(LightningDataModule):
             yaml.dump(self.settings, f, Dumper=Dumper)
 
     def _setup_data_transform(self):
-        return None
+        return HipsNeckNormalize(self.nodes.get_extractor())
 
     @ staticmethod
     def add_data_specific_args(parent_parser):

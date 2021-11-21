@@ -1,17 +1,11 @@
-from enum import Enum
-from typing import Any, Callable, Type, Union
+from typing import Any, Callable, Type
 
 import torch
-import numpy as np
 from torch.functional import Tensor
-from pedestrians_video_2_carla.skeletons.nodes import Skeleton
-
-from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.skeletons.nodes.openpose import BODY_25_SKELETON, COCO_SKELETON
 
 
 class HipsNeckExtractor(object):
-    def __init__(self, input_nodes: Type[Skeleton]) -> None:
+    def __init__(self, input_nodes: Type['Skeleton']) -> None:
         self.input_nodes = input_nodes
 
     def get_hips_point(self, sample: Tensor) -> Tensor:
@@ -19,38 +13,6 @@ class HipsNeckExtractor(object):
 
     def get_neck_point(self, sample: Tensor) -> Tensor:
         raise NotImplementedError()
-
-
-# TODO: should specific extractor be here or in e.g. skeletons.nodes.openpose?
-class OpenPoseHipsNeckExtractor(HipsNeckExtractor):
-    def __init__(self, input_nodes: Type[Union[BODY_25_SKELETON, COCO_SKELETON]] = BODY_25_SKELETON) -> None:
-        super().__init__(input_nodes)
-
-    def get_hips_point(self, sample: Tensor) -> Tensor:
-        try:
-            return sample[..., self.input_nodes.hips__C.value, :]
-        except AttributeError:
-            # since COCO does not have hips point, we're using mean of tights
-            return sample[..., [self.input_nodes.thigh__L.value, self.input_nodes.thigh__R.value], :].mean(axis=-2)
-
-    def get_neck_point(self, sample: Tensor) -> Tensor:
-        return sample[..., self.input_nodes.neck__C.value, :]
-
-
-# TODO: should specific extractor be here or in e.g. skeletons.nodes.carla?
-class CarlaHipsNeckExtractor(HipsNeckExtractor):
-    def __init__(self, input_nodes: Type[CARLA_SKELETON] = CARLA_SKELETON) -> None:
-        super().__init__(input_nodes)
-
-    def get_hips_point(self, sample: Tensor) -> Tensor:
-        # Hips point projected from CARLA is a bit higher than Open pose one
-        # so use a point between tights as a reference instead
-        return sample[..., [self.input_nodes.crl_thigh__L.value, self.input_nodes.crl_thigh__R.value], :].mean(axis=-2)
-
-    def get_neck_point(self, sample: Tensor) -> Tensor:
-        # Hips point projected from CARLA is a bit higher than Open pose one
-        # so use a point between shoulders as a reference instead
-        return sample[..., [self.input_nodes.crl_shoulder__L.value, self.input_nodes.crl_shoulder__R.value], :].mean(axis=-2)
 
 
 class HipsNeckNormalize(object):

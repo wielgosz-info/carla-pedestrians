@@ -9,9 +9,14 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 
 from pedestrians_video_2_carla import __version__
+from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.loggers.pedestrian import PedestrianLogger
 from pedestrians_video_2_carla.data.datamodules import DATA_MODULES
-from pedestrians_video_2_carla.modules.lightning import MODELS
+from pedestrians_video_2_carla.modules.base.base import LitBaseMapper
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
+from pedestrians_video_2_carla.modules.base.trajectory import TrajectoryModel
+from pedestrians_video_2_carla.modules.movements import MOVEMENTS_MODELS
+from pedestrians_video_2_carla.modules.trajectory import TRAJECTORY_MODELS
 
 __author__ = "Maciej Wielgosz"
 __copyright__ = "Maciej Wielgosz"
@@ -23,11 +28,19 @@ __license__ = "MIT"
 # executable/script.
 
 
-def get_model_cls(model_name: str = "LinearAutoencoder"):
-    return MODELS[model_name]
+def get_base_model_cls() -> LitBaseMapper:
+    return LitBaseMapper
 
 
-def get_data_module_cls(data_module_name: str = "Carla2D3D"):
+def get_movements_model_cls(model_name: str = "Baseline3DPoseRot") -> MovementsModel:
+    return MOVEMENTS_MODELS[model_name]
+
+
+def get_trajectory_model_cls(model_name: str = "ZeroTrajectory") -> TrajectoryModel:
+    return TRAJECTORY_MODELS[model_name]
+
+
+def get_data_module_cls(data_module_name: str = "Carla2D3D") -> BaseDataModule:
     return DATA_MODULES[data_module_name]
 
 
@@ -76,11 +89,19 @@ def add_program_args():
         type=str,
     )
     parser.add_argument(
-        "--model_name",
-        dest="model_name",
-        help="Model class to use",
-        default="Linear",
-        choices=list(MODELS.keys()),
+        "--movements_model_name",
+        dest="movements_model_name",
+        help="Movements model class to use",
+        default="Baseline3DPoseRot",
+        choices=list(MOVEMENTS_MODELS.keys()),
+        type=str,
+    )
+    parser.add_argument(
+        "--trajectory_model_name",
+        dest="trajectory_model_name",
+        help="Trajectory model class to use",
+        default="ZeroTrajectory",
+        choices=list(TRAJECTORY_MODELS.keys()),
         type=str,
     )
     parser.add_argument(
@@ -129,11 +150,15 @@ def main(args: List[str]):
 
     parser = pl.Trainer.add_argparse_args(parser)
 
-    model_cls = get_model_cls(program_args.model_name)
     data_module_cls = get_data_module_cls(program_args.data_module_name)
+    base_model_cls = get_base_model_cls()
+    movements_model_cls = get_movements_model_cls(program_args.movements_model_name)
+    trajectory_model_cls = get_trajectory_model_cls(program_args.trajectory_model_name)
 
     parser = data_module_cls.add_data_specific_args(parser)
-    parser = model_cls.add_model_specific_args(parser)
+    parser = base_model_cls.add_model_specific_args(parser)
+    parser = movements_model_cls.add_model_specific_args(parser)
+    parser = trajectory_model_cls.add_model_specific_args(parser)
 
     parser = PedestrianLogger.add_logger_specific_args(parser)
 
@@ -146,13 +171,29 @@ def main(args: List[str]):
     dm = data_module_cls(**dict_args)
 
     # model
-    model = model_cls(**dict_args)
+    movements_model = movements_model_cls(**dict_args)
+    trajectory_model = trajectory_model_cls(**dict_args)
+    model = base_model_cls(
+        movements_model=movements_model,
+        trajectory_model=trajectory_model,
+        **dict_args
+    )
 
     # loggers - use TensorBoardLogger log dir as default for all loggers & checkpoints
     tb_logger = TensorBoardLogger(
-        args.logs_dir, name=model.__class__.__name__, default_hp_metric=False)
+        args.logs_dir,
+        name=os.path.join(
+            trajectory_model.__class__.__name__,
+            movements_model.__class__.__name__
+        ),
+        default_hp_metric=False
+    )
 
-    dict_args.setdefault("projection_type", model.projection.projection_type)
+    # some models support this as a CLI option
+    # so we only add it if it's not already set
+    dict_args.setdefault("movements_output_type",
+                         movements_model.output_type)
+
     pedestrian_logger = PedestrianLogger(
         save_dir=os.path.join(tb_logger.log_dir, "videos"),
         name=tb_logger.name,

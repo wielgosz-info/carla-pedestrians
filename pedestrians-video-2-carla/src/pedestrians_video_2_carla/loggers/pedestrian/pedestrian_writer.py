@@ -16,7 +16,6 @@ from pedestrians_video_2_carla.transforms.reference_skeletons import ReferenceSk
 from torch.functional import Tensor
 
 from .pedestrian_renderers import PedestrianRenderers
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
 
 
 class PedestrianWriter(object):
@@ -88,6 +87,8 @@ class PedestrianWriter(object):
                    projected_pose: Tensor,
                    absolute_pose_loc: Tensor,
                    absolute_pose_rot: Tensor,
+                   world_loc: Tensor,
+                   world_rot: Tensor,
                    step: int,
                    batch_idx: int,
                    stage: str,
@@ -106,6 +107,8 @@ class PedestrianWriter(object):
                 projected_pose[self.__videos_slice],
                 absolute_pose_loc[self.__videos_slice],
                 absolute_pose_rot[self.__videos_slice] if absolute_pose_rot is not None else None,
+                world_loc[self.__videos_slice],
+                world_rot[self.__videos_slice] if world_rot is not None else None,
                 batch_idx)):
             video_dir = os.path.join(self._log_dir, stage, meta['video_id'])
             os.makedirs(video_dir, exist_ok=True)
@@ -131,6 +134,8 @@ class PedestrianWriter(object):
                 projected_pose: Tensor,
                 absolute_pose_loc: Tensor,
                 absolute_pose_rot: Tensor,
+                world_loc: Tensor,
+                world_rot: Tensor,
                 batch_idx: int
                 ) -> Iterator[Tuple[Tensor, Tuple[str, str, int]]]:
         """
@@ -146,12 +151,17 @@ class PedestrianWriter(object):
         :type absolute_pose_loc: Tensor
         :param absolute_pose_rot: Output from the .forward converted to absolute pose rotations. May be None.
         :type absolute_pose_rot: Tensor
+        :param world_loc: Output from the .forward converted to world locations. Get it from projection layer.
+        :type world_loc: Tensor
+        :param world_rot: Output from the .forward converted to world rotations. May be None.
+        :type world_rot: Tensor
         :param batch_idx: Batch index
         :type batch_idx: int
         :return: List of videos and metadata
         :rtype: Tuple[List[Tensor], Tuple[str]]
         """
 
+        # TODO: handle world_loc and world_rot in carla renderers
         # TODO: get this from LitBaseMapper projection layer
         # TODO: move those to the Renderers's constructors instead of .render
         image_size = (800, 600)

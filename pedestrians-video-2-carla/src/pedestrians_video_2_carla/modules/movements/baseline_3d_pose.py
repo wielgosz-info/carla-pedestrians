@@ -1,13 +1,12 @@
 import torch
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
 from pedestrians_video_2_carla.submodules.baseline_3d_pose.model import \
     LinearModel as Baseline3DPoseModel
 from torch import nn
 
-from .base import LitBaseMapper
 
-
-class Baseline3DPose(LitBaseMapper):
+class Baseline3DPose(MovementsModel):
     """
     Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
     of 3D pose baseline from the following paper:
@@ -27,10 +26,7 @@ class Baseline3DPose(LitBaseMapper):
                  num_stage=2,
                  p_dropout=0.5,
                  **kwargs):
-        super().__init__(
-            projection_type=ProjectionTypes.absolute_loc,
-            **kwargs
-        )
+        super().__init__(**kwargs)
 
         self.__input_nodes_len = len(self.input_nodes)
         self.__input_features = 2  # (x, y) points
@@ -51,13 +47,17 @@ class Baseline3DPose(LitBaseMapper):
         self.baseline.w1 = nn.Linear(self.__input_size, linear_size)
         self.baseline.w2 = nn.Linear(linear_size, self.__output_size)
 
-        self.save_hyperparameters({
+        self._hparams = {
             'linear_size': linear_size,
             'num_stage': num_stage,
             'p_dropout': p_dropout
-        })
+        }
 
         self.apply(self.init_weights)
+
+    @property
+    def output_type(self) -> MovementsModelOutputType:
+        return MovementsModelOutputType.absolute_loc
 
     def init_weights(self, m):
         if type(m) == nn.Linear:
@@ -65,8 +65,6 @@ class Baseline3DPose(LitBaseMapper):
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parent_parser = LitBaseMapper.add_model_specific_args(parent_parser)
-
         parser = parent_parser.add_argument_group("Baseline3DPose Lightning Module")
         parser.add_argument(
             '--num_stage',
@@ -96,4 +94,9 @@ class Baseline3DPose(LitBaseMapper):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+
+        config = {
+            'optimizer': optimizer,
+        }
+
+        return config

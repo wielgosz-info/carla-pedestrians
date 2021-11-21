@@ -1,22 +1,22 @@
 import torch
 from torch import nn
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 
-from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
 from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 
 
-class LinearAEResidual(LitBaseMapper):
+class LinearAEResidual(MovementsModel):
     """
     Residual bottleneck autoencoder.
-    Inputs are flattened to a vector of size (clip_length * input_nodes_len * input_features).
+    Inputs are flattened to a vector of size (input_nodes_len * input_features).
     """
 
     def __init__(self,
                  linear_size=256,
                  **kwargs
                  ):
-        super().__init__(projection_type=ProjectionTypes.absolute_loc_rot, **kwargs)
+        super().__init__(**kwargs)
 
         self.__input_nodes_len = len(self.input_nodes)
         self.__input_features = 2  # (x, y)
@@ -61,11 +61,15 @@ class LinearAEResidual(LitBaseMapper):
             nn.Linear(linear_size, self.__output_size),
         )
 
-        self.save_hyperparameters({
+        self._hparams = {
             'linear_size': linear_size,
-        })
+        }
 
         self.apply(self.init_weights)
+
+    @property
+    def output_type(self) -> MovementsModelOutputType:
+        return MovementsModelOutputType.absolute_loc_rot
 
     def init_weights(self, m):
         if type(m) == nn.Linear:
@@ -73,8 +77,6 @@ class LinearAEResidual(LitBaseMapper):
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parent_parser = LitBaseMapper.add_model_specific_args(parent_parser)
-
         parser = parent_parser.add_argument_group("LinearAEResidual Lightning Module")
         parser.add_argument(
             '--linear_size',
@@ -97,4 +99,9 @@ class LinearAEResidual(LitBaseMapper):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
-        return optimizer
+
+        config = {
+            'optimizer': optimizer,
+        }
+
+        return config

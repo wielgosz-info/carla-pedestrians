@@ -1,8 +1,7 @@
 from typing import Dict, Type
 
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckNormalize)
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize
 from torch.functional import Tensor
 from torch.nn.modules import loss
 from pytorch_lightning.utilities.warnings import rank_zero_warn
@@ -24,7 +23,7 @@ def calculate_loss_loc_3d(criterion: loss._Loss, input_nodes: Type[CARLA_SKELETO
     :rtype: Tensor
     """
     try:
-        transform = HipsNeckNormalize(CarlaHipsNeckExtractor(input_nodes))
+        transform = HipsNeckNormalize(input_nodes.get_extractor())
         loss = criterion(
             transform(absolute_pose_loc, dim=3),
             transform(targets['absolute_pose_loc'], dim=3)

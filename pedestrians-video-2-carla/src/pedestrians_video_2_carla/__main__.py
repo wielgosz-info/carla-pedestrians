@@ -1,3 +1,3 @@
-from .skeleton import run
+from .modeling import run
 
 run()

@@ -1,13 +1,17 @@
 
-from typing import List, Tuple, Type
+from typing import Any, List, Tuple, Type
 
 import pytorch_lightning as pl
 from pedestrians_video_2_carla.metrics.mpjpe import MPJPE
+from pedestrians_video_2_carla.metrics.mrpe import MRPE
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType, TrajectoryModelOutputType
+from pedestrians_video_2_carla.modules.base.trajectory import TrajectoryModel
 from pedestrians_video_2_carla.modules.loss import LossModes
-from pedestrians_video_2_carla.modules.projection.projection import \
-    ProjectionModule, ProjectionTypes
-from pedestrians_video_2_carla.skeletons.nodes import (
-    Skeleton, get_skeleton_name_by_type, get_skeleton_type_by_name)
+from pedestrians_video_2_carla.modules.layers.projection import ProjectionModule
+from pedestrians_video_2_carla.modules.movements.zero import ZeroMovements
+from pedestrians_video_2_carla.modules.trajectory.zero import ZeroTrajectory
+from pedestrians_video_2_carla.skeletons.nodes import get_skeleton_type_by_name
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from torch.functional import Tensor
 import platform
@@ -17,29 +21,40 @@ from torchmetrics import MetricCollection
 class LitBaseMapper(pl.LightningModule):
     """
     Base LightningModule - all other LightningModules should inherit from this.
-    It contains projection layer, loss modes handling and video logging.
+    It contains movements model, trajectory model, projection layer, loss modes handling and video logging.
 
-    Derived LightningModules should implement forward() and configure_optimizers() method.
-    If they use additional hyperparameters, they should also call self.save_hyperparameters({...})
+    Movements & Trajectory models should implement forward() and configure_optimizers() method.
+    If they use additional hyperparameters, they should also set self._hparams dict
     in __init__() and (optionally) override add_model_specific_args() method.
     """
 
     def __init__(
         self,
-        input_nodes: Type[Skeleton] = CARLA_SKELETON,
-        output_nodes: Type[Skeleton] = CARLA_SKELETON,
+        movements_model: MovementsModel = None,
+        trajectory_model: TrajectoryModel = None,
         loss_modes: List[LossModes] = None,
-        projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
-        needs_confidence: bool = False,
         **kwargs
     ):
         super().__init__()
 
+        # default layers
+        if movements_model is None:
+            movements_model = ZeroMovements()
+        self.movements_model = movements_model
+
+        if trajectory_model is None:
+            trajectory_model = ZeroTrajectory()
+        self.trajectory_model = trajectory_model
+
+        self.projection = ProjectionModule(
+            movements_output_type=self.movements_model.output_type,
+            trajectory_output_type=self.trajectory_model.output_type,
+        )
+
+        # losses
         if loss_modes is None or len(loss_modes) == 0:
             loss_modes = [LossModes.common_loc_2d]
         self._loss_modes = loss_modes
-
-        self._needs_confidence = needs_confidence
 
         modes = []
         for mode in self._loss_modes:
@@ -48,31 +63,36 @@ class LitBaseMapper(pl.LightningModule):
                     modes.append(LossModes[k])
             modes.append(mode)
         # TODO: resolve requirements chain and put modes in correct order, not just 'hopefully correct' one
-
         self._losses_to_calculate = list(dict.fromkeys(modes))
-
-        self.input_nodes = input_nodes
-        self.output_nodes = output_nodes
-
-        # default layer
-        self.projection = ProjectionModule(
-            projection_type=projection_type,
-            **kwargs
-        )
 
         # default metrics
         self.metrics = MetricCollection([
             MPJPE(dist_sync_on_step=True),
+            MRPE(
+                dist_sync_on_step=True,
+                input_nodes=self.movements_model.input_nodes,
+                output_nodes=self.movements_model.output_nodes
+            )
         ])
 
         self.save_hyperparameters({
-            'input_nodes': get_skeleton_name_by_type(self.input_nodes),
-            'output_nodes': get_skeleton_name_by_type(self.output_nodes),
-            'loss_modes': [mode.name for mode in self._loss_modes],
-            'projection_type': projection_type.name,
-            'model_name': self.__class__.__name__,
             'host': platform.node(),
+            'loss_modes': [mode.name for mode in self._loss_modes],
+            **self.movements_model.hparams,
+            **self.trajectory_model.hparams,
         })
+
+    def configure_optimizers(self):
+        movements_optimizers = self.movements_model.configure_optimizers()
+        trajectory_optimizers = self.trajectory_model.configure_optimizers()
+
+        if 'optimizer' not in movements_optimizers:
+            movements_optimizers = None
+
+        if 'optimizer' not in trajectory_optimizers:
+            trajectory_optimizers = None
+
+        return [opt for opt in [movements_optimizers, trajectory_optimizers] if opt is not None]
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
@@ -83,7 +103,7 @@ class LitBaseMapper(pl.LightningModule):
         If overriding, remember to call super().
         """
 
-        parser = parent_parser.add_argument_group("BaseMapper Lightning Module")
+        parser = parent_parser.add_argument_group("BaseMapper Module")
         parser.add_argument(
             '--input_nodes',
             type=get_skeleton_type_by_name,
@@ -109,6 +129,7 @@ class LitBaseMapper(pl.LightningModule):
             action="extend",
             type=LossModes.__getitem__
         )
+
         return parent_parser
 
     def on_train_start(self):
@@ -148,18 +169,39 @@ class LitBaseMapper(pl.LightningModule):
     def test_step_end(self, outputs):
         self._eval_step_end(outputs, 'test')
 
+    def training_epoch_end(self, outputs: Any) -> None:
+        to_log = {}
+
+        if hasattr(self.movements_model, 'training_epoch_end'):
+            to_log.update(self.movements_model.training_epoch_end(outputs))
+
+        if hasattr(self.trajectory_model, 'training_epoch_end'):
+            to_log.update(self.trajectory_model.training_epoch_end(outputs))
+
+        if len(to_log) > 0:
+            self.log_dict(to_log)
+
     def _step(self, batch, batch_idx, stage):
         (frames, targets, meta) = batch
 
-        if self._needs_confidence:
-            frames = frames.to(self.device)
-        else:
-            frames = frames[..., 0:2].clone().to(self.device)
+        no_conf_frames = frames[..., 0:2].clone()
 
-        pose_inputs = self.forward(frames, targets if self.training else None)
+        pose_inputs = self.movements_model(
+            frames if self.movements_model.needs_confidence else no_conf_frames,
+            targets if self.training else None
+        )
 
-        (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot) = self.projection(
-            pose_inputs
+        world_loc_inputs, world_rot_inputs = self.trajectory_model(
+            no_conf_frames,
+            targets if self.training else None
+        )
+
+        (projected_pose, normalized_projection,
+         absolute_pose_loc, absolute_pose_rot,
+         world_loc, world_rot) = self.projection(
+            pose_inputs,
+            world_loc_inputs,
+            world_rot_inputs
         )
 
         # TODO: this will work for mono-type batches, but not for mixed-type batches;
@@ -171,12 +213,14 @@ class LitBaseMapper(pl.LightningModule):
             (loss_fn, criterion, *_) = mode.value
             loss = loss_fn(
                 criterion=criterion,
-                input_nodes=self.input_nodes,
+                input_nodes=self.movements_model.input_nodes,
                 pose_changes=pose_inputs,
                 projected_pose=projected_pose,
                 normalized_projection=normalized_projection,
                 absolute_pose_loc=absolute_pose_loc,
                 absolute_pose_rot=absolute_pose_rot,
+                world_loc=world_loc,
+                world_rot=world_rot,
                 frames=frames,
                 targets=targets,
                 meta=meta,
@@ -196,6 +240,8 @@ class LitBaseMapper(pl.LightningModule):
             projected_pose=projected_pose,
             absolute_pose_loc=absolute_pose_loc,
             absolute_pose_rot=absolute_pose_rot,
+            world_loc=world_loc,
+            world_rot=world_rot,
             batch=batch,
             batch_idx=batch_idx,
             stage=stage
@@ -211,11 +257,13 @@ class LitBaseMapper(pl.LightningModule):
                 return {
                     'loss': loss_dict[mode],
                     'preds': {
-                        'pose_changes': pose_inputs.detach(),
-                        'world_rot_changes': None,  # TODO: implement this; should those be changes or abs?
-                        'world_loc_changes': None,  # TODO: implement this; should those be changes or abs?
+                        'pose_changes': pose_inputs.detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
+                        'world_rot_changes': world_rot_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'world_loc_changes': world_loc_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
                         'absolute_pose_loc': absolute_pose_loc.detach(),
-                        'absolute_pose_rot': absolute_pose_rot.detach(),
+                        'absolute_pose_rot': absolute_pose_rot.detach() if absolute_pose_rot is not None else None,
+                        'world_loc': world_loc.detach(),
+                        'world_rot': world_rot.detach(),
                     },
                     'targets': targets
                 }
@@ -226,7 +274,8 @@ class LitBaseMapper(pl.LightningModule):
         # calculate and log metrics
         m = self.metrics(outputs['preds'], outputs['targets'])
         for k, v in m.items():
-            self.log('hp/{}'.format(k), v)
+            self.log('hp/{}'.format(k), v,
+                     batch_size=len(outputs['preds']['absolute_pose_loc']))
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):
         vid = vid.permute(0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W
@@ -239,6 +288,8 @@ class LitBaseMapper(pl.LightningModule):
                     projected_pose: Tensor,
                     absolute_pose_loc: Tensor,
                     absolute_pose_rot: Tensor,
+                    world_loc: Tensor,
+                    world_rot: Tensor,
                     batch: Tuple,
                     batch_idx: int,
                     stage: str,
@@ -254,6 +305,8 @@ class LitBaseMapper(pl.LightningModule):
             projected_pose,
             absolute_pose_loc,
             absolute_pose_rot,
+            world_loc,
+            world_rot,
             self.global_step,
             batch_idx,
             stage,

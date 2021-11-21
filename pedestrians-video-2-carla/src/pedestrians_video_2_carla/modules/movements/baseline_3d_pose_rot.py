@@ -1,14 +1,14 @@
 import torch
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
 from pedestrians_video_2_carla.submodules.baseline_3d_pose.model import \
     LinearModel as Baseline3DPoseModel
 from torch import nn
 from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
-from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
-from .base import LitBaseMapper
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
-class Baseline3DPoseRot(LitBaseMapper):
+class Baseline3DPoseRot(MovementsModel):
     """
     Based on the [PyTorch implementation](https://github.com/weigq/3d_pose_baseline_pytorch)
     of 3D pose baseline from the following paper:
@@ -21,6 +21,8 @@ class Baseline3DPoseRot(LitBaseMapper):
     year={2017}
     }
     ```
+
+    Main change is the addition of the rotation part in the output.
     """
 
     def __init__(self,
@@ -28,10 +30,7 @@ class Baseline3DPoseRot(LitBaseMapper):
                  num_stage=2,
                  p_dropout=0.5,
                  **kwargs):
-        super().__init__(
-            projection_type=ProjectionTypes.absolute_loc_rot,
-            **kwargs
-        )
+        super().__init__(**kwargs)
 
         self.__input_nodes_len = len(self.input_nodes)
         self.__input_features = 2  # (x, y) points
@@ -52,13 +51,17 @@ class Baseline3DPoseRot(LitBaseMapper):
         self.baseline.w1 = nn.Linear(self.__input_size, linear_size)
         self.baseline.w2 = nn.Linear(linear_size, self.__output_size)
 
-        self.save_hyperparameters({
+        self._hparams = {
             'linear_size': linear_size,
             'num_stage': num_stage,
             'p_dropout': p_dropout
-        })
+        }
 
         self.apply(self.init_weights)
+
+    @property
+    def output_type(self) -> MovementsModelOutputType:
+        return MovementsModelOutputType.absolute_loc_rot
 
     def init_weights(self, m):
         if type(m) == nn.Linear:
@@ -66,9 +69,7 @@ class Baseline3DPoseRot(LitBaseMapper):
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parent_parser = LitBaseMapper.add_model_specific_args(parent_parser)
-
-        parser = parent_parser.add_argument_group("Baseline3DPoseRot Lightning Module")
+        parser = parent_parser.add_argument_group("Baseline3DPoseRot Movements Module")
         parser.add_argument(
             '--num_stage',
             default=2,
@@ -105,8 +106,8 @@ class Baseline3DPoseRot(LitBaseMapper):
         }
 
         config = {
+            'optimizer': optimizer,
             'lr_scheduler': lr_scheduler,
-            'optimizer': optimizer
         }
 
         return config

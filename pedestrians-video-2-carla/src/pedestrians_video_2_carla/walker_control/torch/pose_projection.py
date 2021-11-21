@@ -108,9 +108,6 @@ class P3dPoseProjection(PoseProjection, torch.nn.Module):
         ), device=rot.device).expand((batch_size, -1, -1))
         world_x = torch.bmm(x, p3d_2_world)
 
-        # TODO: how world location/rotation should be kept?
-        # maybe it would make more sense to keep it as transformation matrix all the time?
-        # or at least rotation matrix?
         world_transform = torch.eye(4, device=self._device).reshape(
             (1, 4, 4)).repeat((batch_size, 1, 1))
         world_transform[:, :3, :3] = rot

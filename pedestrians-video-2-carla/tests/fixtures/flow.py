@@ -1,8 +1,9 @@
 import pytest
-from pedestrians_video_2_carla.loggers.pedestrian.pedestrian_renderers import PedestrianRenderers
 
 from pedestrians_video_2_carla.modules.loss import LossModes
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionTypes
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
+from pedestrians_video_2_carla.modules.movements import MOVEMENTS_MODELS
+from pedestrians_video_2_carla.modules.trajectory import TRAJECTORY_MODELS
 
 
 @pytest.fixture()
@@ -30,11 +31,12 @@ def test_outputs_dir():
 
 
 @pytest.fixture(params=list(LossModes.__members__.keys()))
-def loss_mode(request, projection_type):
-    supported = LossModes.get_supported_loss_modes(ProjectionTypes[projection_type])
+def loss_mode(request, movements_output_type):
+    supported = LossModes.get_supported_loss_modes(
+        MovementsModelOutputType[movements_output_type])
     if LossModes[request.param] not in supported:
         pytest.skip("Loss mode {} not supported for projection type {}".format(
-            request.param, projection_type))
+            request.param, movements_output_type))
     return request.param
 
 
@@ -44,6 +46,18 @@ def renderer(request):
     return request.param
 
 
-@pytest.fixture(params=list(ProjectionTypes.__members__.keys()))
-def projection_type(request):
+@pytest.fixture(params=list(MovementsModelOutputType.__members__.keys()))
+def movements_output_type(request):
+    return request.param
+
+
+# all models should be able to run with default settings
+@pytest.fixture(params=MOVEMENTS_MODELS.keys())
+def movements_model_name(request):
+    return request.param
+
+
+# all models should be able to run with default settings
+@pytest.fixture(params=TRAJECTORY_MODELS.keys())
+def trajectory_model_name(request):
     return request.param

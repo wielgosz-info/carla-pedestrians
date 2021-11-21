@@ -1,8 +1,13 @@
 from enum import Enum
+from typing import Type
+
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckExtractor
 
 
 class Skeleton(Enum):
-    pass
+    @classmethod
+    def get_extractor(cls) -> Type[HipsNeckExtractor]:
+        raise NotImplementedError()
 
 
 SKELETONS = {}
@@ -14,7 +19,8 @@ def get_skeleton_type_by_name(name):
 
 
 def get_skeleton_name_by_type(skeleton):
-    return list(SKELETONS.keys())[list(SKELETONS.values()).index(skeleton)]
+    # return list(SKELETONS.keys())[list(SKELETONS.values()).index(skeleton)]
+    return skeleton.__name__
 
 
 def register_skeleton(name, skeleton, mapping=None):

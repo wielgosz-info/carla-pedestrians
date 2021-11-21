@@ -5,8 +5,7 @@ import torch
 from torch import nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.functional import Tensor
-
-from pedestrians_video_2_carla.modules.lightning.base import LitBaseMapper
+from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 
 
 class TeacherMode(Enum):
@@ -64,7 +63,7 @@ class Decoder(nn.Module):
         return prediction, hidden, cell
 
 
-class Seq2Seq(LitBaseMapper):
+class Seq2Seq(MovementsModel):
     """
     Sequence to sequence model
     """
@@ -95,19 +94,17 @@ class Seq2Seq(LitBaseMapper):
         assert self.encoder.n_layers == self.decoder.n_layers, \
             "Encoder and decoder must have equal number of layers!"
 
-        self.save_hyperparameters({
+        self._hparams = {
             'hidden_size': hidden_size,
             'num_layers': num_layers,
             'p_dropout': p_dropout,
             'teacher_mode': self.teacher_mode.name,
             'teacher_force_ratio': self.teacher_force_ratio
-        })
+        }
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parent_parser = LitBaseMapper.add_model_specific_args(parent_parser)
-
-        parser = parent_parser.add_argument_group("Seq2Seq Lightning Module")
+        parser = parent_parser.add_argument_group("Seq2Seq Movements Module")
         parser.add_argument(
             '--num_layers',
             default=2,
@@ -189,8 +186,6 @@ class Seq2Seq(LitBaseMapper):
         force_indices = None
 
         if needs_forcing:
-            self.log('teacher_force_ratio', self.teacher_force_ratio)
-
             target_pose_changes = matrix_to_rotation_6d(targets['pose_changes'])
 
             (batch_size, clip_length, *_) = target_pose_changes.shape
@@ -209,11 +204,16 @@ class Seq2Seq(LitBaseMapper):
 
         return needs_forcing, target_pose_changes, force_indices
 
-    def training_epoch_end(self, *args, **kwargs) -> None:
+    def training_epoch_end(self, *args, **kwargs) -> Dict[str, float]:
+        current_ratio = self.teacher_force_ratio
+
         # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
         # similar to what can be done for lr
         self.teacher_force_ratio = (self.teacher_force_ratio -
                                     0.02) if self.teacher_force_ratio > 0.02 else 0
+        return {
+            'teacher_force_ratio': current_ratio
+        }
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=1e-2)
@@ -225,8 +225,8 @@ class Seq2Seq(LitBaseMapper):
         }
 
         config = {
+            'optimizer': optimizer,
             'lr_scheduler': lr_scheduler,
-            'optimizer': optimizer
         }
 
         return config

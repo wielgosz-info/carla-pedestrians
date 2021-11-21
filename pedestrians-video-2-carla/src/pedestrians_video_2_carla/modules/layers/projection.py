@@ -1,36 +1,27 @@
 from typing import Tuple, Union
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType, TrajectoryModelOutputType
 
 
-from pedestrians_video_2_carla.transforms.hips_neck import (
-    CarlaHipsNeckExtractor, HipsNeckNormalize)
+from pedestrians_video_2_carla.skeletons.nodes.carla import CarlaHipsNeckExtractor
+from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize
 from pedestrians_video_2_carla.transforms.reference_skeletons import ReferenceSkeletonsDenormalize
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
     P3dPoseProjection
-from pytorch3d.transforms.rotation_conversions import euler_angles_to_matrix
+from pedestrians_video_2_carla.walker_control.torch.world import calculate_world_from_changes
 
 import torch
 from torch import nn
 from torch.functional import Tensor
-from enum import Enum
-
-
-class ProjectionTypes(Enum):
-    """
-    Enum for the different model types.
-    """
-    pose_changes = 0  # default, prefferred
-    absolute_loc = 1  # undesired, but possible; it will most likely deform the skeleton; incompatible with some loss functions
-    # undesired, but possible; it will most likely deform the skeleton; incompatible with some loss functions
-    absolute_loc_rot = 2
 
 
 class ProjectionModule(nn.Module):
     def __init__(self,
                  projection_transform=None,
-                 projection_type: ProjectionTypes = ProjectionTypes.pose_changes,
+                 movements_output_type: MovementsModelOutputType = MovementsModelOutputType.pose_changes,
+                 trajectory_output_type: TrajectoryModelOutputType = TrajectoryModelOutputType.changes,
                  **kwargs
                  ) -> None:
         super().__init__()
@@ -39,18 +30,24 @@ class ProjectionModule(nn.Module):
             projection_transform = HipsNeckNormalize(CarlaHipsNeckExtractor())
         self.projection_transform = projection_transform
 
-        self.projection_type = projection_type
+        self.movements_output_type = movements_output_type
+        self.trajectory_output_type = trajectory_output_type
 
-        if self.projection_type == ProjectionTypes.pose_changes:
+        if self.movements_output_type == MovementsModelOutputType.pose_changes:
             self.__calculate_abs = self._calculate_abs_from_pose_changes
-        elif self.projection_type == ProjectionTypes.absolute_loc or self.projection_type == ProjectionTypes.absolute_loc_rot:
+        elif self.movements_output_type == MovementsModelOutputType.absolute_loc or self.movements_output_type == MovementsModelOutputType.absolute_loc_rot:
             self.__denormalize = ReferenceSkeletonsDenormalize(
                 autonormalize=True
             )
-            if self.projection_type == ProjectionTypes.absolute_loc:
+            if self.movements_output_type == MovementsModelOutputType.absolute_loc:
                 self.__calculate_abs = self._calculate_abs_from_abs_loc_output
             else:
                 self.__calculate_abs = self._calculate_abs_from_abs_loc_rot_output
+
+        if self.trajectory_output_type == TrajectoryModelOutputType.changes:
+            self.__calculate_world = self._calculate_world_from_changes
+        elif self.trajectory_output_type == TrajectoryModelOutputType.loc_rot:
+            self.__calculate_world = self._calculate_world_from_loc_rot
 
         # set on every batch
         self.__pedestrians = None
@@ -72,7 +69,7 @@ class ProjectionModule(nn.Module):
         self.__pose_projection = P3dPoseProjection(
             device=frames.device, pedestrian=self.__pedestrians[0])
 
-        # TODO: handle initial world transform matching instead of setting all zeros?
+        # TODO: handle initial world transform matching instead of setting all zeros
         self.__world_locations = torch.zeros(
             (batch_size, 3), device=frames.device)
         self.__world_rotations = torch.eye(3, device=frames.device).reshape(
@@ -95,45 +92,34 @@ class ProjectionModule(nn.Module):
         :rtype: Tuple[Tensor, Tensor, Tensor]
         """
         # TODO: switch batch and clip length dimensions?
-        if self.projection_type == ProjectionTypes.pose_changes and pose_inputs_batch.ndim < 5:
+        if self.movements_output_type == MovementsModelOutputType.pose_changes and pose_inputs_batch.ndim < 5:
             raise RuntimeError(
                 'Pose changes should have shape of (N - batch_size, L - clip_length, B - bones, 3, 3 - rotations as rotation matrices)')
-        elif self.projection_type == ProjectionTypes.absolute_loc and pose_inputs_batch.ndim < 4:
+        elif self.movements_output_type == MovementsModelOutputType.absolute_loc and pose_inputs_batch.ndim < 4:
             raise RuntimeError(
                 'Absolute location should have shape of (N - batch_size, L - clip_length, B - bones, 3 - absolute location coordinates)')
-        elif self.projection_type == ProjectionTypes.absolute_loc_rot and not isinstance(pose_inputs_batch, tuple):
+        elif self.movements_output_type == MovementsModelOutputType.absolute_loc_rot and not isinstance(pose_inputs_batch, tuple):
             raise RuntimeError(
                 'Absolute location with rotation should be a Tuple of tensors.')
 
         absolute_loc, absolute_rot = self.__calculate_abs(pose_inputs_batch)
-
-        if world_loc_change_batch is None:
-            world_loc_change_batch = torch.zeros((*absolute_loc.shape[:2], 3),
-                                                 device=absolute_loc.device)  # no world loc change
-
-        if world_rot_change_batch is None:
-            world_rot_change_batch = torch.eye(3, device=absolute_loc.device).reshape(
-                (1, 1, 3, 3)).repeat((*absolute_loc.shape[:2], 1, 1))  # no world rot change
+        world_loc, world_rot = self.__calculate_world(
+            absolute_loc, world_loc_change_batch, world_rot_change_batch)
 
         projections = torch.empty_like(absolute_loc)
 
         # for every frame in clip
         for i in range(absolute_loc.shape[1]):
-            self.__world_rotations = torch.bmm(
-                self.__world_rotations,
-                world_rot_change_batch[:, i]
-            )
-            self.__world_locations += world_loc_change_batch[:, i]
             projections[:, i] = self.__pose_projection.forward(
                 absolute_loc[:, i],
-                self.__world_locations,
-                self.__world_rotations
+                world_loc[:, i],
+                world_rot[:, i]
             )
 
-        return projections, absolute_loc, absolute_rot
+        return projections, absolute_loc, absolute_rot, world_loc, world_rot
 
     def _calculate_abs_from_abs_loc_output(self, pose_inputs_batch):
-        # if the projection_type is absolute_loc, we need to convert it
+        # if the movements_output_type is absolute_loc, we need to convert it
         # to something that actually scales back to the original skeleton size
         # so self-normalize first, and denormalize with respect to reference pose later
         absolute_loc = self.__denormalize.from_abs(pose_inputs_batch, {
@@ -176,12 +162,32 @@ class ProjectionModule(nn.Module):
 
         return absolute_loc, absolute_rot
 
+    def _calculate_world_from_changes(self, absolute_loc: Tensor, world_loc_change_batch: Tensor = None, world_rot_change_batch: Tensor = None):
+        return calculate_world_from_changes(
+            absolute_loc.shape, absolute_loc.device,
+            world_loc_change_batch, world_rot_change_batch,
+            self.__world_locations, self.__world_rotations
+        )
+
+    def _calculate_world_from_loc_rot(self, absolute_loc: Tensor, world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None):
+        batch_size, clip_length, *_ = absolute_loc.shape
+
+        if world_loc_inputs is None:
+            world_loc_inputs = torch.zeros((batch_size, clip_length, 3),
+                                           device=absolute_loc.device)  # no world loc change
+
+        if world_rot_inputs is None:
+            world_rot_inputs = torch.eye(3, device=absolute_loc.device).reshape(
+                (1, 1, 3, 3)).repeat((batch_size, clip_length, 1, 1))  # no world rot change
+
+        return world_loc_inputs, world_rot_inputs
+
     def forward(self, pose_inputs: Union[Tensor, Tuple[Tensor, Tensor]], world_loc_inputs: Tensor = None, world_rot_inputs: Tensor = None) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        (projected_pose, absolute_pose_loc, absolute_pose_rot) = self.project_pose(
+        (projected_pose, absolute_pose_loc, absolute_pose_rot, world_loc, world_rot) = self.project_pose(
             pose_inputs,
             world_loc_inputs,
             world_rot_inputs,
         )
         normalized_projection = self.projection_transform(projected_pose)
 
-        return (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot)
+        return (projected_pose, normalized_projection, absolute_pose_loc, absolute_pose_rot, world_loc, world_rot)

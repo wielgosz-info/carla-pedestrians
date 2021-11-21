@@ -2,7 +2,7 @@ from typing import Callable, Optional, Type
 import torch
 from torch.utils.data import IterableDataset, Dataset
 import h5pickle as h5py
-from pedestrians_video_2_carla.modules.projection.projection import ProjectionModule
+from pedestrians_video_2_carla.modules.layers.projection import ProjectionModule
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import numpy as np
 from torch.functional import Tensor
@@ -15,6 +15,7 @@ class Carla2D3DDataset(Dataset):
 
         self.projection_2d = set_file['carla_2d_3d/projection_2d']
         self.pose_changes = set_file['carla_2d_3d/targets/pose_changes']
+        self.world_loc_changes = set_file['carla_2d_3d/targets/world_loc_changes']
         self.world_rot_changes = set_file['carla_2d_3d/targets/world_rot_changes']
         self.absolute_pose_loc = set_file['carla_2d_3d/targets/absolute_pose_loc']
         self.absolute_pose_rot = set_file['carla_2d_3d/targets/absolute_pose_rot']
@@ -38,6 +39,9 @@ class Carla2D3DDataset(Dataset):
         world_rot_change_batch = self.world_rot_changes[idx]
         world_rot_change_batch = torch.from_numpy(world_rot_change_batch)
 
+        world_loc_change_batch = self.world_loc_changes[idx]
+        world_loc_change_batch = torch.from_numpy(world_loc_change_batch)
+
         absolute_pose_loc = self.absolute_pose_loc[idx]
         absolute_pose_loc = torch.from_numpy(absolute_pose_loc)
 
@@ -51,6 +55,7 @@ class Carla2D3DDataset(Dataset):
             projection_2d,
             {
                 'pose_changes': pose_changes_matrix,
+                'world_loc_changes': world_loc_change_batch,
                 'world_rot_changes': world_rot_change_batch,
                 'absolute_pose_loc': absolute_pose_loc,
                 'absolute_pose_rot': absolute_pose_rot,
@@ -105,6 +110,8 @@ class Carla2D3DIterableDataset(IterableDataset):
             (self.batch_size, self.clip_length, nodes_size, 3))
         world_rot_change = torch.zeros(
             (self.batch_size, self.clip_length, 3))
+        world_loc_change_batch = torch.zeros(
+            (self.batch_size, self.clip_length, 3))
 
         for idx in range(self.batch_size):
             for i in range(self.clip_length):
@@ -128,6 +135,8 @@ class Carla2D3DIterableDataset(IterableDataset):
                 (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
         world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
+        # TODO: introduce world location change at some point
+
         # TODO: we should probably take care of the "correct" pedestrians data distribution
         # need to find some pedestrian statistics
         age = np.random.choice(['adult', 'child'], size=self.batch_size)
@@ -137,9 +146,10 @@ class Carla2D3DIterableDataset(IterableDataset):
             'age': age,
             'gender': gender
         }), 0)
-        projection_2d, absolute_pose_loc, absolute_pose_rot = self.projection.project_pose(
+        projection_2d, absolute_pose_loc, absolute_pose_rot, *_ = self.projection.project_pose(
             pose_inputs_batch=pose_changes_batch,
-            world_rot_change_batch=world_rot_change_batch
+            world_rot_change_batch=world_rot_change_batch,
+            world_loc_change_batch=world_loc_change_batch,
         )
 
         # use the third dimension as 'confidence' of the projection
@@ -161,6 +171,7 @@ class Carla2D3DIterableDataset(IterableDataset):
             projection_2d,
             {
                 'pose_changes': pose_changes_batch,
+                'world_loc_changes': world_loc_change_batch,
                 'world_rot_changes': world_rot_change_batch,
                 'absolute_pose_loc': absolute_pose_loc,
                 'absolute_pose_rot': absolute_pose_rot
@@ -171,13 +182,13 @@ class Carla2D3DIterableDataset(IterableDataset):
 
 if __name__ == "__main__":
     from pedestrians_video_2_carla.utils.timing import timing, print_timing
-    from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize, CarlaHipsNeckExtractor
+    from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize
 
     nodes = CARLA_SKELETON
     iter_dataset = Carla2D3DIterableDataset(
         batch_size=256,
         clip_length=180,
-        transform=HipsNeckNormalize(CarlaHipsNeckExtractor(nodes)),
+        transform=HipsNeckNormalize(nodes.get_extractor()),
         nodes=nodes
     )
 
