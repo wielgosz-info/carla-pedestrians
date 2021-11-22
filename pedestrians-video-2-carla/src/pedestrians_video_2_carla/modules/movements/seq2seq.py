@@ -226,7 +226,7 @@ class Seq2Seq(MovementsModel):
 
         config = {
             'optimizer': optimizer,
-            'lr_scheduler': lr_scheduler,
+            # 'lr_scheduler': lr_scheduler,
         }
 
         return config

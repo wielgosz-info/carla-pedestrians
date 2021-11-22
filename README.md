@@ -51,7 +51,7 @@ Run selected experiment inside `carla-pedestrians_client_1`, e.g.:
 ```sh
 python3 -m pedestrians_video_2_carla \
     --data_module_name=Carla2D3D \
-    --model_name=LinearAE \
+    --model_movements_name=LinearAE \
     --clip_length=180 \
     --batch_size=64 \
     --num_workers=32 \

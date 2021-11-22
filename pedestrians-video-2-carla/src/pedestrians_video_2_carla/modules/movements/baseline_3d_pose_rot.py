@@ -107,7 +107,7 @@ class Baseline3DPoseRot(MovementsModel):
 
         config = {
             'optimizer': optimizer,
-            'lr_scheduler': lr_scheduler,
+            # 'lr_scheduler': lr_scheduler,
         }
 
         return config
