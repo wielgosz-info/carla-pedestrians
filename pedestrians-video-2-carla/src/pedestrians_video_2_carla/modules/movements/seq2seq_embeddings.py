@@ -6,64 +6,10 @@ from torch import nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.functional import Tensor
 from pedestrians_video_2_carla.modules.base.movements import MovementsModel
+from .seq2seq import TeacherMode, Encoder, Decoder
 
 
-class TeacherMode(Enum):
-    """
-    Enum for teacher mode.
-    """
-    no_force = 0
-    clip_force = 1
-    frames_force = 2
-
-
-class Encoder(nn.Module):
-    def __init__(self, hid_dim=64, n_layers=2, dropout=0.2, input_nodes_len=26, input_features=2):
-        super().__init__()
-
-        self.hid_dim = hid_dim
-        self.n_layers = n_layers
-
-        self.__input_nodes_len = input_nodes_len
-        self.__input_features = input_features  # (x, y) points
-        self.__input_size = self.__input_nodes_len * self.__input_features
-
-        self.rnn = nn.LSTM(self.__input_size, hid_dim, n_layers, dropout=dropout)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-
-        original_shape = x.shape
-        x = x.view(*original_shape[0:2], self.__input_size)
-        _, (hidden, cell) = self.rnn(x)
-
-        return hidden, cell
-
-
-class Decoder(nn.Module):
-    def __init__(self, hid_dim=64, n_layers=2, dropout=0.2, output_nodes_len=26):
-        super().__init__()
-
-        self.hid_dim = hid_dim
-        self.n_layers = n_layers
-
-        self.__output_nodes_len = output_nodes_len
-        self.__output_features = 6  # Rotation 6D
-        self.output_size = self.__output_nodes_len * self.__output_features
-
-        self.rnn = nn.LSTM(self.output_size, hid_dim, n_layers, dropout=dropout)
-        self.fc_out = nn.Linear(hid_dim, self.output_size)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x, hidden, cell):
-        x = x.unsqueeze(0)
-        output, (hidden, cell) = self.rnn(x, (hidden, cell))
-        prediction = self.fc_out(output.squeeze(0))
-
-        return prediction, hidden, cell
-
-
-class Seq2Seq(MovementsModel):
+class Seq2SeqEmbeddings(MovementsModel):
     """
     Sequence to sequence model
     """
@@ -72,6 +18,7 @@ class Seq2Seq(MovementsModel):
                  hidden_size=64,
                  num_layers=2,
                  p_dropout=0.2,
+                 single_joint_embeddings_size=64,
                  teacher_mode: TeacherMode = TeacherMode.no_force,
                  teacher_force_ratio: float = 0.2,
                  **kwargs):
@@ -79,10 +26,14 @@ class Seq2Seq(MovementsModel):
 
         self.teacher_mode = teacher_mode
         self.teacher_force_ratio = teacher_force_ratio
+        self.single_joint_embeddings_size = single_joint_embeddings_size
 
+        self.embeddings = nn.ModuleList([nn.Linear(2, self.single_joint_embeddings_size)
+                                         for _ in range(len(self.input_nodes))])
         self.encoder = Encoder(
             hid_dim=hidden_size, n_layers=num_layers, dropout=p_dropout,
-            input_nodes_len=len(self.input_nodes)
+            input_nodes_len=len(self.input_nodes),
+            input_features=self.single_joint_embeddings_size
         )
         self.decoder = Decoder(
             hid_dim=hidden_size, n_layers=num_layers, dropout=p_dropout,
@@ -99,12 +50,13 @@ class Seq2Seq(MovementsModel):
             'num_layers': num_layers,
             'p_dropout': p_dropout,
             'teacher_mode': self.teacher_mode.name,
-            'teacher_force_ratio': self.teacher_force_ratio
+            'teacher_force_ratio': self.teacher_force_ratio,
+            'single_joint_embeddings_size': self.single_joint_embeddings_size
         }
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("Seq2Seq Movements Module")
+        parser = parent_parser.add_argument_group("Seq2SeqEmbeddings Movements Module")
         parser.add_argument(
             '--num_layers',
             default=2,
@@ -139,6 +91,11 @@ class Seq2Seq(MovementsModel):
             default=0.2,
             type=float
         )
+        parser.add_argument(
+            '--single_joint_embeddings_size',
+            default=64,
+            type=int,
+        )
 
         return parent_parser
 
@@ -150,13 +107,28 @@ class Seq2Seq(MovementsModel):
 
         batch_size = original_shape[0]
         clip_length = original_shape[1]
+        joints = original_shape[2]
+
+        assert joints == len(self.input_nodes)
+        assert joints == len(self.embeddings)
+
+        # tensore to store the embeddings
+        embeddings = torch.zeros(
+            (clip_length, batch_size, joints, self.single_joint_embeddings_size),
+            dtype=torch.float32,
+            device=x.device
+        )
+
+        # get embeddings
+        for i, embedding in enumerate(self.embeddings):
+            embeddings[:, :, i, :] = embedding(x[:, :, i, :])
 
         # tensor to store decoder outputs
         outputs = torch.zeros(
             (clip_length, batch_size, self.decoder.output_size), device=x.device)
 
         # last hidden state of the encoder is used as the initial hidden state of the decoder
-        hidden, cell = self.encoder(x)
+        hidden, cell = self.encoder(embeddings)
 
         # first input to the decoder is the <sos> tokens
         input = torch.zeros((batch_size, self.decoder.output_size), device=x.device)

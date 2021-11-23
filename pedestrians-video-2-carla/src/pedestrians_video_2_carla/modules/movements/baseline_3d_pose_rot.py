@@ -97,7 +97,7 @@ class Baseline3DPoseRot(MovementsModel):
         return x[..., :3], rotation_6d_to_matrix(x[..., 3:])
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
 
         lr_scheduler = {
             'scheduler': ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=5, cooldown=10),

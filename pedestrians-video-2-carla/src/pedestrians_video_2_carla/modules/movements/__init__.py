@@ -6,6 +6,7 @@ from .linear_ae_residual import LinearAEResidual
 from .baseline_3d_pose_rot import Baseline3DPoseRot
 from .seq2seq import Seq2Seq
 from .linear_ae_residual_tanh import LinearAEResidualTanh
+from .seq2seq_embeddings import Seq2SeqEmbeddings
 
 MOVEMENTS_MODELS = {
     m.__name__: m
@@ -17,6 +18,7 @@ MOVEMENTS_MODELS = {
         LinearAE,
         LinearAEResidual,
         Seq2Seq,
-        LinearAEResidualTanh
+        LinearAEResidualTanh,
+        Seq2SeqEmbeddings
     ]
 }
