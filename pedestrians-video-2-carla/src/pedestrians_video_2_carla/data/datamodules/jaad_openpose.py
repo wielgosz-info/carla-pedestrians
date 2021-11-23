@@ -216,7 +216,7 @@ class JAADOpenPoseDataModule(BaseDataModule):
             clips_set.drop(['clips_count', 'clips_cumsum'], inplace=True, axis=1)
             clips_set.to_csv(os.path.join(self._subsets_dir, '{:s}.csv'.format(name)))
             self.__settings['{}_set_size'.format(
-                name)] = current[i] if i > 0 else total - sum(current[1:])
+                name)] = int(current[i]) if i > 0 else int(total - sum(current[1:]))
 
         progress_bar.update()
         progress_bar.close()

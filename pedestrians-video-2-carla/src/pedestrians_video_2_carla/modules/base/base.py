@@ -179,7 +179,7 @@ class LitBaseMapper(pl.LightningModule):
             to_log.update(self.trajectory_model.training_epoch_end(outputs))
 
         if len(to_log) > 0:
-            self.log_dict(to_log)
+            self.log_dict(to_log, batch_size=len(outputs['preds']['absolute_pose_loc']))
 
     def _step(self, batch, batch_idx, stage):
         (frames, targets, meta) = batch
@@ -253,7 +253,8 @@ class LitBaseMapper(pl.LightningModule):
         # so 'primary' loss should be removed in the future
         for mode in self._loss_modes:
             if mode in loss_dict:
-                self.log('{}_loss/primary'.format(stage), loss_dict[mode])
+                self.log('{}_loss/primary'.format(stage),
+                         loss_dict[mode], batch_size=len(frames))
                 return {
                     'loss': loss_dict[mode],
                     'preds': {
