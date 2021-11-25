@@ -2,7 +2,7 @@ import logging
 from queue import Empty, Queue
 from typing import Dict, List, Tuple, Union
 
-import carla
+import warnings
 import numpy as np
 import PIL
 import torch
@@ -14,6 +14,13 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from torch.functional import Tensor
 from pytorch_lightning.utilities import rank_zero_warn
+
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 
 class CarlaRenderer(Renderer):
@@ -63,7 +70,7 @@ class CarlaRenderer(Renderer):
                     age: str,
                     gender: str,
                     image_size: Tuple[int, int],
-                    world: carla.World,
+                    world: 'carla.World',
                     rendered_videos: int
                     ):
         bound_pedestrian = ControlledPedestrian(
@@ -100,7 +107,7 @@ class CarlaRenderer(Renderer):
                      absolute_pose_loc_frame: Tensor,
                      absolute_pose_rot_frame: Tensor,
                      image_size: Tuple[int, int],
-                     world: carla.World,
+                     world: 'carla.World',
                      bound_pedestrian: ControlledPedestrian,
                      camera_queue: Queue
                      ):

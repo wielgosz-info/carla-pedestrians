@@ -75,10 +75,21 @@ class PedestrianLogger(LightningLoggerBase):
             PedestrianRenderers.input_points, PedestrianRenderers.projection_points
         ]
 
-        try:
+        # See if we can use CARLA renderer. It can still fail later if CARLA server is not available.
+        # Here we only test if actual package or mock is used
+        if PedestrianRenderers.carla in self._renderers or PedestrianRenderers.source_carla in self._renderers:
+            try:
+                import carla
+            except ImportError:
+                rank_zero_warn(
+                    "CARLA renderers not available. Disabling CARLA renderers.")
+                if PedestrianRenderers.carla in self._renderers:
+                    self._renderers.remove(PedestrianRenderers.carla)
+                if PedestrianRenderers.source_carla in self._renderers:
+                    self._renderers.remove(PedestrianRenderers.source_carla)
+
+        if PedestrianRenderers.none in self._renderers:
             self._renderers.remove(PedestrianRenderers.none)
-        except ValueError:
-            pass
 
         if kwargs.get('source_videos_dir', None) is None:
             try:

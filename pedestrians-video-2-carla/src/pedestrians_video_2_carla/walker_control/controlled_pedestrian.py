@@ -2,7 +2,14 @@ from collections import OrderedDict
 import copy
 import random
 from typing import Dict, Type
-import carla
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
+
 from pedestrians_video_2_carla.carla_utils.spatial import deepcopy_location, deepcopy_transform
 
 from pedestrians_video_2_carla.skeletons.reference.load import load_reference, unreal_to_carla
@@ -10,7 +17,7 @@ from pedestrians_video_2_carla.walker_control.pose import Pose
 
 
 class ControlledPedestrian(object):
-    def __init__(self, world: carla.World = None, age: str = 'adult', gender: str = 'female', pose_cls: Type = Pose, max_spawn_tries=10, *args, **kwargs):
+    def __init__(self, world: 'carla.World' = None, age: str = 'adult', gender: str = 'female', pose_cls: Type = Pose, max_spawn_tries=10, *args, **kwargs):
         """
         Initializes the pedestrian that keeps track of its current pose.
 
@@ -67,13 +74,19 @@ class ControlledPedestrian(object):
                 setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def bind(self, world: carla.World, ignore_shift=False):
+    def bind(self, world: 'carla.World', ignore_shift=False):
         """
         Binds the pedestrian to the instance of carla.World
 
         :param world:
         :type world: carla.World
         """
+        # this method cannot be used with mock_carla, since it only makes sense to bind to a real world
+        # so raise runtime error if carla has no World
+        if getattr(carla, 'World', None) is None:
+            raise RuntimeError(
+                "You are using mock carla, calls to bind are not allowed!")
+
         # remember current shift from initial position,
         # so we are able to teleport pedestrian there directly
         if not ignore_shift:
@@ -211,7 +224,7 @@ class ControlledPedestrian(object):
         return self._gender
 
     @ property
-    def walker(self) -> carla.Actor:
+    def walker(self) -> 'carla.Actor':
         return self._walker
 
     @ property

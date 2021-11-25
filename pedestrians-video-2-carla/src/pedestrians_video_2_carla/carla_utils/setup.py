@@ -1,9 +1,21 @@
 from queue import Queue
-import carla
 from typing import Any, Tuple
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 
-def setup_client_and_world(fps=30.0) -> Tuple[carla.Client, carla.World]:
+def setup_client_and_world(fps=30.0) -> Tuple['carla.Client', 'carla.World']:
+    # this method cannot be used with mock_carla, since it only makes sense connect to real server
+    # so raise runtime error if carla has no World
+    if getattr(carla, 'World', None) is None:
+        raise RuntimeError(
+            "You are using mock carla, calls to setup_client_and_world are not allowed!")
+
     client = carla.Client('server', 2000)
     client.set_timeout(10.0)
 
@@ -51,12 +63,12 @@ def get_camera_transform(pedestrian: Any, distance=3.1, elevation=1.2) -> carla.
 
 
 def setup_camera(
-    world: carla.World,
+    world: 'carla.World',
     sensor_queue: Queue,
     pedestrian: Any,
     image_size: Tuple[int, int] = (800, 600),
     fov: float = 90.0
-) -> carla.Sensor:
+) -> 'carla.Sensor':
     """
     Sets up the camera with callback saving frames to disk in front of the pedestrian.
 

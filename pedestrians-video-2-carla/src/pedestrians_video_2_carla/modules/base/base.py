@@ -179,7 +179,8 @@ class LitBaseMapper(pl.LightningModule):
             to_log.update(self.trajectory_model.training_epoch_end(outputs))
 
         if len(to_log) > 0:
-            self.log_dict(to_log, batch_size=len(outputs['preds']['absolute_pose_loc']))
+            batch_size = len(outputs[0]['preds']['absolute_pose_loc'])
+            self.log_dict(to_log, batch_size=batch_size)
 
     def _step(self, batch, batch_idx, stage):
         (frames, targets, meta) = batch
@@ -274,9 +275,10 @@ class LitBaseMapper(pl.LightningModule):
     def _eval_step_end(self, outputs, stage):
         # calculate and log metrics
         m = self.metrics(outputs['preds'], outputs['targets'])
+        batch_size = len(outputs['preds']['absolute_pose_loc'])
         for k, v in m.items():
             self.log('hp/{}'.format(k), v,
-                     batch_size=len(outputs['preds']['absolute_pose_loc']))
+                     batch_size=batch_size)
 
     def _log_to_tensorboard(self, vid, vid_idx, fps, stage, meta):
         vid = vid.permute(0, 1, 4, 2, 3).unsqueeze(0)  # B,T,H,W,C -> B,T,C,H,W

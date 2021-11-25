@@ -32,7 +32,7 @@ def test_flow(test_logs_dir, test_outputs_dir, loss_mode, movements_output_type)
     ])
 
     experiment_dir = os.path.join(
-        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
+        test_logs_dir, "Carla2D3DDataModule", "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -64,7 +64,7 @@ def test_flow_needs_confidence(test_logs_dir, test_outputs_dir, movements_output
     ])
 
     experiment_dir = os.path.join(
-        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
+        test_logs_dir, "Carla2D3DDataModule", "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -94,7 +94,7 @@ def test_renderer(test_logs_dir, test_outputs_dir, renderer):
     ])
 
     experiment_dir = os.path.join(
-        test_logs_dir, "ZeroTrajectory", "Linear", "version_0")
+        test_logs_dir, "Carla2D3DDataModule", "ZeroTrajectory", "Linear", "version_0")
 
     # assert the experiments log dir exists
     assert os.path.exists(experiment_dir), 'Experiment logs dir was not created'
@@ -142,7 +142,7 @@ def test_source_videos_jaad(test_logs_dir, test_outputs_dir):
     ])
 
     video_dir = os.path.join(
-        test_logs_dir, "ZeroTrajectory", "Linear", "version_0", "videos", "val")
+        test_logs_dir, "JAADOpenPoseDataModule", "ZeroTrajectory", "Linear", "version_0", "videos", "val")
 
     assert os.path.exists(video_dir), 'Videos dir was not created'
 

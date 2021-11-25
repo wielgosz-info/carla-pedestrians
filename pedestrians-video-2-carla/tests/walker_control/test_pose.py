@@ -1,7 +1,15 @@
 from typing import Union
 import numpy as np
+import pytest
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.pose import Pose
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 
 def test_get_relative_pose(relative_pose, reference_pose: Union[Pose, P3dPose]):
@@ -20,6 +28,9 @@ def test_get_relative_pose(relative_pose, reference_pose: Union[Pose, P3dPose]):
 
 
 def test_relative_to_absolute(absolute_pose, reference_pose: Union[Pose, P3dPose]):
+    if type(reference_pose) is Pose and getattr(carla, 'World', None) is None:
+        pytest.skip("Using mock carla, cannot calculate absolute pose.")
+
     absolute = reference_pose.absolute
 
     for bone_name, transforms_dict in absolute_pose.items():

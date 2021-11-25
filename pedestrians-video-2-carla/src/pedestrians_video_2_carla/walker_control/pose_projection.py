@@ -1,13 +1,19 @@
+import warnings
 from collections import OrderedDict
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 import cameratransform as ct
-import carla
 import numpy as np
 from pedestrians_video_2_carla.carla_utils.setup import get_camera_transform
 from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
     ControlledPedestrian
 from PIL import Image, ImageDraw
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 # try to match OpenPose color scheme for easier visual comparison
 POSE_COLORS = {
@@ -125,7 +131,7 @@ class RGBCameraMock(object):
 
 
 class PoseProjection(object):
-    def __init__(self, pedestrian: ControlledPedestrian, camera_rgb: carla.Sensor = None, *args, **kwargs) -> None:
+    def __init__(self, pedestrian: ControlledPedestrian, camera_rgb: 'carla.Sensor' = None, *args, **kwargs) -> None:
         super().__init__()
 
         self._pedestrian = pedestrian
@@ -149,7 +155,7 @@ class PoseProjection(object):
         """
         return self._image_size
 
-    def _setup_camera(self, camera_rgb: carla.Sensor):
+    def _setup_camera(self, camera_rgb: 'carla.Sensor'):
         # basic transform is in UE world coords, axes of which are different
         # additionally, we need to correct spawn shift error
         cam_y_offset = camera_rgb.get_transform().location.x - \
@@ -246,7 +252,8 @@ if __name__ == "__main__":
     from collections import OrderedDict
     from queue import Empty, Queue
 
-    from pedestrians_video_2_carla.carla_utils.destroy import destroy_client_and_world
+    from pedestrians_video_2_carla.carla_utils.destroy import \
+        destroy_client_and_world
     from pedestrians_video_2_carla.carla_utils.setup import *
     from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
         ControlledPedestrian

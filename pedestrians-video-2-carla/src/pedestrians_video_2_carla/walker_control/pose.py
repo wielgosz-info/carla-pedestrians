@@ -1,11 +1,19 @@
 import copy
+import warnings
 from typing import Any, Dict
-import carla
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
+
 import time
 from collections import OrderedDict
 
+from pedestrians_video_2_carla.carla_utils.spatial import (deepcopy_transform,
+                                                           mul_carla_rotations)
 from pedestrians_video_2_carla.skeletons.reference.load import load_reference
-from pedestrians_video_2_carla.carla_utils.spatial import deepcopy_transform, mul_carla_rotations
 
 
 class Pose(object):

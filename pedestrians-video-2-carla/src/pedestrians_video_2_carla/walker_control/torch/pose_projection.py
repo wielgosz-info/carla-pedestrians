@@ -1,4 +1,3 @@
-import carla
 import numpy as np
 import torch
 from torch._C import device
@@ -15,12 +14,12 @@ from torch.types import Device
 
 
 class P3dPoseProjection(PoseProjection, torch.nn.Module):
-    def __init__(self, device: Device, pedestrian: ControlledPedestrian, camera_rgb: carla.Sensor = None, *args, **kwargs):
+    def __init__(self, device: Device, pedestrian: ControlledPedestrian, camera_rgb: 'carla.Sensor' = None, *args, **kwargs):
         self._device = device
 
         super().__init__(pedestrian=pedestrian, camera_rgb=camera_rgb, *args, **kwargs)
 
-    def _setup_camera(self, camera_rgb: carla.Sensor):
+    def _setup_camera(self, camera_rgb: 'carla.Sensor'):
         # basic transform is in UE world coords, axes of which are different
         # additionally, we need to correct spawn shift error
         distance = camera_rgb.get_transform().location.x - \

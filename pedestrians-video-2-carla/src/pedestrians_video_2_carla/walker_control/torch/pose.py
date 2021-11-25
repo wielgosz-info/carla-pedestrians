@@ -1,7 +1,15 @@
 import time
 from typing import Any, Dict, OrderedDict, Tuple
 
-import carla
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
+
+
 import numpy as np
 import torch
 from torch.functional import Tensor

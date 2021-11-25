@@ -4,12 +4,18 @@ The common API tests are in tests.walker_control.test_pose.
 """
 
 import numpy as np
-import carla
 import random
 
 import torch
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.pose import Pose
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 
 def test_p3d_move_matches_base_move(relative_pose, device):

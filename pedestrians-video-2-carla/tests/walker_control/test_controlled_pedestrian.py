@@ -1,5 +1,11 @@
-import carla
 import numpy as np
+import warnings
+
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
 
 
 def test_unbound_transform(pedestrian):

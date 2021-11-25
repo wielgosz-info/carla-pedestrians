@@ -3,9 +3,9 @@ This file contains additional tests for pytorch3d specific implementation.
 The common API tests are in tests.walker_control.test_pose_projection.
 """
 
-import carla
 import numpy as np
 import torch
+import pytest
 
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from pedestrians_video_2_carla.walker_control.torch.pose_projection import \
@@ -16,6 +16,11 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import Contr
 
 
 def test_p3d_pose_projection_matches_base_pose_projection(device, pedestrian):
+    try:
+        import carla
+    except ImportError:
+        pytest.skip("Using mock carla, cannot calculate absolute pose.")
+
     base_projection = PoseProjection(pedestrian, None)
     p3d_projection = P3dPoseProjection(device, pedestrian, None)
 

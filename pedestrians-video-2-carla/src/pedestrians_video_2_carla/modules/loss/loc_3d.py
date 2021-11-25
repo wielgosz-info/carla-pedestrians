@@ -28,8 +28,8 @@ def calculate_loss_loc_3d(criterion: loss._Loss, input_nodes: Type[CARLA_SKELETO
             transform(absolute_pose_loc, dim=3),
             transform(targets['absolute_pose_loc'], dim=3)
         )
-    except AttributeError:
-        rank_zero_warn('This loss is not supported for {}, only CARLA_SKELETON is supported.'.format(
+    except KeyError:
+        rank_zero_warn("The 'loc_3d' loss is not supported for {}, only CARLA_SKELETON is supported.".format(
             input_nodes.__name__))
         return None
     return loss

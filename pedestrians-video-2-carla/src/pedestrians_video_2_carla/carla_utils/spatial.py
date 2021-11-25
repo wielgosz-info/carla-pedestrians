@@ -1,7 +1,13 @@
 from typing import Union
+import warnings
 
-import carla
-from scipy.spatial.transform import Rotation, rotation
+try:
+    import carla
+except ImportError:
+    import pedestrians_video_2_carla.carla_utils.mock_carla as carla
+    warnings.warn("Using mock carla.", ImportWarning)
+
+from scipy.spatial.transform import Rotation
 
 
 def carla_to_scipy_rotation(rotation: Union[carla.Rotation, carla.Transform]) -> Rotation:
