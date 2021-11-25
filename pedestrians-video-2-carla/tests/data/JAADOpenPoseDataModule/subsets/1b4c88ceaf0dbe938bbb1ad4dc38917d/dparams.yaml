@@ -1,0 +1,28 @@
+annotations_filters:
+  action:
+  - walking
+  group_size:
+  - 1
+  speed:
+  - stopped
+annotations_usecols:
+- video
+- frame
+- x1
+- y1
+- x2
+- y2
+- id
+- action
+- gender
+- age
+- speed
+- group_size
+batch_size: 8
+clip_length: 32
+clip_offset: 10
+data_module_name: JAADOpenPoseDataModule
+nodes: BODY_25_SKELETON
+test_set_size: 81
+train_set_size: 262
+val_set_size: 65
