@@ -183,6 +183,7 @@ def main(args: List[str]):
     tb_logger = TensorBoardLogger(
         args.logs_dir,
         name=os.path.join(
+            dm.__class__.__name__,
             trajectory_model.__class__.__name__,
             movements_model.__class__.__name__
         ),
