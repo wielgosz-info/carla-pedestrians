@@ -44,6 +44,7 @@ class PoseFormer(MovementsModel):
 
         self.__clip_length = clip_length
         self.__receptive_frames = receptive_frames
+        self.__outputs_shift = self.__receptive_frames // 2
 
         assert self.__input_nodes_len == self.__output_nodes_len
 
@@ -80,16 +81,19 @@ class PoseFormer(MovementsModel):
     def output_type(self) -> MovementsModelOutputType:
         return MovementsModelOutputType.absolute_loc
 
+    @property
+    def eval_slice(self):
+        return slice(self.__outputs_shift, self.__clip_length - self.__receptive_frames + self.__outputs_shift + 1)
+
     def forward(self, x, *args, **kwargs):
         original_shape = x.shape
         outputs = torch.zeros(
             (*original_shape[:2], self.__output_nodes_len, self.__output_features), device=x.device)
-        outputs_shift = self.__receptive_frames // 2
 
         for i in range(self.__clip_length - self.__receptive_frames + 1):
             x_slice = x[:, i:i + self.__receptive_frames, :, :]
-            outputs[:, i + outputs_shift:i + self.__receptive_frames +
-                    outputs_shift, :] = self.pose_former(x_slice)
+            outputs[:, i + self.__outputs_shift:i + self.__receptive_frames +
+                    self.__outputs_shift, :] = self.pose_former(x_slice)
 
         return outputs
 

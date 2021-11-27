@@ -56,6 +56,7 @@ class BaseDataModule(LightningDataModule):
         # TODO: add self.transform repr to hyperparams, but NOT to the settings
         self.save_hyperparameters({
             **self.settings,
+            'batch_size': self.batch_size,
             'settings_digest': self._settings_digest
         })
 

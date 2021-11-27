@@ -42,6 +42,10 @@ class MovementsModel(nn.Module):
     def needs_confidence(self) -> bool:
         return False
 
+    @property
+    def eval_slice(self):
+        return slice(None)
+
     @staticmethod
     def add_model_specific_args(parent_parser):
         """

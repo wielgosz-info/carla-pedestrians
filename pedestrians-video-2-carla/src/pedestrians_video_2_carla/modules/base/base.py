@@ -209,27 +209,30 @@ class LitBaseMapper(pl.LightningModule):
         # Figure if/how to do mixed-type batches - should we even support it?
         # Maybe force reduction='none' in criterions and then reduce here?
         loss_dict = {}
+        # TODO: this should take into account both movements and trajectory models
+        eval_slice = (slice(None), self.movements_model.eval_slice)
 
         for mode in self._losses_to_calculate:
             (loss_fn, criterion, *_) = mode.value
             loss = loss_fn(
                 criterion=criterion,
                 input_nodes=self.movements_model.input_nodes,
-                pose_changes=pose_inputs,
-                projected_pose=projected_pose,
-                normalized_projection=normalized_projection,
-                absolute_pose_loc=absolute_pose_loc,
-                absolute_pose_rot=absolute_pose_rot,
-                world_loc=world_loc,
-                world_rot=world_rot,
-                frames=frames,
-                targets=targets,
+                pose_changes=tuple([v[eval_slice] for v in pose_inputs]) if isinstance(
+                    pose_inputs, tuple) else pose_inputs[eval_slice],
+                projected_pose=projected_pose[eval_slice],
+                normalized_projection=normalized_projection[eval_slice],
+                absolute_pose_loc=absolute_pose_loc[eval_slice],
+                absolute_pose_rot=absolute_pose_rot[eval_slice] if absolute_pose_rot is not None else None,
+                world_loc=world_loc[eval_slice],
+                world_rot=world_rot[eval_slice] if world_rot is not None else None,
+                frames=frames[eval_slice],
+                targets={k: v[eval_slice] for k, v in targets.items()},
                 meta=meta,
                 requirements={
                     k.name: v
                     for k, v in loss_dict.items()
                     if k.name in mode.value[2]
-                } if len(mode.value) > 2 else None
+                } if len(mode.value) > 2 else None,
             )
             if loss is not None:
                 loss_dict[mode] = loss
@@ -259,15 +262,15 @@ class LitBaseMapper(pl.LightningModule):
                 return {
                     'loss': loss_dict[mode],
                     'preds': {
-                        'pose_changes': pose_inputs.detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
-                        'world_rot_changes': world_rot_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'world_loc_changes': world_loc_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'absolute_pose_loc': absolute_pose_loc.detach(),
-                        'absolute_pose_rot': absolute_pose_rot.detach() if absolute_pose_rot is not None else None,
-                        'world_loc': world_loc.detach(),
-                        'world_rot': world_rot.detach(),
+                        'pose_changes': pose_inputs[eval_slice].detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
+                        'world_rot_changes': world_rot_inputs[eval_slice].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'world_loc_changes': world_loc_inputs[eval_slice].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'absolute_pose_loc': absolute_pose_loc[eval_slice].detach(),
+                        'absolute_pose_rot': absolute_pose_rot[eval_slice].detach() if absolute_pose_rot is not None else None,
+                        'world_loc': world_loc[eval_slice].detach(),
+                        'world_rot': world_rot[eval_slice].detach(),
                     },
-                    'targets': targets
+                    'targets': {k: v[eval_slice] for k, v in targets.items()}
                 }
 
         raise RuntimeError("Couldn't calculate any loss.")
