@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import Dict, Optional
+from typing import Dict
 from pytorch3d.transforms.rotation_conversions import matrix_to_rotation_6d, rotation_6d_to_matrix
 import torch
 from torch import nn
@@ -21,11 +20,13 @@ class Seq2SeqEmbeddings(MovementsModel):
                  single_joint_embeddings_size=64,
                  teacher_mode: TeacherMode = TeacherMode.no_force,
                  teacher_force_ratio: float = 0.2,
+                 teacher_force_drop: float = 0.02,
                  **kwargs):
         super().__init__(**kwargs)
 
         self.teacher_mode = teacher_mode
         self.teacher_force_ratio = teacher_force_ratio
+        self.teacher_force_drop = teacher_force_drop
         self.single_joint_embeddings_size = single_joint_embeddings_size
 
         self.embeddings = nn.ModuleList([nn.Linear(2, self.single_joint_embeddings_size)
@@ -51,6 +52,7 @@ class Seq2SeqEmbeddings(MovementsModel):
             'p_dropout': p_dropout,
             'teacher_mode': self.teacher_mode.name,
             'teacher_force_ratio': self.teacher_force_ratio,
+            'teacher_force_drop': self.teacher_force_drop,
             'single_joint_embeddings_size': self.single_joint_embeddings_size
         }
 
@@ -89,6 +91,15 @@ class Seq2SeqEmbeddings(MovementsModel):
                 Only used if teacher_mode is not TeacherMode.no_force.
                 """,
             default=0.2,
+            type=float
+        )
+        parser.add_argument(
+            '--teacher_force_drop',
+            help="""
+                Set teacher force ratio drop per epoch for decoder training.
+                Only used if teacher_mode is not TeacherMode.no_force.
+                """,
+            default=0.02,
             type=float
         )
         parser.add_argument(
@@ -182,7 +193,7 @@ class Seq2SeqEmbeddings(MovementsModel):
         # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
         # similar to what can be done for lr
         self.teacher_force_ratio = (self.teacher_force_ratio -
-                                    0.02) if self.teacher_force_ratio > 0.02 else 0
+                                    self.teacher_force_drop) if self.teacher_force_ratio > self.teacher_force_drop else 0
         return {
             'teacher_force_ratio': current_ratio
         }

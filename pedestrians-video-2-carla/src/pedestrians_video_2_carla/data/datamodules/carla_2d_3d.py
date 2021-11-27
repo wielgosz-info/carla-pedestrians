@@ -82,6 +82,20 @@ class Carla2D3DDataModule(BaseDataModule):
                 Missing nodes are selected separately for each frame.
             """
         )
+        parser.add_argument(
+            "--val_batches",
+            type=int,
+            default=2,
+            metavar='NUM_BATCHES',
+            help="Number of batches to use for validation."
+        )
+        parser.add_argument(
+            "--test_batches",
+            type=int,
+            default=3,
+            metavar='NUM_BATCHES',
+            help="Number of batches to use for testing."
+        )
         return parent_parser
 
     def prepare_data(self) -> None:
