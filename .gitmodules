@@ -1,3 +1,6 @@
 [submodule "pedestrians-video-2-carla/submodules/3d_pose_baseline_pytorch"]
 	path = pedestrians-video-2-carla/submodules/3d_pose_baseline_pytorch
 	url = https://github.com/weigq/3d_pose_baseline_pytorch.git
+[submodule "pedestrians-video-2-carla/submodules/PoseFormer"]
+	path = pedestrians-video-2-carla/submodules/PoseFormer
+	url = https://github.com/zczcwh/PoseFormer.git

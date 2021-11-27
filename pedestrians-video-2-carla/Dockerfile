@@ -90,6 +90,7 @@ RUN echo "import sys; sys.__plen = len(sys.path)\n./carla-0.9.11-py3.7-linux-x86
 RUN pip install --no-cache-dir \
     av==8.0.3 \
     cameratransform==1.2 \
+    einops==0.3.2 \
     gym==0.21.0 \
     h5py==3.6.0 \
     h5pickle==0.4.2 \
@@ -104,6 +105,7 @@ RUN pip install --no-cache-dir \
     pyyaml==6.0 \
     scikit-image==0.18.3 \
     scipy==1.7.2 \
+    timm==0.4.12 \
     torchmetrics==0.6.0 \
     tqdm==4.62.3
 

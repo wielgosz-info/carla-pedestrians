@@ -46,12 +46,14 @@ class BaseDataModule(LightningDataModule):
         self._subsets_dir = os.path.join(
             self.outputs_dir, 'subsets', self._settings_digest)
 
+        print('Subsets dir: {}'.format(self._subsets_dir))
+
         self._needs_preparation = False
         if not os.path.exists(self._subsets_dir):
             self._needs_preparation = True
             os.makedirs(self._subsets_dir)
 
-        # TODO: add self.transform repr to hyperparams
+        # TODO: add self.transform repr to hyperparams, but NOT to the settings
         self.save_hyperparameters({
             **self.settings,
             'settings_digest': self._settings_digest
@@ -61,7 +63,6 @@ class BaseDataModule(LightningDataModule):
     def settings(self):
         return {
             'data_module_name': self.__class__.__name__,
-            'batch_size': self.batch_size,
             'clip_length': self.clip_length,
             'nodes': self.nodes.__name__,
         }
