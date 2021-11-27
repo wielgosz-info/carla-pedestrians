@@ -41,10 +41,10 @@ RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/torch_stable.
 
 # PyTorch3D
 # Python, CUDA and PyTorch versions specified in URL must match
-RUN export torch_version_flat=${torch_version//./} \
+RUN ["/bin/bash", "-c", "export torch_version_flat=${torch_version//.} \
     && pip install --no-cache-dir \
     -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu111_pyt${torch_version_flat}/download.html \
-    pytorch3d==${pytorch3d_version}
+    pytorch3d==${pytorch3d_version}"]
 
 # ----------------------------------------------------------------------------
 # CPU-specific dependencies
