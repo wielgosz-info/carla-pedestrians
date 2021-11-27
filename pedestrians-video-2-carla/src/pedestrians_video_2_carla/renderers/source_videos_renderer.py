@@ -46,7 +46,7 @@ class SourceVideosRenderer(Renderer):
             video = pims.PyAVReaderTimed(paths[0])
             clip = video[start_frame:end_frame]
 
-            centers = (bboxes.mean(dim=-2) + 0.5).round().numpy().astype(int)
+            centers = (bboxes.mean(dim=-2) + 0.5).round().cpu().numpy().astype(int)
 
             x_center = centers[..., 0]
             y_center = centers[..., 1]
