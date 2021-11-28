@@ -1,3 +1,20 @@
+"""
+Based on the code from [Sequence to Sequence Learning with Neural Networks](https://github.com/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb)
+by [Ben Trevett](https://github.com/bentrevett) licensed under [MIT License](https://github.com/bentrevett/pytorch-seq2seq/blob/master/LICENSE),
+which itself is an implementation of the paper https://arxiv.org/abs/1409.3215:
+
+```bibtex
+@misc{sutskever2014sequence,
+      title={Sequence to Sequence Learning with Neural Networks}, 
+      author={Ilya Sutskever and Oriol Vinyals and Quoc V. Le},
+      year={2014},
+      eprint={1409.3215},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
+"""
+
 from enum import Enum
 from typing import Dict, Optional
 from pytorch3d.transforms.rotation_conversions import matrix_to_rotation_6d, rotation_6d_to_matrix
@@ -29,7 +46,6 @@ class Encoder(nn.Module):
         self.__input_size = self.__input_nodes_len * self.__input_features
 
         self.rnn = nn.LSTM(self.__input_size, hid_dim, n_layers, dropout=dropout)
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
 
@@ -41,14 +57,14 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, hid_dim=64, n_layers=2, dropout=0.2, output_nodes_len=26):
+    def __init__(self, hid_dim=64, n_layers=2, dropout=0.2, output_nodes_len=26, output_features=6):
         super().__init__()
 
         self.hid_dim = hid_dim
         self.n_layers = n_layers
 
         self.__output_nodes_len = output_nodes_len
-        self.__output_features = 6  # Rotation 6D
+        self.__output_features = output_features  # Rotation 6D
         self.output_size = self.__output_nodes_len * self.__output_features
 
         self.rnn = nn.LSTM(self.output_size, hid_dim, n_layers, dropout=dropout)
@@ -65,7 +81,22 @@ class Decoder(nn.Module):
 
 class Seq2Seq(MovementsModel):
     """
-    Sequence to sequence model
+    Sequence to sequence model.
+
+    Based on the code from [Sequence to Sequence Learning with Neural Networks](https://github.com/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb)
+    by [Ben Trevett](https://github.com/bentrevett) licensed under [MIT License](https://github.com/bentrevett/pytorch-seq2seq/blob/master/LICENSE),
+    which itself is an implementation of the paper https://arxiv.org/abs/1409.3215:
+
+    ```bibtex
+    @misc{sutskever2014sequence,
+        title={Sequence to Sequence Learning with Neural Networks}, 
+        author={Ilya Sutskever and Oriol Vinyals and Quoc V. Le},
+        year={2014},
+        eprint={1409.3215},
+        archivePrefix={arXiv},
+        primaryClass={cs.CL}
+    }
+    ```
     """
 
     def __init__(self,
@@ -74,19 +105,24 @@ class Seq2Seq(MovementsModel):
                  p_dropout=0.2,
                  teacher_mode: TeacherMode = TeacherMode.no_force,
                  teacher_force_ratio: float = 0.2,
+                 teacher_force_drop: float = 0.02,
+                 input_features: int = 2,
+                 output_features: int = 6,
                  **kwargs):
         super().__init__(**kwargs)
 
         self.teacher_mode = teacher_mode
         self.teacher_force_ratio = teacher_force_ratio
+        self.teacher_force_drop = teacher_force_drop
+        self.output_features = output_features
 
         self.encoder = Encoder(
             hid_dim=hidden_size, n_layers=num_layers, dropout=p_dropout,
-            input_nodes_len=len(self.input_nodes)
+            input_nodes_len=len(self.input_nodes), input_features=input_features
         )
         self.decoder = Decoder(
             hid_dim=hidden_size, n_layers=num_layers, dropout=p_dropout,
-            output_nodes_len=len(self.output_nodes)
+            output_nodes_len=len(self.output_nodes), output_features=output_features
         )
 
         assert self.encoder.hid_dim == self.decoder.hid_dim, \
@@ -99,10 +135,11 @@ class Seq2Seq(MovementsModel):
             'num_layers': num_layers,
             'p_dropout': p_dropout,
             'teacher_mode': self.teacher_mode.name,
-            'teacher_force_ratio': self.teacher_force_ratio
+            'teacher_force_ratio': self.teacher_force_ratio,
+            'teacher_force_drop': self.teacher_force_drop,
         }
 
-    @ staticmethod
+    @staticmethod
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("Seq2Seq Movements Module")
         parser.add_argument(
@@ -139,6 +176,15 @@ class Seq2Seq(MovementsModel):
             default=0.2,
             type=float
         )
+        parser.add_argument(
+            '--teacher_force_drop',
+            help="""
+                Set teacher force ratio drop per epoch for decoder training.
+                Only used if teacher_mode is not TeacherMode.no_force.
+                """,
+            default=0.02,
+            type=float
+        )
 
         return parent_parser
 
@@ -161,7 +207,7 @@ class Seq2Seq(MovementsModel):
         # first input to the decoder is the <sos> tokens
         input = torch.zeros((batch_size, self.decoder.output_size), device=x.device)
 
-        needs_forcing, target_pose_changes, force_indices = self.__teacher_forcing(
+        needs_forcing, target_pose_changes, force_indices = self._teacher_forcing(
             targets)
 
         for t in range(0, clip_length):
@@ -178,9 +224,9 @@ class Seq2Seq(MovementsModel):
         # convert back to batch-first format
         outputs = outputs.permute(1, 0, 2)
 
-        return rotation_6d_to_matrix(outputs.view(*original_shape[:3], 6))
+        return rotation_6d_to_matrix(outputs.view(*original_shape[:3], self.output_features))
 
-    def __teacher_forcing(self, targets):
+    def _teacher_forcing(self, targets):
         needs_forcing = self.training and self.teacher_mode != TeacherMode.no_force and targets is not None and self.teacher_force_ratio > 0
         target_pose_changes = None
         force_indices = None
@@ -210,7 +256,7 @@ class Seq2Seq(MovementsModel):
         # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
         # similar to what can be done for lr
         self.teacher_force_ratio = (self.teacher_force_ratio -
-                                    0.02) if self.teacher_force_ratio > 0.02 else 0
+                                    self.teacher_force_drop) if self.teacher_force_ratio > self.teacher_force_drop else 0
         return {
             'teacher_force_ratio': current_ratio
         }
