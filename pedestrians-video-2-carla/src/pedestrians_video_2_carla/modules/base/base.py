@@ -4,6 +4,7 @@ from typing import Any, List, Tuple, Type
 import pytorch_lightning as pl
 from pedestrians_video_2_carla.metrics.mpjpe import MPJPE
 from pedestrians_video_2_carla.metrics.mrpe import MRPE
+from pedestrians_video_2_carla.metrics.fb import *
 from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType, TrajectoryModelOutputType
 from pedestrians_video_2_carla.modules.base.trajectory import TrajectoryModel
@@ -72,7 +73,13 @@ class LitBaseMapper(pl.LightningModule):
                 dist_sync_on_step=True,
                 input_nodes=self.movements_model.input_nodes,
                 output_nodes=self.movements_model.output_nodes
-            )
+            ),
+            FB_MPJPE(dist_sync_on_step=True),
+            # FB_WeightedMPJPE should be same as FB_MPJPE since we provide no weights:
+            FB_WeightedMPJPE(dist_sync_on_step=True),
+            FB_PA_MPJPE(dist_sync_on_step=True),
+            FB_N_MPJPE(dist_sync_on_step=True),
+            FB_MPJVE(dist_sync_on_step=True),
         ])
 
         self.save_hyperparameters({
