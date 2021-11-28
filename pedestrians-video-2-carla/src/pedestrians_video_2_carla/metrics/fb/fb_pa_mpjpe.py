@@ -2,6 +2,7 @@ from typing import Dict
 from torchmetrics import Metric
 import torch
 from pedestrians_video_2_carla.submodules.video_pose_3d.loss import p_mpjpe
+import numpy as np
 
 
 class FB_PA_MPJPE(Metric):
@@ -31,6 +32,8 @@ class FB_PA_MPJPE(Metric):
             self.errors += frames_num * metric
             self.total += frames_num
         except KeyError:
+            pass
+        except np.linalg.LinAlgError:
             pass
 
     def compute(self):
