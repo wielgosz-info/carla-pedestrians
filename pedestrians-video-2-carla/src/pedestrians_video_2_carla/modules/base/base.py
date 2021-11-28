@@ -2,6 +2,7 @@
 from typing import Any, List, Tuple, Type
 
 import pytorch_lightning as pl
+import torch
 from pedestrians_video_2_carla.metrics.mpjpe import MPJPE
 from pedestrians_video_2_carla.metrics.mrpe import MRPE
 from pedestrians_video_2_carla.metrics.fb import *
@@ -241,7 +242,7 @@ class LitBaseMapper(pl.LightningModule):
                     if k.name in mode.value[2]
                 } if len(mode.value) > 2 else None,
             )
-            if loss is not None:
+            if loss is not None and not torch.isnan(loss):
                 loss_dict[mode] = loss
 
         for k, v in loss_dict.items():
