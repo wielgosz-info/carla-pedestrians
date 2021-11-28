@@ -48,9 +48,10 @@ class Seq2SeqResidualC(Seq2SeqEmbeddings):
         input = residual_output
 
         if needs_forcing:
+            force_shape = force_input.shape
             input[force_indices] = matrix_to_rotation_6d(
                 torch.bmm(rotation_6d_to_matrix(force_input.view((-1, 6))),
                           rotation_6d_to_matrix(target_pose_changes.view((-1, 6))))
-            ).view((bs, -1))
+            ).view(force_shape)
 
         return input, output
