@@ -21,8 +21,8 @@ class FB_MPJPE(Metric):
             target = targets["absolute_pose_loc"]
 
             original_shape = prediction.shape
-            prediction = prediction.view((-1, *original_shape[-2:]))
-            target = target.view((-1, *original_shape[-2:]))
+            prediction = prediction.reshape((-1, *original_shape[-2:]))
+            target = target.reshape((-1, *original_shape[-2:]))
 
             frames_num = torch.prod(torch.tensor(original_shape[:-2]))
             metric = mpjpe(prediction, target)
