@@ -20,8 +20,12 @@ class FB_MPJVE(Metric):
             prediction = predictions["absolute_pose_loc"]
             target = targets["absolute_pose_loc"]
 
-            frames_num = prediction.shape[0] * prediction.shape[1]
-            metric = mean_velocity_error(prediction.cpu().numpy(), target.cpu().numpy())
+            original_shape = prediction.shape
+            prediction = prediction.view((-1, *original_shape[-2:])).cpu().numpy()
+            target = target.view((-1, *original_shape[-2:])).cpu().numpy()
+
+            frames_num = torch.prod(torch.tensor(original_shape[:-2]))
+            metric = mean_velocity_error(prediction, target)
 
             self.errors += frames_num * metric
             self.total += frames_num

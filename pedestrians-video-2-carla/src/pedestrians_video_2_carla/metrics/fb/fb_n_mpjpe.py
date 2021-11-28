@@ -20,7 +20,9 @@ class FB_N_MPJPE(Metric):
             prediction = predictions["absolute_pose_loc"]
             target = targets["absolute_pose_loc"]
 
-            frames_num = prediction.shape[0] * prediction.shape[1]
+            original_shape = prediction.shape
+
+            frames_num = torch.prod(torch.tensor(original_shape[:-2]))
             metric = n_mpjpe(prediction, target)
 
             self.errors += frames_num * metric

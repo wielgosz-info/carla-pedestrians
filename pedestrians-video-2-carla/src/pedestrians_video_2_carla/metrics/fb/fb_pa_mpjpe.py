@@ -7,7 +7,7 @@ from pedestrians_video_2_carla.submodules.video_pose_3d.loss import p_mpjpe
 class FB_PA_MPJPE(Metric):
     """
     Mean Per Joint Position Error after rigid alignment (scale, rotation, and translation).
-    Procrustes alignment.
+    AKA Procrustes Alignment MPJPE.
     """
 
     def __init__(self, dist_sync_on_step=False):
@@ -21,15 +21,14 @@ class FB_PA_MPJPE(Metric):
             prediction = predictions["absolute_pose_loc"]
             target = targets["absolute_pose_loc"]
 
-            frames_num = prediction.shape[0] * prediction.shape[1]
-            metric = 0.0
+            original_shape = prediction.shape
+            prediction = prediction.view((-1, *original_shape[-2:])).cpu().numpy()
+            target = target.view((-1, *original_shape[-2:])).cpu().numpy()
 
-            # TODO: double-check if FB metrics implementations are expecting batches and not sequences
-            for i in range(prediction.shape[1]):
-                metric += p_mpjpe(prediction[:, i].cpu().numpy(),
-                                  target[:, i].cpu().numpy())
+            frames_num = torch.prod(torch.tensor(original_shape[:-2]))
+            metric = p_mpjpe(prediction, target)
 
-            self.errors += prediction.shape[0] * metric
+            self.errors += frames_num * metric
             self.total += frames_num
         except KeyError:
             pass
