@@ -14,51 +14,53 @@ class LinearAEResidual(MovementsModel):
 
     def __init__(self,
                  linear_size=256,
+                 activation_cls=nn.ReLU,
                  **kwargs
                  ):
         super().__init__(**kwargs)
 
-        self.__input_nodes_len = len(self.input_nodes)
-        self.__input_features = 2  # (x, y)
+        self._input_nodes_len = len(self.input_nodes)
+        self._input_features = 2  # (x, y)
 
-        self.__output_nodes_len = len(self.output_nodes)
-        self.__output_features = 9
+        self._output_nodes_len = len(self.output_nodes)
+        self._output_features = 9
 
-        self.__input_size = self.__input_nodes_len * self.__input_features
-        self.__output_size = self.__output_nodes_len * self.__output_features
+        self._input_size = self._input_nodes_len * self._input_features
+        self._output_size = self._output_nodes_len * self._output_features
 
-        self.__encoder = nn.Sequential(
-            nn.Linear(self.__input_size, linear_size),
+        self._encoder = nn.Sequential(
+            nn.Linear(self._input_size, linear_size),
             nn.Linear(linear_size, linear_size // 2),
             nn.BatchNorm1d(linear_size // 2),
-            nn.ReLU(),
+            activation_cls(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 2, linear_size // 4),
             nn.BatchNorm1d(linear_size // 4),
-            nn.ReLU(),
+            activation_cls(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 4, linear_size // 8),
             nn.BatchNorm1d(linear_size // 8),
-            nn.ReLU(),
+            activation_cls(),
             nn.Dropout(0.5)
         )
 
-        self.__residual_bottleneck = nn.Sequential(
-            nn.Linear(self.__input_size, linear_size // 8),
+        self._residual_bottleneck = nn.Sequential(
+            nn.Linear(self._input_size, linear_size // 8),
             nn.BatchNorm1d(linear_size // 8),
+            activation_cls(),
         )
 
-        self.__decoder = nn.Sequential(
+        self._decoder = nn.Sequential(
             nn.Linear(linear_size // 8, linear_size // 4),
             nn.BatchNorm1d(linear_size // 4),
-            nn.ReLU(),
+            activation_cls(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 4, linear_size // 2),
             nn.BatchNorm1d(linear_size // 2),
-            nn.ReLU(),
+            activation_cls(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 2, linear_size),
-            nn.Linear(linear_size, self.__output_size),
+            nn.Linear(linear_size, self._output_size),
         )
 
         self._hparams = {
@@ -87,14 +89,14 @@ class LinearAEResidual(MovementsModel):
 
     def forward(self, x, *args, **kwargs):
         original_shape = x.shape
-        x = x.view((-1, self.__input_size))
+        x = x.view((-1, self._input_size))
 
-        bottleneck = self.__encoder(x)
-        bottleneck = bottleneck + self.__residual_bottleneck(x)
-        x = self.__decoder(bottleneck)
+        bottleneck = self._encoder(x)
+        bottleneck = bottleneck + self._residual_bottleneck(x)
+        x = self._decoder(bottleneck)
 
         x = x.view(*original_shape[0:2],
-                   self.__output_nodes_len, self.__output_features)
+                   self._output_nodes_len, self._output_features)
         return x[..., :3], rotation_6d_to_matrix(x[..., 3:])
 
     def configure_optimizers(self):
