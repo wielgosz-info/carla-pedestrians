@@ -103,7 +103,7 @@ class PoseFormer(MovementsModel):
 
         config = {
             'optimizer': optimizer,
-            'scheduler': lr_scheduler
+            'lr_scheduler': lr_scheduler
         }
 
         return config
