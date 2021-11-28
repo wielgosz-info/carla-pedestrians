@@ -8,7 +8,7 @@ from .seq2seq import Seq2Seq
 
 class Seq2SeqEmbeddings(Seq2Seq):
     """
-    Sequence to sequence model with embeddings.
+    Sequence to sequence model with embeddings and optionally inverted input sequence.
 
     Based on the code from [Sequence to Sequence Learning with Neural Networks](https://github.com/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb)
     by [Ben Trevett](https://github.com/bentrevett) licensed under [MIT License](https://github.com/bentrevett/pytorch-seq2seq/blob/master/LICENSE),
@@ -28,6 +28,7 @@ class Seq2SeqEmbeddings(Seq2Seq):
 
     def __init__(self,
                  single_joint_embeddings_size=64,
+                 invert_sequence=False,
                  **kwargs):
         super().__init__(**{
             **kwargs,
@@ -35,12 +36,14 @@ class Seq2SeqEmbeddings(Seq2Seq):
         })
 
         self.single_joint_embeddings_size = single_joint_embeddings_size
+        self.invert_sequence = invert_sequence
         self.embeddings = nn.ModuleList([nn.Linear(2, self.single_joint_embeddings_size)
                                          for _ in range(len(self.input_nodes))])
 
         self._hparams = {
             **self._hparams,
-            'single_joint_embeddings_size': self.single_joint_embeddings_size
+            'single_joint_embeddings_size': self.single_joint_embeddings_size,
+            'invert_sequence': self.invert_sequence
         }
 
     @staticmethod
@@ -52,6 +55,11 @@ class Seq2SeqEmbeddings(Seq2Seq):
             '--single_joint_embeddings_size',
             default=64,
             type=int,
+        )
+        parser.add_argument(
+            '--invert_sequence',
+            default=False,
+            action='store_true',
         )
 
         return parent_parser
@@ -75,5 +83,8 @@ class Seq2SeqEmbeddings(Seq2Seq):
         # get embeddings
         for i, embedding in enumerate(self.embeddings):
             embeddings[:, :, i, :] = embedding(x[:, :, i, :])
+
+        if self.invert_sequence:
+            embeddings = embeddings.flip(0)
 
         return embeddings
