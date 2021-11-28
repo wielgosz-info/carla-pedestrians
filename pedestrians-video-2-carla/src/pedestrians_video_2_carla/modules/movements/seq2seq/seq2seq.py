@@ -217,12 +217,29 @@ class Seq2Seq(MovementsModel):
         return input, output
 
     def _format_output(self, original_shape, outputs):
-        # convert back to batch-first format
+        """
+        At the very least this should convert from sequence-first back to batch-first format
+        and ensure rotation matrices are returned.
+
+        :param x: Outputs from the decoder.
+        :type x: torch.Tensor
+        :return: (B, L, P, 3, 3) tensor, where B is batch size, L is clip length, P is number of output nodes.
+        :rtype: torch.Tensor
+        """
+        # convert to batch-first format
         outputs = outputs.permute(1, 0, 2)
 
         return rotation_6d_to_matrix(outputs.view(*original_shape[:3], self.output_features))
 
-    def _format_input(self, x):
+    def _format_input(self, x: Tensor) -> Tensor:
+        """
+        At the very least this should convert from batch-first to sequence-first.
+
+        :param x: Inputs to the model.
+        :type x: torch.Tensor
+        :return: Input tensor in sequence-first format, ready to be fed into the encoder.
+        :rtype: torch.Tensor
+        """
         # convert to sequence-first format
         x = x.permute(1, 0, *range(2, x.dim()))
 
