@@ -1,20 +1,3 @@
-"""
-Based on the code from [Sequence to Sequence Learning with Neural Networks](https://github.com/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb)
-by [Ben Trevett](https://github.com/bentrevett) licensed under [MIT License](https://github.com/bentrevett/pytorch-seq2seq/blob/master/LICENSE),
-which itself is an implementation of the paper https://arxiv.org/abs/1409.3215:
-
-```bibtex
-@misc{sutskever2014sequence,
-      title={Sequence to Sequence Learning with Neural Networks}, 
-      author={Ilya Sutskever and Oriol Vinyals and Quoc V. Le},
-      year={2014},
-      eprint={1409.3215},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```
-"""
-
 from typing import Dict
 from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 import torch
@@ -33,7 +16,7 @@ class Seq2SeqEmbeddings(Seq2Seq):
 
     ```bibtex
     @misc{sutskever2014sequence,
-        title={Sequence to Sequence Learning with Neural Networks}, 
+        title={Sequence to Sequence Learning with Neural Networks},
         author={Ilya Sutskever and Oriol Vinyals and Quoc V. Le},
         year={2014},
         eprint={1409.3215},
@@ -73,15 +56,11 @@ class Seq2SeqEmbeddings(Seq2Seq):
 
         return parent_parser
 
-    def forward(self, x: Tensor, targets: Dict[str, Tensor] = None, *args, **kwargs) -> Tensor:
-        original_shape = x.shape
+    def _format_input(self, x):
+        batch_size, clip_length, joints, *_ = x.shape
 
         # convert to sequence-first format
         x = x.permute(1, 0, *range(2, x.dim()))
-
-        batch_size = original_shape[0]
-        clip_length = original_shape[1]
-        joints = original_shape[2]
 
         assert joints == len(self.input_nodes)
         assert joints == len(self.embeddings)
@@ -97,31 +76,4 @@ class Seq2SeqEmbeddings(Seq2Seq):
         for i, embedding in enumerate(self.embeddings):
             embeddings[:, :, i, :] = embedding(x[:, :, i, :])
 
-        # tensor to store decoder outputs
-        outputs = torch.zeros(
-            (clip_length, batch_size, self.decoder.output_size), device=x.device)
-
-        # last hidden state of the encoder is used as the initial hidden state of the decoder
-        hidden, cell = self.encoder(embeddings)
-
-        # first input to the decoder is the <sos> tokens
-        input = torch.zeros((batch_size, self.decoder.output_size), device=x.device)
-
-        needs_forcing, target_pose_changes, force_indices = self._teacher_forcing(
-            targets)
-
-        for t in range(0, clip_length):
-            # insert input token embedding, previous hidden and previous cell states
-            # receive output tensor (predictions) and new hidden and cell states
-            output, hidden, cell = self.decoder(input, hidden, cell)
-
-            outputs[t] = output
-            input = output
-
-            if needs_forcing:
-                input[force_indices[t]] = target_pose_changes[t, force_indices[t]]
-
-        # convert back to batch-first format
-        outputs = outputs.permute(1, 0, 2)
-
-        return rotation_6d_to_matrix(outputs.view(*original_shape[:3], 6))
+        return embeddings

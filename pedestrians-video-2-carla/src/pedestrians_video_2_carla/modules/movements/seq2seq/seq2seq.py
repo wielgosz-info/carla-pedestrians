@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict
+from typing import Dict, Tuple
 from pytorch3d.transforms.rotation_conversions import matrix_to_rotation_6d, rotation_6d_to_matrix
 import torch
 from torch import nn
@@ -173,16 +173,9 @@ class Seq2Seq(MovementsModel):
 
     def forward(self, x: Tensor, targets: Dict[str, Tensor] = None, *args, **kwargs) -> Tensor:
         original_shape = x.shape
+        batch_size, clip_length, *_ = original_shape
 
-        # convert to sequence-first format
-        x = x.permute(1, 0, *range(2, x.dim()))
-
-        batch_size = original_shape[0]
-        clip_length = original_shape[1]
-
-        # tensor to store decoder outputs
-        outputs = torch.zeros(
-            (clip_length, batch_size, self.decoder.output_size), device=x.device)
+        x = self._format_input(x)
 
         # last hidden state of the encoder is used as the initial hidden state of the decoder
         hidden, cell = self.encoder(x)
@@ -193,21 +186,47 @@ class Seq2Seq(MovementsModel):
         needs_forcing, target_pose_changes, force_indices = self._teacher_forcing(
             targets)
 
+        # tensor to store decoder outputs
+        outputs = torch.zeros(
+            (clip_length, batch_size, self.decoder.output_size), device=x.device)
         for t in range(0, clip_length):
-            # insert input token embedding, previous hidden and previous cell states
-            # receive output tensor (predictions) and new hidden and cell states
-            output, hidden, cell = self.decoder(input, hidden, cell)
-
+            input, output = self._decode_frame(hidden, cell, input,
+                                               needs_forcing,
+                                               force_indices[t] if needs_forcing else None,
+                                               target_pose_changes[t, force_indices[t]] if needs_forcing else None)
             outputs[t] = output
-            input = output
 
-            if needs_forcing:
-                input[force_indices[t]] = target_pose_changes[t, force_indices[t]]
+        return self._format_output(original_shape, outputs)
 
+    def _decode_frame(self,
+                      hidden: torch.Tensor,
+                      cell: torch.Tensor,
+                      input: torch.Tensor,
+                      needs_forcing: bool,
+                      force_indices: torch.Tensor,
+                      target_pose_changes: torch.Tensor
+                      ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # insert input token embedding, previous hidden and previous cell states
+        # receive output tensor (predictions) and new hidden and cell states
+        output, hidden, cell = self.decoder(input, hidden, cell)
+        input = output
+
+        if needs_forcing:
+            input[force_indices] = target_pose_changes
+
+        return input, output
+
+    def _format_output(self, original_shape, outputs):
         # convert back to batch-first format
         outputs = outputs.permute(1, 0, 2)
 
         return rotation_6d_to_matrix(outputs.view(*original_shape[:3], self.output_features))
+
+    def _format_input(self, x):
+        # convert to sequence-first format
+        x = x.permute(1, 0, *range(2, x.dim()))
+
+        return x
 
     def _teacher_forcing(self, targets):
         needs_forcing = self.training and self.teacher_mode != TeacherMode.no_force and targets is not None and self.teacher_force_ratio > 0

@@ -19,3 +19,6 @@ which itself is an implementation of the paper https://arxiv.org/abs/1409.3215:
 
 from .seq2seq import Seq2Seq
 from .seq2seq_embeddings import Seq2SeqEmbeddings
+from .seq2seq_residual_a import Seq2SeqResidualA
+from .seq2seq_residual_b import Seq2SeqResidualB
+from .seq2seq_residual_c import Seq2SeqResidualC
