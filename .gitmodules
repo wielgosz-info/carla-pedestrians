@@ -4,3 +4,4 @@
 [submodule "pedestrians-video-2-carla/submodules/PoseFormer"]
 	path = pedestrians-video-2-carla/submodules/PoseFormer
 	url = https://github.com/zczcwh/PoseFormer.git
+	ignore = dirty
