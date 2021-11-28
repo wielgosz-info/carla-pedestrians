@@ -1,13 +1,14 @@
-from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
-from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
 import torch
 from torch import nn
 from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 
+from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType
+from pytorch3d.transforms.rotation_conversions import rotation_6d_to_matrix
 
-class LinearAEResidualTanh(MovementsModel):
+
+class LinearAEResidual(MovementsModel):
     """
-    Residual bottleneck autoencoder.
+    Residual bottleneck autoencoder with ReLU.
     Inputs are flattened to a vector of size (input_nodes_len * input_features).
     """
 
@@ -30,35 +31,34 @@ class LinearAEResidualTanh(MovementsModel):
             nn.Linear(self.__input_size, linear_size),
             nn.Linear(linear_size, linear_size // 2),
             nn.BatchNorm1d(linear_size // 2),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 2, linear_size // 4),
             nn.BatchNorm1d(linear_size // 4),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 4, linear_size // 8),
             nn.BatchNorm1d(linear_size // 8),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Dropout(0.5)
         )
 
         self.__residual_bottleneck = nn.Sequential(
             nn.Linear(self.__input_size, linear_size // 8),
             nn.BatchNorm1d(linear_size // 8),
-            nn.LeakyReLU(),
         )
 
         self.__decoder = nn.Sequential(
             nn.Linear(linear_size // 8, linear_size // 4),
             nn.BatchNorm1d(linear_size // 4),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 4, linear_size // 2),
             nn.BatchNorm1d(linear_size // 2),
-            nn.LeakyReLU(),
+            nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(linear_size // 2, linear_size),
-            nn.Linear(linear_size, self.__output_size)
+            nn.Linear(linear_size, self.__output_size),
         )
 
         self._hparams = {

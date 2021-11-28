@@ -15,6 +15,7 @@ class LSTM(MovementsModel):
                  movements_output_type: MovementsModelOutputType = MovementsModelOutputType.pose_changes,
                  hidden_size: int = 64,
                  num_layers: int = 2,
+                 embeddings_size: int = None,
                  **kwargs
                  ):
         super().__init__(**kwargs,)
@@ -38,12 +39,14 @@ class LSTM(MovementsModel):
         self.__input_size = self.__input_nodes_len * self.__input_features
         self.__output_size = self.__output_nodes_len * self.__output_features
 
+        self.__embeddings_size = embeddings_size if embeddings_size is not None else self.__input_size
+
         self.linear_1 = nn.Linear(
             self.__input_size,
-            self.__input_size
+            self.__embeddings_size
         )
         self.lstm_1 = nn.LSTM(
-            input_size=self.__input_size,
+            input_size=self.__embeddings_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True
@@ -53,7 +56,8 @@ class LSTM(MovementsModel):
         self._hparams = {
             'hidden_size': hidden_size,
             'num_layers': num_layers,
-            'movements_output_type': movements_output_type.name
+            'movements_output_type': movements_output_type.name,
+            'embeddings_size': self.__embeddings_size
         }
 
     @property
@@ -62,7 +66,7 @@ class LSTM(MovementsModel):
 
     @ staticmethod
     def add_model_specific_args(parent_parser):
-        parser = parent_parser.add_argument_group("Linear Lightning Module")
+        parser = parent_parser.add_argument_group("LSTM Lightning Module")
         parser.add_argument(
             '--movements_output_type',
             help="""
@@ -72,6 +76,11 @@ class LSTM(MovementsModel):
             default=MovementsModelOutputType.pose_changes,
             choices=list(MovementsModelOutputType),
             type=MovementsModelOutputType.__getitem__
+        )
+        parser.add_argument(
+            '--embeddings_size',
+            default=None,
+            type=int,
         )
         return parent_parser
 

@@ -1,12 +1,8 @@
 from .linear import Linear
 from .lstm import LSTM
-from .linear_autoencoder import LinearAE
-from .baseline_3d_pose import Baseline3DPose
-from .linear_ae_residual import LinearAEResidual
-from .baseline_3d_pose_rot import Baseline3DPoseRot
-from .seq2seq import Seq2Seq
-from .linear_ae_residual_tanh import LinearAEResidualTanh
-from .seq2seq_embeddings import Seq2SeqEmbeddings
+from .linear_ae import LinearAE, LinearAEResidual, LinearAEResidualLeaky
+from .baseline_3d_pose import Baseline3DPose, Baseline3DPoseRot
+from .seq2seq import Seq2Seq, Seq2SeqEmbeddings
 from .pose_former import PoseFormer
 
 MOVEMENTS_MODELS = {
@@ -18,8 +14,8 @@ MOVEMENTS_MODELS = {
         LSTM,
         LinearAE,
         LinearAEResidual,
+        LinearAEResidualLeaky,
         Seq2Seq,
-        LinearAEResidualTanh,
         Seq2SeqEmbeddings,
         PoseFormer
     ]

@@ -1,22 +1,5 @@
-"""
-Based on the code from [Sequence to Sequence Learning with Neural Networks](https://github.com/bentrevett/pytorch-seq2seq/blob/master/1%20-%20Sequence%20to%20Sequence%20Learning%20with%20Neural%20Networks.ipynb)
-by [Ben Trevett](https://github.com/bentrevett) licensed under [MIT License](https://github.com/bentrevett/pytorch-seq2seq/blob/master/LICENSE),
-which itself is an implementation of the paper https://arxiv.org/abs/1409.3215:
-
-```bibtex
-@misc{sutskever2014sequence,
-      title={Sequence to Sequence Learning with Neural Networks}, 
-      author={Ilya Sutskever and Oriol Vinyals and Quoc V. Le},
-      year={2014},
-      eprint={1409.3215},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```
-"""
-
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict
 from pytorch3d.transforms.rotation_conversions import matrix_to_rotation_6d, rotation_6d_to_matrix
 import torch
 from torch import nn
