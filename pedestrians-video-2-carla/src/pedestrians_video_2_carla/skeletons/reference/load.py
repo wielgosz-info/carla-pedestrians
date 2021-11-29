@@ -15,7 +15,10 @@ try:
 except ImportError:
     from yaml import Loader
 
+from functools import lru_cache
 
+
+@lru_cache(maxsize=None)
 def load_reference(type: str) -> Dict[str, Any]:
     """
     Loads the file with reference pose extracted from UE4 engine.
