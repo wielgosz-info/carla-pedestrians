@@ -1,22 +1,25 @@
 
+import platform
 from typing import Any, List, Tuple, Type
 
 import pytorch_lightning as pl
 import torch
+from pedestrians_video_2_carla.metrics.fb import *
 from pedestrians_video_2_carla.metrics.mpjpe import MPJPE
 from pedestrians_video_2_carla.metrics.mrpe import MRPE
-from pedestrians_video_2_carla.metrics.fb import *
 from pedestrians_video_2_carla.modules.base.movements import MovementsModel
-from pedestrians_video_2_carla.modules.base.output_types import MovementsModelOutputType, TrajectoryModelOutputType
+from pedestrians_video_2_carla.modules.base.output_types import (
+    MovementsModelOutputType, TrajectoryModelOutputType)
 from pedestrians_video_2_carla.modules.base.trajectory import TrajectoryModel
+from pedestrians_video_2_carla.modules.layers.projection import \
+    ProjectionModule
 from pedestrians_video_2_carla.modules.loss import LossModes
-from pedestrians_video_2_carla.modules.layers.projection import ProjectionModule
 from pedestrians_video_2_carla.modules.movements.zero import ZeroMovements
 from pedestrians_video_2_carla.modules.trajectory.zero import ZeroTrajectory
 from pedestrians_video_2_carla.skeletons.nodes import get_skeleton_type_by_name
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+from pytorch_lightning.utilities import rank_zero_only
 from torch.functional import Tensor
-import platform
 from torchmetrics import MetricCollection
 
 
@@ -140,8 +143,15 @@ class LitBaseMapper(pl.LightningModule):
 
         return parent_parser
 
+    @rank_zero_only
     def on_train_start(self):
-        self.logger[0].log_hyperparams(self.hparams, {
+        # We need to manually add the datamodule hparams,
+        # because the merge is automatically handled only for initial_hparams
+        # in the Trainer.
+        hparams = self.hparams
+        hparams.update(self.trainer.datamodule.hparams)
+
+        self.logger[0].log_hyperparams(hparams, {
             "hp/{}".format(k): 0
             for k in self.metrics.keys()
         })
