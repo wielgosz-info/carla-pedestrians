@@ -71,7 +71,7 @@ class Carla2D3DIterableDataset(IterableDataset):
                  random_changes_each_frame: Optional[int] = 3,
                  max_change_in_deg: Optional[int] = 5,
                  max_world_rot_change_in_deg: Optional[int] = 0,
-                 max_root_yaw_change_in_deg: Optional[int] = 0,
+                 max_initial_world_rot_change_in_deg: Optional[int] = 0,
                  missing_point_probability: Optional[float] = 0.0,
                  nodes: Optional[Type[CARLA_SKELETON]] = CARLA_SKELETON,
                  transform: Optional[Callable[[Tensor], Tensor]] = None,
@@ -82,7 +82,8 @@ class Carla2D3DIterableDataset(IterableDataset):
         self.random_changes_each_frame = random_changes_each_frame
         self.max_change_in_rad = np.deg2rad(max_change_in_deg)
         self.max_world_rot_change_in_rad = np.deg2rad(max_world_rot_change_in_deg)
-        self.max_root_yaw_change_in_rad = np.deg2rad(max_root_yaw_change_in_deg)
+        self.max_initial_world_rot_change_in_rad = np.deg2rad(
+            max_initial_world_rot_change_in_deg)
         self.missing_point_probability = missing_point_probability
         self.batch_size = batch_size
 
@@ -120,19 +121,17 @@ class Carla2D3DIterableDataset(IterableDataset):
                 pose_changes[idx, i, indices] = (torch.rand(
                     (self.random_changes_each_frame, 3)) * 2 - 1) * self.max_change_in_rad
 
-        # temporary root rotation
-        # TODO: remove this once we have a proper world rotation handled,
-        # it will interfere with pedestrian moving through the scene
-        if self.max_root_yaw_change_in_rad != 0.0:
-            pose_changes[:, :, 0, 1] = (torch.rand(
-                (self.batch_size, self.clip_length)) * 2 - 1) * self.max_root_yaw_change_in_rad
-
         pose_changes_batch = euler_angles_to_matrix(pose_changes, "XYZ")
 
         # only change yaw
+        # TODO: for now, all initial rotations are equally probable
+        if self.max_initial_world_rot_change_in_rad > 0:
+            world_rot_change[:, 0, 2] = (torch.rand(
+                (self.batch_size)) * 2 - 1) * self.max_initial_world_rot_change_in_rad
+        # apply additional rotation changes during the clip
         if self.max_world_rot_change_in_rad != 0.0:
-            world_rot_change[:, :, 2] = (torch.rand(
-                (self.batch_size, self.clip_length)) * 2 - 1) * self.max_world_rot_change_in_rad
+            world_rot_change[:, 1:, 2] = (torch.rand(
+                (self.batch_size, self.clip_length-1)) * 2 - 1) * self.max_world_rot_change_in_rad
         world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
         # TODO: introduce world location change at some point

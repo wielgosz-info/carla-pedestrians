@@ -1,17 +1,21 @@
 import argparse
 import logging
-import sys
+import math
 import os
+import sys
 from typing import List
 
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
+from pytorch_lightning.utilities.warnings import rank_zero_warn
 
 from pedestrians_video_2_carla import __version__
-from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
-from pedestrians_video_2_carla.loggers.pedestrian import PedestrianLogger
 from pedestrians_video_2_carla.data.datamodules import DATA_MODULES
+from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
+from pedestrians_video_2_carla.data.datamodules.carla_2d_3d import \
+    Carla2D3DDataModule
+from pedestrians_video_2_carla.loggers.pedestrian import PedestrianLogger
 from pedestrians_video_2_carla.modules.base.base import LitBaseMapper
 from pedestrians_video_2_carla.modules.base.movements import MovementsModel
 from pedestrians_video_2_carla.modules.base.trajectory import TrajectoryModel
@@ -164,6 +168,18 @@ def main(args: List[str]):
 
     args = parser.parse_args(args)
     setup_logging(args.loglevel)
+
+    # prevent accidental infinite training
+    if data_module_cls == Carla2D3DDataModule:
+        if args.limit_train_batches < 0:
+            args.limit_train_batches = 1.0
+        elif isinstance(args.limit_train_batches, float) and args.limit_train_batches <= 1.0:
+            args.limit_train_batches = math.ceil(
+                (4 * args.val_set_size) / args.batch_size)
+            rank_zero_warn(
+                f"""No limit on train batches was set or it was specified as a fraction (--limit_train_batches), this will result in infinite training (never-ending epoch 0).
+    If you really want to do this, set --limit_train_batches=-1.0 and I will not bother you anymore.
+    For now, I set it to `(4 * val_set_size) / batch_size = {args.limit_train_batches}` for you.""")
 
     dict_args = vars(args)
 

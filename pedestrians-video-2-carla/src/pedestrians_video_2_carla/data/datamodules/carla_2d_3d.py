@@ -9,22 +9,21 @@ from pedestrians_video_2_carla.data.datamodules.base import BaseDataModule
 from pedestrians_video_2_carla.data.datasets.carla_2d_3d_dataset import (
     Carla2D3DDataset, Carla2D3DIterableDataset)
 from tqdm import trange
+import math
+
+from pedestrians_video_2_carla.utils.argparse import MinMaxAction
 
 
 class Carla2D3DDataModule(BaseDataModule):
     def __init__(self,
-                 val_batches: Optional[int] = 2,
-                 test_batches: Optional[int] = 3,
+                 val_set_size: Optional[int] = 8192,
+                 test_set_size: Optional[int] = 8192,
                  **kwargs):
-        self.val_batches = val_batches
-        self.test_batches = test_batches
+        self.val_set_size = val_set_size
+        self.test_set_size = test_set_size
         self.kwargs = kwargs
 
         super().__init__(**kwargs)
-
-        if kwargs.get("limit_train_batches", None) is None:
-            rank_zero_warn(
-                "No limit on train batches was set (--limit_train_batches), this will result in infinite training.")
 
     @property
     def settings(self):
@@ -33,10 +32,10 @@ class Carla2D3DDataModule(BaseDataModule):
             'random_changes_each_frame': self.kwargs.get('random_changes_each_frame'),
             'max_change_in_deg': self.kwargs.get('max_change_in_deg'),
             'max_world_rot_change_in_deg': self.kwargs.get('max_world_rot_change_in_deg'),
-            'max_root_yaw_change_in_deg': self.kwargs.get('max_root_yaw_change_in_deg'),
+            'max_initial_world_rot_change_in_deg': self.kwargs.get('max_initial_world_rot_change_in_deg'),
             'missing_point_probability': self.kwargs.get('missing_point_probability'),
-            'val_set_size': self.val_batches * self.batch_size,
-            'test_set_size': self.test_batches * self.batch_size,
+            'val_set_size': self.val_set_size,
+            'test_set_size': self.test_set_size,
         }
 
     @staticmethod
@@ -55,6 +54,9 @@ class Carla2D3DDataModule(BaseDataModule):
             "--max_change_in_deg",
             type=int,
             default=5,
+            minimum=0,
+            maximum=15,
+            action=MinMaxAction,
             metavar='DEGREES',
             help="Max random [+/-] change in degrees."
         )
@@ -62,15 +64,21 @@ class Carla2D3DDataModule(BaseDataModule):
             "--max_world_rot_change_in_deg",
             type=int,
             default=0,
+            minimum=0,
+            maximum=15,
+            action=MinMaxAction,
             metavar='DEGREES',
-            help="Max random [+/-] world rotation yaw change in degrees. IMPLEMENTATION IN PROGRESS, DO NOT USE."
+            help="Max random [+/-] world rotation yaw change in each frame in degrees."
         )
         parser.add_argument(
-            "--max_root_yaw_change_in_deg",
+            "--max_initial_world_rot_change_in_deg",
             type=int,
             default=0,
+            minimum=0,
+            maximum=180,
+            action=MinMaxAction,
             metavar='DEGREES',
-            help="Max random [+/-] 'world' rotation yaw change in degrees. TEMPORARY IMPLEMENTATION."
+            help="Max random [+/-] 'world' rotation yaw change in degrees applied to first frame."
         )
         parser.add_argument(
             "--missing_point_probability",
@@ -83,18 +91,18 @@ class Carla2D3DDataModule(BaseDataModule):
             """
         )
         parser.add_argument(
-            "--val_batches",
+            "--val_set_size",
             type=int,
-            default=2,
-            metavar='NUM_BATCHES',
-            help="Number of batches to use for validation."
+            default=8192,
+            metavar='NUM_SAMPLES',
+            help="Number of samples (clips) to use for validation."
         )
         parser.add_argument(
-            "--test_batches",
+            "--test_set_size",
             type=int,
-            default=3,
-            metavar='NUM_BATCHES',
-            help="Number of batches to use for testing."
+            default=8192,
+            metavar='NUM_SAMPLES',
+            help="Number of samples (clips) to use for testing."
         )
         return parent_parser
 
@@ -111,25 +119,26 @@ class Carla2D3DDataModule(BaseDataModule):
             },
         )
 
-        sizes = [self.val_batches, self.test_batches]
+        sizes = [self.val_set_size, self.test_set_size]
         names = ['val', 'test']
         for (size, name) in zip(sizes, names):
             if size <= 0:
                 continue
 
+            batches = math.ceil(size / self.batch_size)
             clips_set = tuple(zip(*[iterable_dataset.generate_batch()
-                              for _ in trange(size, desc=f'Generating {name} set')]))
+                              for _ in trange(batches, desc=f'Generating {name} set')]))
             projection_2d = torch.cat(clips_set[0], dim=0).cpu().numpy()
             targets = {k: [dic[k] for dic in clips_set[1]] for k in clips_set[1][0]}
             meta = {k: [dic[k] for dic in clips_set[2]] for k in clips_set[2][0]}
 
             with h5py.File(os.path.join(self._subsets_dir, "{}.hdf5".format(name)), "w") as f:
-                f.create_dataset("carla_2d_3d/projection_2d", data=projection_2d,
+                f.create_dataset("carla_2d_3d/projection_2d", data=projection_2d[:size],
                                  chunks=(1, *projection_2d.shape[1:]))
 
                 for k, v in targets.items():
                     stacked_v = np.concatenate(v, axis=0)
-                    f.create_dataset(f"carla_2d_3d/targets/{k}", data=stacked_v,
+                    f.create_dataset(f"carla_2d_3d/targets/{k}", data=stacked_v[:size],
                                      chunks=(1, *stacked_v.shape[1:]))
 
                 for k, v in meta.items():
@@ -140,7 +149,7 @@ class Carla2D3DDataModule(BaseDataModule):
                     ], dtype=h5py.string_dtype('ascii', 30))
                     mapping = {s: i for i, s in enumerate(unique)}
                     f.create_dataset("carla_2d_3d/meta/{}".format(k),
-                                     data=[mapping[s] for s in stacked_v], dtype=np.uint16)
+                                     data=[mapping[s] for s in stacked_v[:size]], dtype=np.uint16)
                     f["carla_2d_3d/meta/{}".format(k)].attrs["labels"] = labels
 
         # save settings
