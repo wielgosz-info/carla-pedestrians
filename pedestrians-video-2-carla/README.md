@@ -40,21 +40,24 @@ python3 -m pedestrians_video_2_carla \
   --data_module_name=Carla2D3D \
   --batch_size=256 \
   --num_workers=32 \
-  --clip_length=180 \
   --input_nodes=CARLA_SKELETON \
   --output_nodes=CARLA_SKELETON \
   --loss_modes=loc_2d_3d \
-  --renderers rgb \
   --check_val_every_n_epoch=10 \
   --gpus=0,1 \
   --accelerator=ddp \
   --limit_train_batches=1 \
+  --limit_val_batches=1 \
   --log_every_n_steps=16 \
   --renderers source_carla input_points projection_points carla \
   \
-  --model_movements_name=LinearAE \
-  --max_epochs=260 \
-  --resume_from_checkpoint=/runs/lighting_logs/LinearAE/version_0/checkpoints/epoch=259-step=8319.ckpt \
+  --movements_model_name=Seq2SeqEmbeddings \
+  --max_epochs=200 \
+  --clip_length=10 \
+  --val_batches=32 \
+  --test_batches=32 \
+  --resume_from_checkpoint=/runs/Seq2SeqEmbeddings/version_8/checkpoints/epoch=199-step=6399.ckpt \
+
 ```
 
 ## Conda
