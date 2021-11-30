@@ -83,7 +83,9 @@ class PedestrianWriter(object):
 
     @torch.no_grad()
     def log_videos(self,
-                   batch: Tensor,
+                   inputs: Tensor,
+                   targets: Tensor,
+                   meta: Tensor,
                    projected_pose: Tensor,
                    absolute_pose_loc: Tensor,
                    absolute_pose_rot: Tensor,
@@ -97,8 +99,6 @@ class PedestrianWriter(object):
                    **kwargs) -> None:
         if step % self._reduced_log_every_n_steps != 0 and not force:
             return
-
-        (inputs, targets, meta) = batch
 
         for vid_idx, (vid, meta) in enumerate(self._render(
                 inputs[self.__videos_slice],

@@ -230,21 +230,34 @@ class LitBaseMapper(pl.LightningModule):
         # TODO: this should take into account both movements and trajectory models
         eval_slice = (slice(None), self.movements_model.eval_slice)
 
+        # get all inputs/outputs properly sliced
+        ev_pose_changes = tuple([v[eval_slice] for v in pose_inputs]) if isinstance(
+            pose_inputs, tuple) else pose_inputs[eval_slice]
+        ev_projected_pose = projected_pose[eval_slice]
+        ev_normalized_projection = normalized_projection[eval_slice]
+        ev_absolute_pose_loc = absolute_pose_loc[eval_slice]
+        ev_absolute_pose_rot = absolute_pose_rot[eval_slice] if absolute_pose_rot is not None else None
+        ev_world_loc_inputs = world_loc_inputs[eval_slice]
+        ev_world_rot_inputs = world_rot_inputs[eval_slice] if world_rot_inputs is not None else None
+        ev_world_loc = world_loc[eval_slice]
+        ev_world_rot = world_rot[eval_slice] if world_rot is not None else None
+        ev_frames = frames[eval_slice]
+        ev_targets = {k: v[eval_slice] for k, v in targets.items()}
+
         for mode in self._losses_to_calculate:
             (loss_fn, criterion, *_) = mode.value
             loss = loss_fn(
                 criterion=criterion,
                 input_nodes=self.movements_model.input_nodes,
-                pose_changes=tuple([v[eval_slice] for v in pose_inputs]) if isinstance(
-                    pose_inputs, tuple) else pose_inputs[eval_slice],
-                projected_pose=projected_pose[eval_slice],
-                normalized_projection=normalized_projection[eval_slice],
-                absolute_pose_loc=absolute_pose_loc[eval_slice],
-                absolute_pose_rot=absolute_pose_rot[eval_slice] if absolute_pose_rot is not None else None,
-                world_loc=world_loc[eval_slice],
-                world_rot=world_rot[eval_slice] if world_rot is not None else None,
-                frames=frames[eval_slice],
-                targets={k: v[eval_slice] for k, v in targets.items()},
+                pose_changes=ev_pose_changes,
+                projected_pose=ev_projected_pose,
+                normalized_projection=ev_normalized_projection,
+                absolute_pose_loc=ev_absolute_pose_loc,
+                absolute_pose_rot=ev_absolute_pose_rot,
+                world_loc=ev_world_loc,
+                world_rot=ev_world_rot,
+                frames=ev_frames,
+                targets=ev_targets,
                 meta=meta,
                 requirements={
                     k.name: v
@@ -259,12 +272,14 @@ class LitBaseMapper(pl.LightningModule):
             self.log('{}_loss/{}'.format(stage, k.name), v, batch_size=len(frames))
 
         self._log_videos(
-            projected_pose=projected_pose,
-            absolute_pose_loc=absolute_pose_loc,
-            absolute_pose_rot=absolute_pose_rot,
-            world_loc=world_loc,
-            world_rot=world_rot,
-            batch=batch,
+            projected_pose=ev_projected_pose,
+            absolute_pose_loc=ev_absolute_pose_loc,
+            absolute_pose_rot=ev_absolute_pose_rot,
+            world_loc=ev_world_loc,
+            world_rot=ev_world_rot,
+            inputs=ev_frames,
+            targets=ev_targets,
+            meta=meta,
             batch_idx=batch_idx,
             stage=stage
         )
@@ -280,15 +295,15 @@ class LitBaseMapper(pl.LightningModule):
                 return {
                     'loss': loss_dict[mode],
                     'preds': {
-                        'pose_changes': pose_inputs[eval_slice].detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
-                        'world_rot_changes': world_rot_inputs[eval_slice].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'world_loc_changes': world_loc_inputs[eval_slice].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'absolute_pose_loc': absolute_pose_loc[eval_slice].detach(),
-                        'absolute_pose_rot': absolute_pose_rot[eval_slice].detach() if absolute_pose_rot is not None else None,
-                        'world_loc': world_loc[eval_slice].detach(),
-                        'world_rot': world_rot[eval_slice].detach(),
+                        'pose_changes': ev_pose_changes.detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
+                        'world_rot_changes': ev_world_rot_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'world_loc_changes': ev_world_loc_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'absolute_pose_loc': ev_absolute_pose_loc.detach(),
+                        'absolute_pose_rot': ev_absolute_pose_rot.detach() if ev_absolute_pose_rot is not None else None,
+                        'world_loc': ev_world_loc.detach(),
+                        'world_rot': ev_world_rot.detach(),
                     },
-                    'targets': {k: v[eval_slice] for k, v in targets.items()}
+                    'targets': ev_targets
                 }
 
         raise RuntimeError("Couldn't calculate any loss.")
@@ -314,7 +329,9 @@ class LitBaseMapper(pl.LightningModule):
                     absolute_pose_rot: Tensor,
                     world_loc: Tensor,
                     world_rot: Tensor,
-                    batch: Tuple,
+                    inputs: Tensor,
+                    targets: Tensor,
+                    meta: Tensor,
                     batch_idx: int,
                     stage: str,
                     log_to_tb: bool = False
@@ -325,7 +342,9 @@ class LitBaseMapper(pl.LightningModule):
             vid_callback = None
 
         self.logger[1].experiment.log_videos(
-            batch,
+            inputs,
+            targets,
+            meta,
             projected_pose,
             absolute_pose_loc,
             absolute_pose_rot,
