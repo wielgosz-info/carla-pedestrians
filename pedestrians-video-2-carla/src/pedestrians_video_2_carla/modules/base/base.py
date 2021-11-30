@@ -1,6 +1,6 @@
 
 import platform
-from typing import Any, List, Tuple, Type
+from typing import Any, List
 
 import pytorch_lightning as pl
 import torch
@@ -18,6 +18,8 @@ from pedestrians_video_2_carla.modules.movements.zero import ZeroMovements
 from pedestrians_video_2_carla.modules.trajectory.zero import ZeroTrajectory
 from pedestrians_video_2_carla.skeletons.nodes import get_skeleton_type_by_name
 from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
+from pedestrians_video_2_carla.walker_control.torch.world import \
+    calculate_world_from_changes
 from pytorch_lightning.utilities import rank_zero_only
 from torch.functional import Tensor
 from torchmetrics import MetricCollection
@@ -150,6 +152,14 @@ class LitBaseMapper(pl.LightningModule):
         # in the Trainer.
         hparams = self.hparams
         hparams.update(self.trainer.datamodule.hparams)
+        # additionally, store info on train set size for easy access
+        hparams.update({
+            'train_set_size': getattr(
+                self.trainer.datamodule.train_set,
+                '__len__',
+                lambda: self.trainer.limit_train_batches*self.trainer.datamodule.batch_size
+            )()
+        })
 
         self.logger[0].log_hyperparams(hparams, {
             "hp/{}".format(k): 0
@@ -215,75 +225,23 @@ class LitBaseMapper(pl.LightningModule):
             targets if self.training else None
         )
 
-        (projected_pose, normalized_projection,
-         absolute_pose_loc, absolute_pose_rot,
-         world_loc, world_rot) = self.projection(
+        projection_outputs = self.projection(
             pose_inputs,
             world_loc_inputs,
             world_rot_inputs
         )
 
-        # TODO: this will work for mono-type batches, but not for mixed-type batches;
-        # Figure if/how to do mixed-type batches - should we even support it?
-        # Maybe force reduction='none' in criterions and then reduce here?
-        loss_dict = {}
-        # TODO: this should take into account both movements and trajectory models
-        eval_slice = (slice(None), self.movements_model.eval_slice)
+        sliced = self._get_sliced_data(frames, targets,
+                                       pose_inputs, world_loc_inputs, world_rot_inputs,
+                                       projection_outputs)
 
-        # get all inputs/outputs properly sliced
-        ev_pose_changes = tuple([v[eval_slice] for v in pose_inputs]) if isinstance(
-            pose_inputs, tuple) else pose_inputs[eval_slice]
-        ev_projected_pose = projected_pose[eval_slice]
-        ev_normalized_projection = normalized_projection[eval_slice]
-        ev_absolute_pose_loc = absolute_pose_loc[eval_slice]
-        ev_absolute_pose_rot = absolute_pose_rot[eval_slice] if absolute_pose_rot is not None else None
-        ev_world_loc_inputs = world_loc_inputs[eval_slice]
-        ev_world_rot_inputs = world_rot_inputs[eval_slice] if world_rot_inputs is not None else None
-        ev_world_loc = world_loc[eval_slice]
-        ev_world_rot = world_rot[eval_slice] if world_rot is not None else None
-        ev_frames = frames[eval_slice]
-        ev_targets = {k: v[eval_slice] for k, v in targets.items()}
+        loss_dict = self._calculate_lossess(stage, len(frames), sliced, meta)
 
-        for mode in self._losses_to_calculate:
-            (loss_fn, criterion, *_) = mode.value
-            loss = loss_fn(
-                criterion=criterion,
-                input_nodes=self.movements_model.input_nodes,
-                pose_changes=ev_pose_changes,
-                projected_pose=ev_projected_pose,
-                normalized_projection=ev_normalized_projection,
-                absolute_pose_loc=ev_absolute_pose_loc,
-                absolute_pose_rot=ev_absolute_pose_rot,
-                world_loc=ev_world_loc,
-                world_rot=ev_world_rot,
-                frames=ev_frames,
-                targets=ev_targets,
-                meta=meta,
-                requirements={
-                    k.name: v
-                    for k, v in loss_dict.items()
-                    if k.name in mode.value[2]
-                } if len(mode.value) > 2 else None,
-            )
-            if loss is not None and not torch.isnan(loss):
-                loss_dict[mode] = loss
+        self._log_videos(meta=meta, batch_idx=batch_idx, stage=stage, **sliced)
 
-        for k, v in loss_dict.items():
-            self.log('{}_loss/{}'.format(stage, k.name), v, batch_size=len(frames))
+        return self._get_outputs(stage, len(frames), sliced, loss_dict)
 
-        self._log_videos(
-            projected_pose=ev_projected_pose,
-            absolute_pose_loc=ev_absolute_pose_loc,
-            absolute_pose_rot=ev_absolute_pose_rot,
-            world_loc=ev_world_loc,
-            world_rot=ev_world_rot,
-            inputs=ev_frames,
-            targets=ev_targets,
-            meta=meta,
-            batch_idx=batch_idx,
-            stage=stage
-        )
-
+    def _get_outputs(self, stage, batch_size, sliced, loss_dict):
         # return primary loss - the first one available from loss_modes list
         # also log it as 'primary' for monitoring purposes
         # TODO: monitoring should be done based on the metric, not the loss
@@ -291,22 +249,83 @@ class LitBaseMapper(pl.LightningModule):
         for mode in self._loss_modes:
             if mode in loss_dict:
                 self.log('{}_loss/primary'.format(stage),
-                         loss_dict[mode], batch_size=len(frames))
+                         loss_dict[mode], batch_size=batch_size)
                 return {
                     'loss': loss_dict[mode],
                     'preds': {
-                        'pose_changes': ev_pose_changes.detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
-                        'world_rot_changes': ev_world_rot_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'world_loc_changes': ev_world_loc_inputs.detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
-                        'absolute_pose_loc': ev_absolute_pose_loc.detach(),
-                        'absolute_pose_rot': ev_absolute_pose_rot.detach() if ev_absolute_pose_rot is not None else None,
-                        'world_loc': ev_world_loc.detach(),
-                        'world_rot': ev_world_rot.detach(),
+                        'pose_changes': sliced['pose_inputs'].detach() if self.movements_model.output_type == MovementsModelOutputType.pose_changes else None,
+                        'world_rot_changes': sliced['world_rot_inputs'].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'world_loc_changes': sliced['world_loc_inputs'].detach() if self.trajectory_model.output_type == TrajectoryModelOutputType.changes else None,
+                        'absolute_pose_loc': sliced['absolute_pose_loc'].detach(),
+                        'absolute_pose_rot': sliced['absolute_pose_rot'].detach() if sliced['absolute_pose_rot'] is not None else None,
+                        'world_loc': sliced['world_loc'].detach(),
+                        'world_rot': sliced['world_rot'].detach() if sliced['world_rot'] is not None else None,
                     },
-                    'targets': ev_targets
+                    'targets': sliced['targets']
                 }
 
         raise RuntimeError("Couldn't calculate any loss.")
+
+    def _calculate_lossess(self, stage, batch_size, sliced, meta):
+        # TODO: this will work for mono-type batches, but not for mixed-type batches;
+        # Figure if/how to do mixed-type batches - should we even support it?
+        # Maybe force reduction='none' in criterions and then reduce here?
+        loss_dict = {}
+
+        for mode in self._losses_to_calculate:
+            (loss_fn, criterion, *_) = mode.value
+            loss = loss_fn(
+                criterion=criterion,
+                input_nodes=self.movements_model.input_nodes,
+                meta=meta,
+                requirements={
+                    k.name: v
+                    for k, v in loss_dict.items()
+                    if k.name in mode.value[2]
+                } if len(mode.value) > 2 else None,
+                **sliced
+            )
+            if loss is not None and not torch.isnan(loss):
+                loss_dict[mode] = loss
+
+        for k, v in loss_dict.items():
+            self.log('{}_loss/{}'.format(stage, k.name), v, batch_size=batch_size)
+        return loss_dict
+
+    def _get_sliced_data(self, frames, targets, pose_inputs, world_loc_inputs, world_rot_inputs, projection_outputs):
+        # TODO: this should take into account both movements and trajectory models
+        eval_slice = (slice(None), self.movements_model.eval_slice)
+
+        # unpack projection outputs
+        (projected_pose, normalized_projection,
+         absolute_pose_loc, absolute_pose_rot,
+         world_loc, world_rot) = projection_outputs
+
+        # get all inputs/outputs properly sliced
+        sliced = {}
+
+        sliced['pose_inputs'] = tuple([v[eval_slice] for v in pose_inputs]) if isinstance(
+            pose_inputs, tuple) else pose_inputs[eval_slice]
+        sliced['projected_pose'] = projected_pose[eval_slice]
+        sliced['normalized_projection'] = normalized_projection[eval_slice]
+        sliced['absolute_pose_loc'] = absolute_pose_loc[eval_slice]
+        sliced['absolute_pose_rot'] = absolute_pose_rot[eval_slice] if absolute_pose_rot is not None else None
+        sliced['world_loc_inputs'] = world_loc_inputs[eval_slice]
+        sliced['world_rot_inputs'] = world_rot_inputs[eval_slice]
+        sliced['world_loc'] = world_loc[eval_slice]
+        sliced['world_rot'] = world_rot[eval_slice]
+        sliced['frames'] = frames[eval_slice]
+        sliced['targets'] = {k: v[eval_slice] for k, v in targets.items()}
+
+        # sometimes we need absolute target world loc/rot, which is not saved in data
+        # so we need to compute it here and then slice appropriately
+        target_world_loc, target_world_rot = calculate_world_from_changes(
+            absolute_pose_loc.shape, absolute_pose_loc.device,
+            targets['world_loc_changes'], targets['world_rot_changes']
+        )
+        sliced['targets']['world_loc'] = target_world_loc[eval_slice]
+        sliced['targets']['world_rot'] = target_world_rot[eval_slice]
+        return sliced
 
     def _eval_step_end(self, outputs, stage):
         # calculate and log metrics
@@ -329,12 +348,13 @@ class LitBaseMapper(pl.LightningModule):
                     absolute_pose_rot: Tensor,
                     world_loc: Tensor,
                     world_rot: Tensor,
-                    inputs: Tensor,
+                    frames: Tensor,
                     targets: Tensor,
                     meta: Tensor,
                     batch_idx: int,
                     stage: str,
-                    log_to_tb: bool = False
+                    log_to_tb: bool = False,
+                    **kwargs
                     ):
         if log_to_tb:
             vid_callback = self._log_to_tensorboard
@@ -342,7 +362,7 @@ class LitBaseMapper(pl.LightningModule):
             vid_callback = None
 
         self.logger[1].experiment.log_videos(
-            inputs,
+            frames,
             targets,
             meta,
             projected_pose,

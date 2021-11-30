@@ -14,6 +14,7 @@ from pedestrians_video_2_carla.walker_control.controlled_pedestrian import \
 from pedestrians_video_2_carla.walker_control.torch.pose import P3dPose
 from torch.functional import Tensor
 from pytorch_lightning.utilities import rank_zero_warn
+from pytorch3d.transforms.rotation_conversions import matrix_to_euler_angles
 
 
 try:
@@ -33,6 +34,8 @@ class CarlaRenderer(Renderer):
     def render(self,
                absolute_pose_loc: Tensor,
                absolute_pose_rot: Tensor,
+               world_loc: Tensor,
+               world_rot: Tensor,
                meta: List[Dict[str, Any]],
                image_size: Tuple[int, int] = (800, 600),
                **kwargs
@@ -51,6 +54,8 @@ class CarlaRenderer(Renderer):
             video = self.render_clip(
                 absolute_pose_loc[clip_idx],
                 absolute_pose_rot[clip_idx] if absolute_pose_rot is not None else None,
+                world_loc[clip_idx],
+                world_rot[clip_idx],
                 meta['age'][clip_idx],
                 meta['gender'][clip_idx],
                 image_size,
@@ -67,6 +72,8 @@ class CarlaRenderer(Renderer):
     def render_clip(self,
                     absolute_pose_loc_clip: Tensor,
                     absolute_pose_rot_clip: Union[Tensor, None],
+                    world_loc_clip: Tensor,
+                    world_rot_clip: Tensor,
                     age: str,
                     gender: str,
                     image_size: Tuple[int, int],
@@ -90,8 +97,9 @@ class CarlaRenderer(Renderer):
             ] * len(absolute_pose_loc_clip)
 
         video = []
-        for absolute_pose_loc_frame, absolute_pose_rot_frame in zip(absolute_pose_loc_clip, absolute_pose_rot_clip):
+        for absolute_pose_loc_frame, absolute_pose_rot_frame, world_loc_frame, world_rot_frame in zip(absolute_pose_loc_clip, absolute_pose_rot_clip, world_loc_clip, world_rot_clip):
             frame = self.render_frame(absolute_pose_loc_frame, absolute_pose_rot_frame,
+                                      world_loc_frame, world_rot_frame,
                                       image_size, world, bound_pedestrian, camera_queue)
             video.append(frame)
 
@@ -106,6 +114,8 @@ class CarlaRenderer(Renderer):
     def render_frame(self,
                      absolute_pose_loc_frame: Tensor,
                      absolute_pose_rot_frame: Tensor,
+                     world_loc_frame: Tensor,
+                     world_rot_frame: Tensor,
                      image_size: Tuple[int, int],
                      world: 'carla.World',
                      bound_pedestrian: ControlledPedestrian,
@@ -115,7 +125,25 @@ class CarlaRenderer(Renderer):
             absolute_pose_loc_frame, absolute_pose_rot_frame)
         bound_pedestrian.apply_pose(abs_pose_snapshot=abs_pose)
 
-        # TODO: teleport when implemented
+        world_loc = world_loc_frame.cpu().numpy().astype(float)
+        world_rot = -np.rad2deg(matrix_to_euler_angles(world_rot_frame,
+                                "XYZ").cpu().numpy()).astype(float)
+
+        bound_pedestrian.teleport_by(
+            carla.Transform(
+                carla.Location(
+                    x=world_loc[0],
+                    y=world_loc[1],
+                    z=-world_loc[2]
+                ),
+                carla.Rotation(
+                    pitch=world_rot[1],
+                    yaw=world_rot[2],
+                    roll=world_rot[0]
+                )
+            ),
+            from_initial=True
+        )
 
         world_frame = world.tick()
 

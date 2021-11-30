@@ -53,10 +53,11 @@ class BaseDataModule(LightningDataModule):
             self._needs_preparation = True
             os.makedirs(self._subsets_dir)
 
-        # TODO: add self.transform repr to hyperparams, but NOT to the settings
         self.save_hyperparameters({
             **self.settings,
             'batch_size': self.batch_size,
+            'num_workers': self.num_workers,
+            'transform': repr(self.transform),
             'settings_digest': self._settings_digest
         })
 

@@ -95,8 +95,8 @@ class Seq2Seq(MovementsModel):
         super().__init__(**kwargs)
 
         self.teacher_mode = teacher_mode
-        self.teacher_force_ratio = teacher_force_ratio
-        self.teacher_force_drop = teacher_force_drop
+        self.teacher_force_ratio = teacher_force_ratio if teacher_mode != TeacherMode.no_force else 0.0
+        self.teacher_force_drop = teacher_force_drop if teacher_mode != TeacherMode.no_force else 0.0
         self.output_features = output_features
 
         self.encoder = Encoder(
@@ -270,15 +270,18 @@ class Seq2Seq(MovementsModel):
         return needs_forcing, target_pose_changes, force_indices
 
     def training_epoch_end(self, *args, **kwargs) -> Dict[str, float]:
-        current_ratio = self.teacher_force_ratio
+        if self.teacher_mode != TeacherMode.no_force:
+            current_ratio = self.teacher_force_ratio
 
-        # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
-        # similar to what can be done for lr
-        self.teacher_force_ratio = (self.teacher_force_ratio -
-                                    self.teacher_force_drop) if self.teacher_force_ratio > self.teacher_force_drop else 0
-        return {
-            'teacher_force_ratio': current_ratio
-        }
+            # TODO: this value should be intelligently adjusted based on the loss/metrics/whatever
+            # similar to what can be done for lr
+            self.teacher_force_ratio = (self.teacher_force_ratio -
+                                        self.teacher_force_drop) if self.teacher_force_ratio > self.teacher_force_drop else 0
+            return {
+                'teacher_force_ratio/{}'.format(self.teacher_mode.name): current_ratio
+            }
+        else:
+            return {}
 
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(self.parameters(), lr=1e-2)

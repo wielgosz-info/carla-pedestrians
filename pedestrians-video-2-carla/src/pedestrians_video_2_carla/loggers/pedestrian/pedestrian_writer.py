@@ -173,7 +173,7 @@ class PedestrianWriter(object):
         # it only makes sense to render single source
         if self.__source_carla_renderer is not None and targets['absolute_pose_loc'] is not None:
             source_videos = self.__source_carla_renderer.render(
-                targets['absolute_pose_loc'], targets['absolute_pose_rot'], meta, image_size
+                targets['absolute_pose_loc'], targets['absolute_pose_rot'], targets['world_loc'], targets['world_rot'], meta, image_size
             )
         elif self.__source_videos_renderer is not None:
             source_videos = self.__source_videos_renderer.render(
@@ -192,7 +192,7 @@ class PedestrianWriter(object):
         carla_videos = None
         if self.__carla_renderer is not None:
             carla_videos = self.__carla_renderer.render(
-                absolute_pose_loc, absolute_pose_rot, meta, image_size
+                absolute_pose_loc, absolute_pose_rot, world_loc, world_rot, meta, image_size
             )
 
         if self._merging_method == MergingMethod.square:
