@@ -1,12 +1,15 @@
+import math
 from typing import Callable, Optional, Type
-import torch
-from torch.utils.data import IterableDataset, Dataset
+
 import h5pickle as h5py
-from pedestrians_video_2_carla.modules.layers.projection import ProjectionModule
-from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 import numpy as np
-from torch.functional import Tensor
+import torch
+from pedestrians_video_2_carla.modules.layers.projection import \
+    ProjectionModule
+from pedestrians_video_2_carla.skeletons.nodes.carla import CARLA_SKELETON
 from pytorch3d.transforms import euler_angles_to_matrix
+from torch.functional import Tensor
+from torch.utils.data import Dataset, IterableDataset
 
 
 class Carla2D3DDataset(Dataset):
@@ -94,27 +97,36 @@ class Carla2D3DIterableDataset(IterableDataset):
         )
 
     def __iter__(self):
-        # this is infinite generative dataset, it doesn't matter how many workers are there
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            num_workers = 1
+        else:
+            num_workers = worker_info.num_workers
+
+        bs = math.ceil(self.batch_size / num_workers)
+
         while True:
-            inputs, targets, meta = self.generate_batch()
-            for idx in range(self.batch_size):
+            inputs, targets, meta = self.generate_batch(bs)
+            for idx in range(bs):
                 yield (
                     inputs[idx],
                     {k: v[idx] for k, v in targets.items()},
                     {k: v[idx] for k, v in meta.items()}
                 )
 
-    def generate_batch(self):
+    def generate_batch(self, batch_size=None):
+        if batch_size is None:
+            batch_size = self.batch_size
         nodes_size = len(self.nodes)
         nodes_nums = np.arange(nodes_size)
         pose_changes = torch.zeros(
-            (self.batch_size, self.clip_length, nodes_size, 3))
+            (batch_size, self.clip_length, nodes_size, 3))
         world_rot_change = torch.zeros(
-            (self.batch_size, self.clip_length, 3))
+            (batch_size, self.clip_length, 3))
         world_loc_change_batch = torch.zeros(
-            (self.batch_size, self.clip_length, 3))
+            (batch_size, self.clip_length, 3))
 
-        for idx in range(self.batch_size):
+        for idx in range(batch_size):
             for i in range(self.clip_length):
                 indices = np.random.choice(nodes_nums,
                                            size=self.random_changes_each_frame, replace=False)
@@ -127,19 +139,19 @@ class Carla2D3DIterableDataset(IterableDataset):
         # TODO: for now, all initial rotations are equally probable
         if self.max_initial_world_rot_change_in_rad > 0:
             world_rot_change[:, 0, 2] = (torch.rand(
-                (self.batch_size)) * 2 - 1) * self.max_initial_world_rot_change_in_rad
+                (batch_size)) * 2 - 1) * self.max_initial_world_rot_change_in_rad
         # apply additional rotation changes during the clip
         if self.max_world_rot_change_in_rad != 0.0:
             world_rot_change[:, 1:, 2] = (torch.rand(
-                (self.batch_size, self.clip_length-1)) * 2 - 1) * self.max_world_rot_change_in_rad
+                (batch_size, self.clip_length-1)) * 2 - 1) * self.max_world_rot_change_in_rad
         world_rot_change_batch = euler_angles_to_matrix(world_rot_change, "XYZ")
 
         # TODO: introduce world location change at some point
 
         # TODO: we should probably take care of the "correct" pedestrians data distribution
         # need to find some pedestrian statistics
-        age = np.random.choice(['adult', 'child'], size=self.batch_size)
-        gender = np.random.choice(['male', 'female'], size=self.batch_size)
+        age = np.random.choice(['adult', 'child'], size=batch_size)
+        gender = np.random.choice(['male', 'female'], size=batch_size)
 
         self.projection.on_batch_start((pose_changes_batch, None, {
             'age': age,
@@ -159,7 +171,7 @@ class Carla2D3DIterableDataset(IterableDataset):
 
         if self.missing_point_probability > 0.0:
             missing_indices = torch.rand(
-                (self.batch_size, self.clip_length, nodes_size)) < self.missing_point_probability
+                (batch_size, self.clip_length, nodes_size)) < self.missing_point_probability
             projection_2d[missing_indices] = torch.tensor(
                 [0.0, 0.0, 0.0], device=projection_2d.device)
 
@@ -180,8 +192,9 @@ class Carla2D3DIterableDataset(IterableDataset):
 
 
 if __name__ == "__main__":
-    from pedestrians_video_2_carla.utils.timing import timing, print_timing
-    from pedestrians_video_2_carla.transforms.hips_neck import HipsNeckNormalize
+    from pedestrians_video_2_carla.transforms.hips_neck import \
+        HipsNeckNormalize
+    from pedestrians_video_2_carla.utils.timing import print_timing, timing
 
     nodes = CARLA_SKELETON
     iter_dataset = Carla2D3DIterableDataset(
