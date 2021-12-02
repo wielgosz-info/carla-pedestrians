@@ -3,7 +3,7 @@ version: "3.9"
 services:
   openpose:
     build:
-      context: openpose
+      context: .
       dockerfile: Dockerfile
       args:
         USER_ID: ${USER_ID:-1000}
@@ -13,7 +13,7 @@ services:
     user: ${USER_ID}:${GROUP_ID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${OPENPOSE_DATASETS_PATH}:/datasets:ro
+      - ${DATASETS_PATH}:/datasets:ro
       - ${PWD}/openpose:/app
       - vscode:/home/carla-pedestrians-openpose/.vscode-server
       - vscode-insiders:/home/carla-pedestrians-openpose/.vscode-server-insiders
