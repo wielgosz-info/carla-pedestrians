@@ -1,1 +1,4 @@
 
+[submodule "pedestrians-video-2-carla"]
+	path = pedestrians-video-2-carla
+	url = git@github.com:wielgosz-info/pedestrians-video-2-carla.git
