@@ -11,7 +11,7 @@ git clone --recurse-submodules git@github.com:wielgosz-info/carla-pedestrians.gi
 ## (Cumbersome) Running Steps
 
 ### Step 0
-Copy `.env.template` to `.env` in `openpose` and adjust the variables, especially the path to datasets (e.g. for dataset root `DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.). By default, the project assumes [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/).
+Copy `.env.template` to `.env` in the 'openpose' folderand adjust the variables (do the same for the 'pedestrians_video_2_carla', especially the path to datasets (e.g. for dataset root `DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.). By default, the project assumes [JAAD dataset](https://data.nvision2.eecs.yorku.ca/JAAD_dataset/).
 
 ### Step 1
 Extract pedestrians skeletons from video clips with [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) using container specified in `openpose/docker-compose.yml`:
@@ -22,10 +22,10 @@ docker-compose -f "docker-compose.yml" --env-file .env up -d --build
 docker exec -it carla-pedestrians_openpose_1 /bin/bash
 ```
 
-Inside container (after reviewing/modifying `extract_poses.sh`):
+Inside container (after reviewing/modifying `extract_poses_from_dataset.sh`):
 ```sh
 cd /app
-./extract_poses.sh
+./extract_poses_from_dataset.sh
 ```
 
 The generated files will be saved in the `carla-pedestrians_outputs` Docker volume. By default the `extract_poses.sh` scripts tries to use `JAAD` dataset.
