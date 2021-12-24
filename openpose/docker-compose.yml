@@ -14,7 +14,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ${DATASETS_PATH}:/datasets:ro
-      - ${PWD}/openpose:/app
+      - ${PWD}:/app
       - vscode:/home/carla-pedestrians-openpose/.vscode-server
       - vscode-insiders:/home/carla-pedestrians-openpose/.vscode-server-insiders
       - outputs:/outputs
