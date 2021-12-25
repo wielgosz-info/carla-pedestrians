@@ -5,6 +5,7 @@ limit=360
 
 cd /openpose # it needs to be run there to find 'models' dir
 
+mkdir -p  /outputs/${dataset}
 i=1
 for filename in /datasets/${dataset}/videos/*.mp4; do
     name=$(basename "$filename" .mp4)
