@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  common:
+    build:
+      context: ${COMMON_DIR:-.}
+      dockerfile: Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+        USERNAME: carla
+        COMMIT: ${COMMIT}
+        PLATFORM: ${PLATFORM:-nvidia}
+    image: wielgoszinfo/pedestrians-common:${PLATFORM:-nvidia}-latest
