@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 ARG USERNAME=carla
+ENV USERNAME=${USERNAME}
 ENV HOME /home/${USERNAME}
 
 RUN groupadd -g ${GROUP_ID} ${USERNAME} \
@@ -44,7 +45,7 @@ RUN groupadd -g ${GROUP_ID} ${USERNAME} \
     && chown ${USERNAME}:${USERNAME} ${HOME}/.vscode-server ${HOME}/.vscode-server-insiders /outputs /venv /app
 
 # Everything else can be run as user since we need venv anyway
-USER carla
+USER ${USERNAME}
 
 # Create venv to allow editable installation of python packages
 RUN python3 -m venv /venv
@@ -67,3 +68,14 @@ RUN /venv/bin/python -m pip install --no-cache-dir \
 
 # Automatically activate virtualenv for user
 RUN echo 'source /venv/bin/activate' >> ${HOME}/.bashrc
+
+ARG COMMIT="0000000"
+ENV COMMIT=${COMMIT}
+
+COPY --chown=${USERNAME}:${USERNAME} ./entrypoint.sh ${HOME}/entrypoint.sh
+
+WORKDIR ${HOME}
+ENTRYPOINT [ "./entrypoint.sh" ]
+
+# Run infinite loop to allow easily attach to container
+CMD ["/bin/sh", "-c", "while sleep 1000; do :; done"]
