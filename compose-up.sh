@@ -14,10 +14,12 @@ CARLA_SERVER_DIR=./server
 COMMON_DIR=./pedestrians-common
 VIDEO2CARLA_DIR=./pedestrians-video-2-carla
 SCENARIOS_DIR=./pedestrians-scenarios
+VIZ_DIR=./carlaviz
 
 source ${CARLA_SERVER_DIR}/.env
 source ${VIDEO2CARLA_DIR}/.env
 source ${SCENARIOS_DIR}/.env
+source ${VIZ_DIR}/.env
 
 # Use BuildKit by default
 COMPOSE_DOCKER_CLI_BUILD=1
@@ -31,6 +33,7 @@ if [ $PLATFORM == "cpu" ]; then
 else
     COMPOSE_ARGS=(-f "${CARLA_SERVER_DIR}/docker-compose.yml"
                   -f "${VIDEO2CARLA_DIR}/docker-compose.yml"
+                  -f "${VIZ_DIR}/docker-compose.yml"
                   -f "${SCENARIOS_DIR}/docker-compose.yml")
 fi
 
@@ -47,3 +50,6 @@ docker-compose \
     -f "docker-compose.yml" \
     ${COMPOSE_ARGS[@]} \
     up -d --build
+
+# Display some info for the user about carlaviz
+echo "To access carlaviz, open a browser and go to http://localhost:8080."

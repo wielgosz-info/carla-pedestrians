@@ -5,3 +5,6 @@
 [submodule "pedestrians-scenarios"]
 	path = pedestrians-scenarios
 	url = git@github.com:wielgosz-info/pedestrians-scenarios.git
+[submodule "carlaviz"]
+	path = carlaviz
+	url = git@github.com:wielgosz-info/carlaviz.git
