@@ -8,3 +8,6 @@
 [submodule "carlaviz"]
 	path = carlaviz
 	url = git@github.com:wielgosz-info/carlaviz.git
+[submodule "pedestrians-common"]
+	path = pedestrians-common
+	url = git@github.com:wielgosz-info/carla-common.git

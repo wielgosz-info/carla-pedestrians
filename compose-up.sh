@@ -10,13 +10,13 @@ COMPOSE_PROJECT_NAME=carla-pedestrians
 PLATFORM=nvidia  # nvidia or cpu
 SHM_SIZE=8gb
 
-CARLA_SERVER_DIR=./server
 COMMON_DIR=./pedestrians-common
+CARLA_SERVER_DIR=${COMMON_DIR}/server
 VIDEO2CARLA_DIR=./pedestrians-video-2-carla
 SCENARIOS_DIR=./pedestrians-scenarios
 VIZ_DIR=./carlaviz
 
-source ${CARLA_SERVER_DIR}/.env
+source ${COMMON_DIR}/.env
 source ${VIDEO2CARLA_DIR}/.env
 source ${SCENARIOS_DIR}/.env
 source ${VIZ_DIR}/.env
