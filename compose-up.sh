@@ -45,11 +45,11 @@ docker-compose \
     build
 
 # then build & run the actual services
-# TODO: add option to select which services to run?
+# selected services can be run by passing their names as arguments
 docker-compose \
     -f "docker-compose.yml" \
     ${COMPOSE_ARGS[@]} \
-    up -d --build
+    up -d --build $@
 
 # Display some info for the user about carlaviz
 echo "To access carlaviz, open a browser and go to http://localhost:8080."
