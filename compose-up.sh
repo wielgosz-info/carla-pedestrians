@@ -4,11 +4,11 @@ set -a # automatically export all variables
 
 COMMIT=$(git rev-parse --short HEAD)
 USER_ID=$(id -u)
-GROUP_ID=$(id -g)
+GROUP_ID=${GROUP_ID:-$(id -g)}
 
 COMPOSE_PROJECT_NAME=carla-pedestrians
-PLATFORM=nvidia  # nvidia or cpu
-SHM_SIZE=8gb
+PLATFORM=${PLATFORM:-nvidia}  # nvidia or cpu
+SHM_SIZE=${SHM_SIZE:-8gb}
 
 COMMON_DIR=./pedestrians-common
 CARLA_SERVER_DIR=${COMMON_DIR}/server
@@ -28,11 +28,11 @@ DOCKER_BUILDKIT=1
 set +a # end of automatic export
 
 if [ $PLATFORM == "cpu" ]; then
-    COMPOSE_ARGS=(-f "${VIDEO2CARLA_DIR}/docker-compose.yml"
-                  -f "${VIDEO2CARLA_DIR}/docker-compose.cpu.yml")
+    COMPOSE_ARGS=(-f "${VIDEO2CARLA_DIR}/docker-compose.yml")
 else
     COMPOSE_ARGS=(-f "${CARLA_SERVER_DIR}/docker-compose.yml"
                   -f "${VIDEO2CARLA_DIR}/docker-compose.yml"
+                  -f "${VIDEO2CARLA_DIR}/docker-compose.nvidia.yml"
                   -f "${VIZ_DIR}/docker-compose.yml"
                   -f "${SCENARIOS_DIR}/docker-compose.yml")
 fi
@@ -50,6 +50,3 @@ docker-compose \
     -f "docker-compose.yml" \
     ${COMPOSE_ARGS[@]} \
     up -d --build $@
-
-# Display some info for the user about carlaviz
-echo "To access carlaviz, open a browser and go to http://localhost:8080."
