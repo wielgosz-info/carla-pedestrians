@@ -34,6 +34,18 @@ The generated files will be saved in the `carla-pedestrians_outputs` Docker volu
 Run the CARLA server & the containers with our code. For convenience, there is a `compose-up.sh` script provided,
 that brings together the multiple `docker-compose.yml` files from submodules and sets the common env variables.
 
+When using NVIDIA GPU and some UNIX-like system, you can simply run:
+```sh
+./compose-up.sh
+```
+
+When using CPU, you need to specify `PLATFORM=cpu` or modify the script.
+Additionally, on MacOS when using Docker Desktop the default GROUP_ID and SHM_SIZE will not work,
+so they need to be set manually. The resulting example command to run on MacOS is:
+```sh
+PLATFORM=cpu GROUP_ID=1000 SHM_SIZE=2147483648 ./compose-up.sh
+```
+
 For details about running each individual container, see the relevant `README.md` files:
 - [pedestrians-video-2-carla](https://github.com/wielgosz-info/pedestrians-video-2-carla/blob/main/README.md)
 - [pedestrians-scenarios](https://github.com/wielgosz-info/pedestrians-scenarios/blob/main/README.md)

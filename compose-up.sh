@@ -28,7 +28,8 @@ DOCKER_BUILDKIT=1
 set +a # end of automatic export
 
 if [ $PLATFORM == "cpu" ]; then
-    COMPOSE_ARGS=(-f "${VIDEO2CARLA_DIR}/docker-compose.yml")
+    COMPOSE_ARGS=(-f "${VIDEO2CARLA_DIR}/docker-compose.yml"
+                  -f "${SCENARIOS_DIR}/docker-compose.yml")
 else
     COMPOSE_ARGS=(-f "${CARLA_SERVER_DIR}/docker-compose.yml"
                   -f "${VIDEO2CARLA_DIR}/docker-compose.yml"
@@ -42,6 +43,7 @@ fi
 docker-compose \
     -f "docker-compose.yml" \
     -f "${COMMON_DIR}/docker-compose.yml" \
+    -f "${SCENARIOS_DIR}/docker-compose.yml" \
     build
 
 # then build & run the actual services
