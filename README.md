@@ -11,7 +11,7 @@ git clone --recurse-submodules git@github.com:wielgosz-info/carla-pedestrians.gi
 ## Running Steps
 
 ### Step 0
-Copy `.env.template` to `.env` in the `openpose`/`pedestrians-video-2-carla`/`pedestrians-scenarios` folders and adjust the variables, especially the path to datasets (e.g. for dataset root `VIDEO2CARLA_DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.).
+Copy `.env.template` to `.env` in the `openpose`, `pedestrians-video-2-carla`, `pedestrians-scenarios` folders and adjust the variables, especially the path to datasets (e.g. for dataset root `VIDEO2CARLA_DATASETS_PATH=/datasets` the expected structure would be `/datasets/JAAD`, `/datasets/PIE` etc.).
 
 ### Step 1
 Extract pedestrians skeletons from video clips with [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) using container specified in `openpose/docker-compose.yml`:
