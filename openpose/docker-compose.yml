@@ -13,11 +13,11 @@ services:
     user: ${USER_ID}:${GROUP_ID}
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${DATASETS_PATH}:/datasets:ro
+      - ${OPENPOSE_DATASETS_PATH}:/datasets:ro
       - ${PWD}:/app
       - vscode:/home/carla-pedestrians-openpose/.vscode-server
       - vscode-insiders:/home/carla-pedestrians-openpose/.vscode-server-insiders
-      - outputs:/outputs
+      - ${OPENPOSE_OUTPUTS_DIR_OR_VOLUME}:/outputs
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,graphics,utility
@@ -26,10 +26,9 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['${OPENPOSE_GPU_ID:-0}']
-              capabilities: ['compute','graphics','utility']
+              device_ids: [ '${OPENPOSE_GPU_ID:-0}' ]
+              capabilities: [ 'compute', 'graphics', 'utility' ]
 
-volumes: 
+volumes:
   vscode:
   vscode-insiders:
-  outputs:
