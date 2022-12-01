@@ -142,4 +142,7 @@ subsets/
 # Checkpoints
 *.pt
 
+# Trace
+*.trace.json
+
 .DS_Store
