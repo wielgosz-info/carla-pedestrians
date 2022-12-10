@@ -65,7 +65,7 @@ If you use this repo please cite:
 ```
 @Misc{,
     author = {Maciej Wielgosz},
-    title = {{Carla pedestrian datasets}: generation of pedestrian datasets},
+    title = {{CARLA Pedestrians}: generation of pedestrian datasets with CARLA},
     year = {2022--},
     url = " https://github.com/wielgosz-info/carla-pedestrians"
 }
