@@ -59,6 +59,18 @@ docker-compose down --remove-orphans
 ## Reference skeletons
 Reference skeleton data in `pedestrians-video-2-carla/src/pedestrians_video_2_carla/data/carla/files` are extracted form [CARLA project Walkers *.uasset files](https://bitbucket.org/carla-simulator/carla-content).
 
+## Cite this repo
+If you use this repo please cite:
+
+```
+@Misc{,
+    author = {Maciej Wielgosz},
+    title = {{Carla pedestrian datasets}: generation of pedestrian datasets},
+    year = {2022--},
+    url = " https://github.com/wielgosz-info/carla-pedestrians"
+}
+```
+
 ## License
 Our code is released under [MIT License](https://github.com/wielgosz-info/carla-pedestrians/blob/main/LICENSE).
 
