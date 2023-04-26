@@ -1,13 +1,13 @@
 
 [submodule "pedestrians-video-2-carla"]
 	path = pedestrians-video-2-carla
-	url = git@github.com:wielgosz-info/pedestrians-video-2-carla.git
+	url = https://github.com/wielgosz-info/pedestrians-video-2-carla.git
 [submodule "pedestrians-scenarios"]
 	path = pedestrians-scenarios
-	url = git@github.com:wielgosz-info/pedestrians-scenarios.git
+	url = https://github.com/wielgosz-info/pedestrians-scenarios.git
 [submodule "carlaviz"]
 	path = carlaviz
-	url = git@github.com:wielgosz-info/carlaviz.git
+	url = https://github.com/wielgosz-info/carlaviz.git
 [submodule "pedestrians-common"]
 	path = pedestrians-common
-	url = git@github.com:wielgosz-info/carla-common.git
+	url = https://github.com/wielgosz-info/carla-common.git

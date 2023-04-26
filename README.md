@@ -5,7 +5,7 @@ Bringing more realistic pedestrians movements into CARLA.
 This project contains submodules when there was no other option of getting the code in (not pip-installable code). So to ensure that all models run correctly, clone with:
 
 ```sh
-git clone --recurse-submodules git@github.com:wielgosz-info/carla-pedestrians.git
+git clone --recurse-submodules https://github.com/wielgosz-info/carla-pedestrians.git
 ```
 
 ## Running Steps
