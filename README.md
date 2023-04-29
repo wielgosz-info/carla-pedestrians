@@ -1,6 +1,8 @@
 # CARLA Pedestrians
 Bringing more realistic pedestrians movements into CARLA.
 
+A part of [Adversarial Cases for Autonomous Vehicles (ARCANE) project](https://project-arcane.eu/).
+
 ## Cloning
 This project contains submodules when there was no other option of getting the code in (not pip-installable code). So to ensure that all models run correctly, clone with:
 
