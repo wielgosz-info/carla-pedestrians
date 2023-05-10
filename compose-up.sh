@@ -43,6 +43,11 @@ fi
 docker-compose \
     -f "docker-compose.yml" \
     -f "${COMMON_DIR}/docker-compose.yml" \
+    build
+
+# 'scenarios' container needs 'common' to be build first, so we need separate step
+docker-compose \
+    -f "docker-compose.yml" \
     -f "${SCENARIOS_DIR}/docker-compose.yml" \
     build
 
