@@ -9,7 +9,7 @@ services:
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
         USERNAME: carla-pedestrians-openpose
-    image: wielgoszinfo/carla-pedestrians-openpose:latest
+    image: ${IMAGES_NAMESPACE:-wielgoszinfo}/carla-pedestrians-openpose:latest
     user: ${USER_ID}:${GROUP_ID}
     volumes:
       - /etc/localtime:/etc/localtime:ro

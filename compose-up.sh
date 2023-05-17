@@ -6,7 +6,8 @@ COMMIT=$(git rev-parse --short HEAD)
 USER_ID=$(id -u)
 GROUP_ID=${GROUP_ID:-$(id -g)}
 
-COMPOSE_PROJECT_NAME=carla-pedestrians
+IMAGES_NAMESPACE=${IMAGES_NAMESPACE:-wielgoszinfo}
+COMPOSE_PROJECT_NAME=carla-${IMAGES_NAMESPACE}
 PLATFORM=${PLATFORM:-nvidia}  # nvidia or cpu
 SHM_SIZE=${SHM_SIZE:-8gb}
 
