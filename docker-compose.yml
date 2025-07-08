@@ -2,6 +2,7 @@ version: "3.9"
 
 # those are volumes shared between all containers
 volumes:
-  vscode: null
-  vscode-insiders: null
-  outputs: null
+  vscode: {}
+  vscode-insiders: {}
+  #outputs: {}
+  #runs: {}
