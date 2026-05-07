@@ -1,0 +1,23 @@
+python3 << 'EOF'
+import pandas as pd
+import json
+
+df = pd.read_csv('/tmp/20251104-164948_labels_with_poses.csv')
+matched = df[df['pose_matched'] == True].iloc[0]
+
+print("Sample row with pose:")
+print(f"  Pedestrian ID: {matched['pedestrian_id']}")
+print(f"  Distance: {matched['distance_to_ego']}m")
+print(f"  IoU: {matched['pose_iou']:.3f}")
+print(f"\n  Pose keypoints (first 3):")
+pose = json.loads(matched['pose_keypoints'])
+for i, kp in enumerate(pose[:3]):
+    print(f"    Keypoint {i}: x={kp[0]:.1f}, y={kp[1]:.1f}, conf={kp[2]:.3f}")
+print(f"  Total keypoints: {len(pose)}")
+EOF
+
+
+# Copy the result to your dataset
+docker cp carla-pedestrians_openpose_1:/tmp/20251104-164948_labels_with_poses.csv \
+    /data2/nriaz/PedSynth++/clear_noon/Town01/20251104-164948/labels_with_poses.csv
+

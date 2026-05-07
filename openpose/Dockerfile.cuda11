@@ -1,0 +1,40 @@
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Warsaw
+
+RUN apt-get update && apt-get install -y \
+    wget git cmake nano screen \
+    libopencv-dev \
+    libgoogle-glog-dev libgflags-dev \
+    libatlas-base-dev \
+    libhdf5-dev \
+    protobuf-compiler \
+    libboost-all-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /openpose
+RUN git clone https://github.com/CMU-Perceptual-Computing-Lab/openpose.git . && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake \
+    -DBUILD_PYTHON=OFF \
+    -DUSE_CUDNN=ON \
+    -DGPU_MODE=CUDA \
+    .. && \
+    make -j`nproc`
+
+RUN cd models && bash getModels.sh
+
+ARG USER_ID=1000
+ARG GROUP_ID=1000
+ARG USERNAME=carla-pedestrians-openpose
+ENV HOME=/home/${USERNAME}
+RUN groupadd -g ${GROUP_ID} ${USERNAME} && \
+    useradd -ms /bin/bash -u ${USER_ID} -g ${GROUP_ID} ${USERNAME} && \
+    mkdir -p ${HOME}/.vscode-server ${HOME}/.vscode-server-insiders /outputs && \
+    chown -R ${USERNAME}:${USERNAME} ${HOME}/.vscode-server ${HOME}/.vscode-server-insiders /outputs
+
+WORKDIR /app
+USER ${USERNAME}
+CMD ["tail", "-f", "/dev/null"]
