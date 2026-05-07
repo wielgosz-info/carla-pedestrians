@@ -1,0 +1,38 @@
+Step 1: Run
+docker-compose -f "docker-compose.yml" --env-file .env up -d --build
+Step 2:
+docker exec -it alphapose_alphapose_1 bash
+
+You will be in Docker container having Alphapose running
+
+
+OR
+
+docker build -t pedsynth-alphapose:latest -f Dockerfile.alphapose .
+
+docker-compose -f "docker-compose.alphapose.yml" --env-file .env up -d
+
+docker exec -it alphapose_alphapose_1 bash
+
+
+
+Other commands to remove exiting containers
+
+# 1. Stop and remove current container
+docker-compose -f "docker-compose.alphapose.yml" down
+
+# 2. Remove old image
+docker rmi pedsynth-alphapose:latest
+
+# 3. Rebuild image
+docker build -t pedsynth-alphapose:latest -f Dockerfile.alphapose .
+
+# 4. Start container again
+docker-compose -f "docker-compose.alphapose.yml" --env-file .env up -d
+
+#If download_model.sh is not working use gdown
+#Yolo
+/home/alphapose-user/.local/bin/gdown --id 1D47msNOOiJKvPOXlnpyzdKA3k6E97NTC      -O /workspace/AlphaPose/detector/yolo/data/yolov3-spp.weights
+
+#Alphapose
+/home/alphapose-user/.local/bin/gdown --id 1kQhnMRURFiy7NsdS8EFL-8vtqEXOgECn -O /workspace/AlphaPose/pretrained_models/fast_res50_256x192.pth

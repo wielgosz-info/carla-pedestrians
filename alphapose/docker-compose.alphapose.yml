@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  alphapose:
+    image: pedsynth-alphapose:latest
+    container_name: alphapose_alphapose_1
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - /data2/nriaz/test_no_delay:/datasets:ro   # ← change this line to mount different input directory
+      - /data2/nriaz/outputs:/outputs
+      - ./:/app
+    working_dir: /app
+    command: tail -f /dev/null
