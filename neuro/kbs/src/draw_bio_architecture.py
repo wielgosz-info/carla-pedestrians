@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle, Ellipse
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 fig, ax = plt.subplots(1, 1, figsize=(20, 6))
 ax.set_xlim(0, 20)
@@ -71,9 +76,9 @@ ax.arrow(15.5, 3, 0.3, 0, head_width=0.12, head_length=0.08, fc='black', ec='bla
 ax.arrow(16.8, 3, 0.1, 0, head_width=0.12, head_length=0.08, fc='black', ec='black')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.pdf'),
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.png',
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.png'),
             dpi=300, bbox_inches='tight')
 print("✅ Bio-inspired architecture saved")
 plt.close()

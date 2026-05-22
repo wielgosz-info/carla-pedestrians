@@ -1,6 +1,3 @@
-print("Python 解释器路径：", sys.executable)  # 打印当前使用的Python路径
-print("CARLA 环境测试：开始初始化...")
-# 下面保留你原来的所有代码（比如 deg_to_rad 函数、agent 类等）
 #!/usr/bin/env python3
 
 # MIT License
@@ -24,8 +21,6 @@ print("CARLA 环境测试：开始初始化...")
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
-import sys
 
 import carla
 import numpy as np
@@ -172,15 +167,17 @@ class agent:
         
     # Destructor
     def __del__(self):
-        for a in self.actor_list:
+        for a in list(self.actor_list):
             a.destroy()
             self.actor_list.remove(a)
 
-    # Destroy all actor
+    # Destroy all actors
     def destroy_actors(self):
-        for a in self.actor_list:
+        for a in list(self.actor_list):
             a.destroy()
             self.actor_list.remove(a)
-            # 新增：创建agent实例，触发初始化和验证代码执行
+
+
 if __name__ == "__main__":
-    carla_agent = agent()  # 实例化agent类，会执行__init__里的所有代码
+    carla_agent = agent()
+

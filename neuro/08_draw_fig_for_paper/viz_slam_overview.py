@@ -16,6 +16,9 @@ def ensure_chinese_font():
         "SimSun",
         "Noto Sans CJK SC",
         "Source Han Sans SC",
+        "Arial Unicode MS",
+        "PingFang SC",
+        "Heiti SC",
     ]
     try:
         avail = {f.name for f in font_manager.fontManager.ttflist}
@@ -737,7 +740,7 @@ def parse_args():
     parser.add_argument(
         "--data_dir",
         type=str,
-        default=r"E:\\Neuro_end\\neuro\\Town01Data_IMU_Fusion\\Town01Data_IMU_Fusion",
+        default=None,
         help="Dataset directory containing images and text files.",
     )
     parser.add_argument("--out", type=str, default=None, help="Output image path. If not set, saves to <data_dir>/slam_overview.png")
@@ -782,6 +785,9 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.data_dir is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        args.data_dir = os.path.join(script_dir, '..', 'data', 'Town01Data_IMU_Fusion')
     if getattr(args, "draw_architecture", False):
         build_architecture_diagram(out_path=getattr(args, "arch_out", None), base_fontsize=getattr(args, "fontsize", 16))
     else:

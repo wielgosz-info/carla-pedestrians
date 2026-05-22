@@ -179,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_dir", type=str, default=None,
                         help="输出目录 (默认: ../data/01_NeuroSLAM_Datasets/KITTI_Seq_XX)")
     
-    args = python convert_kitti_to_neuroslam.py --sequence 07 --kitti_root "D:\kitti\KITTI_07"parser.parse_args()
+    args = parser.parse_args()
     
     script_dir = Path(__file__).parent.resolve()
 

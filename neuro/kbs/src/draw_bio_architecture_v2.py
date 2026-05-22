@@ -5,10 +5,16 @@
 使用多种形状、渐变色、更好的视觉层次
 """
 
+import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle, Wedge, Polygon
 import numpy as np
+
+# 路径配置
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 设置中文字体和样式
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
@@ -291,9 +297,9 @@ ax.plot([0, 22], [6.8, 6.8], 'k-', linewidth=0.5, alpha=0.1)
 ax.plot([0, 22], [0.2, 0.2], 'k-', linewidth=0.5, alpha=0.1)
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.pdf'),
             dpi=300, bbox_inches='tight', facecolor='white')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.png'),
             dpi=300, bbox_inches='tight', facecolor='white')
 print("✅ 美观版生物启发导航架构图已生成！")
 plt.close()

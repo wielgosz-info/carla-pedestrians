@@ -3,7 +3,6 @@ import numpy as np
 import time
 import csv
 
-# 导入CARLA相关依赖
 import agent
 import integrate
 import kalman_filter
@@ -138,14 +137,14 @@ time.sleep(save_time)
 print(f"数据采集结束！IMU数据：{len(imu_list)}/{imu_len}，GNSS数据：{len(gnss_list)}/{gnss_len}")
 
 # -------------------------- 数据保存 --------------------------
-with open('imu_data.csv', 'w', newline='') as f:
+with open('imu_data.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z', 'timestamp'])
     for data in imu_list:
         accel, gyro, ts = data
         writer.writerow([accel[0], accel[1], accel[2], gyro[0], gyro[1], gyro[2], ts])
 
-with open('gnss_data.csv', 'w', newline='') as f:
+with open('gnss_data.csv', 'w', newline='', encoding='utf-8') as f:
     writer = csv.writer(f)
     writer.writerow(['x', 'y', 'z', 'timestamp'])
     for data in gnss_list:

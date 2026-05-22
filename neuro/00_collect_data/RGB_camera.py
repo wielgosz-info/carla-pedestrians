@@ -1,5 +1,6 @@
-import os.path
+import os
 import shutil
+import sys
 import carla
 import random
 import queue
@@ -10,11 +11,7 @@ import math
 import weakref
 import collections
 
-# -------------------------- 路径配置 --------------------------
-import sys
-import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# 拼接相对路径：../../../../carla-0.9.15/PythonAPI/carla （根据实际目录层级调整，确保能找到carla模块）
 carla_api_path = os.path.join(current_dir, '../../../../carla-0.9.15/PythonAPI/carla')
 sys.path.append(carla_api_path)
 from agents.navigation.behavior_agent import BehaviorAgent
@@ -113,7 +110,7 @@ class World(object):
             if os.path.exists(OUTPUT_DIR):
                 shutil.rmtree(OUTPUT_DIR)
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            with open(os.path.join(OUTPUT_DIR, 'IMU.txt'), 'w') as f:
+            with open(os.path.join(OUTPUT_DIR, 'IMU.txt'), 'w', encoding='utf-8') as f:
                 f.write("timestamp,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")
             print(f"输出目录准备完成: {OUTPUT_DIR}")
         except Exception as e:
@@ -317,7 +314,7 @@ def save_imu(output_dir, timestamp, imu_data):
     try:
         imu_line = f"{timestamp:.6f},{imu_data.accelerometer.x:.6f},{imu_data.accelerometer.y:.6f},{imu_data.accelerometer.z:.6f}," \
                    f"{imu_data.gyroscope.x:.6f},{imu_data.gyroscope.y:.6f},{imu_data.gyroscope.z:.6f}\n"
-        with open(os.path.join(output_dir, 'IMU.txt'), 'a+') as f:
+        with open(os.path.join(output_dir, 'IMU.txt'), 'a+', encoding='utf-8') as f:
             f.write(imu_line)
         return True
     except Exception as e:

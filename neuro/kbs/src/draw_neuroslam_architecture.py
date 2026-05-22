@@ -5,10 +5,16 @@ NeuroSLAM System Architecture Diagram
 绘制NeuroSLAM系统Method部分的整体架构图
 """
 
+import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle
 import matplotlib.lines as mlines
+
+# 路径配置
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial Unicode MS', 'SimHei']
@@ -233,9 +239,9 @@ ax.text(3.8, 5.0, 'Innovation 2:\n4DoF Pose\nRepresentation',
 ax.text(15.8, 5.5, '★', fontsize=20, color='red', weight='bold')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/neuroslam_architecture.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'neuroslam_architecture.pdf'),
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/neuroslam_architecture.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'neuroslam_architecture.png'),
             dpi=300, bbox_inches='tight')
 print("✅ Architecture diagram saved:")
 print("   - neuroslam_architecture.pdf")

@@ -40,7 +40,8 @@ COLOR_GRID = '#42A5F5'            # 亮蓝色
 COLOR_ACTION = '#AB47BC'          # 亮紫色
 
 # ==================== 左侧：Environment Input ====================
-data_path = '/home/dream/neuro_111111/carla-pedestrians/neuro/data/01_NeuroSLAM_Datasets/Town01Data_IMU_Fusion'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(SCRIPT_DIR, '..', '..', 'data', '01_NeuroSLAM_Datasets', 'Town01Data_IMU_Fusion')
 
 # Town01
 try:
@@ -345,9 +346,11 @@ ax.add_patch(arrow9)
 plt.tight_layout()
 
 # 保存
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.pdf', 
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.pdf'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.png'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
 
 print("✅ 紧凑版架构图已生成！")

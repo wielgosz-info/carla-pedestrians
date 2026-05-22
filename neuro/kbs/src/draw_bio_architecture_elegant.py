@@ -37,7 +37,8 @@ COLOR_VISUAL = '#98D8C8'         # 柔和绿色
 
 # ==================== 左侧：Environment Input（使用真实照片）====================
 # 加载CARLA真实照片
-data_path = '/home/dream/neuro_111111/carla-pedestrians/neuro/data/01_NeuroSLAM_Datasets/Town01Data_IMU_Fusion'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(SCRIPT_DIR, '..', '..', 'data', '01_NeuroSLAM_Datasets', 'Town01Data_IMU_Fusion')
 
 try:
     # 选择几张代表性照片
@@ -366,9 +367,11 @@ ax.plot([11.75, 10.5], [0.8, 0.55], '--', color=COLOR_BORDER,
        linewidth=1, alpha=0.5)
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.pdf', 
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.pdf'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'bio_nav_architecture.png'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
 print("✅ 简约优雅的生物启发导航架构图已生成！")
 print("   - 使用了真实CARLA场景照片")

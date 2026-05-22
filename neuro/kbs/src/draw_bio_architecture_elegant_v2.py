@@ -23,6 +23,9 @@ plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
 plt.rcParams['font.size'] = 10
 plt.rcParams['axes.unicode_minus'] = False
 
+# 路径配置（跨平台）
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # 创建画布
 fig = plt.figure(figsize=(24, 8), facecolor='#F8F9FA')
 ax = fig.add_subplot(111)
@@ -67,7 +70,7 @@ ax.text(1.8, 6.8, 'Environment', ha='center', fontsize=15,
 ax.text(1.8, 6.45, '(CARLA Simulator)', ha='center', fontsize=10, 
        style='italic', color=COLOR_TEXT, alpha=0.7)
 
-data_path = '/home/dream/neuro_111111/carla-pedestrians/neuro/data/01_NeuroSLAM_Datasets/Town01Data_IMU_Fusion'
+data_path = os.path.join(SCRIPT_DIR, '..', '..', 'data', '01_NeuroSLAM_Datasets', 'Town01Data_IMU_Fusion')
 
 # Town01 场景
 try:
@@ -513,7 +516,8 @@ ax.plot([17.55, 13.5], [0.6, 0.56], '--', color=COLOR_BORDER,
 plt.tight_layout()
 
 # 保存
-output_dir = '/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig'
+output_dir = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(output_dir, exist_ok=True)
 plt.savefig(f'{output_dir}/bio_nav_architecture.pdf', 
             dpi=300, bbox_inches='tight', facecolor='#F8F9FA', edgecolor='none')
 plt.savefig(f'{output_dir}/bio_nav_architecture.png', 

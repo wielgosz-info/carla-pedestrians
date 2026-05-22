@@ -15,8 +15,7 @@ NeuroSLAM增强视觉特征提取器
 
 import numpy as np
 import cv2
-from typing import Tuple, Optional
-import warnings
+from typing import Tuple
 
 
 class NeuroVisualFeatureExtractor:
@@ -146,30 +145,30 @@ class NeuroVisualFeatureExtractor:
     def _v2_processing(self, v1_features: np.ndarray) -> np.ndarray:
         """
         V2层处理：复杂特征组合
-        
+
         Args:
             v1_features: V1特征图
-        
+
         Returns:
             V2特征图
         """
-        # 池化降维
         h, w, c = v1_features.shape
         pool_size = 2
-        
-        v2_features = []
-        for i in range(0, h - pool_size + 1, pool_size):
-            for j in range(0, w - pool_size + 1, pool_size):
-                patch = v1_features[i:i+pool_size, j:j+pool_size, :]
-                # Max pooling + Average pooling 组合
-                max_pool = np.max(patch, axis=(0, 1))
-                avg_pool = np.mean(patch, axis=(0, 1))
-                combined = np.concatenate([max_pool, avg_pool])
-                v2_features.append(combined)
-        
-        v2_features = np.array(v2_features)
-        
-        return v2_features
+        h_out = h // pool_size
+        w_out = w // pool_size
+
+        # 向量化池化：reshape + transpose 避免逐像素循环
+        h_trim = h_out * pool_size
+        w_trim = w_out * pool_size
+        patches = (
+            v1_features[:h_trim, :w_trim, :]
+            .reshape(h_out, pool_size, w_out, pool_size, c)
+            .transpose(0, 2, 1, 3, 4)
+            .reshape(h_out * w_out, pool_size * pool_size, c)
+        )
+        max_pool = np.max(patches, axis=1)
+        avg_pool = np.mean(patches, axis=1)
+        return np.concatenate([max_pool, avg_pool], axis=1)
     
     def _v4_processing(self, v2_features: np.ndarray) -> np.ndarray:
         """

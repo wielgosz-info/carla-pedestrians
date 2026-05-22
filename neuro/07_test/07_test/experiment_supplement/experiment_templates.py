@@ -67,7 +67,7 @@ class PerformanceMonitor:
     def save_to_file(self, filename='performance_report.json'):
         """保存到文件"""
         stats = self.get_stats()
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(stats, f, indent=2)
         print(f"Performance report saved to {filename}")
 
@@ -162,15 +162,19 @@ class TemplateStatistics:
         self.templates.append(template_vector)
     
     def compute_distances(self):
-        """计算所有模板对之间的距离"""
+        """计算所有模板对之间的距离（向量化加速）"""
         self.distances = []
         n = len(self.templates)
-        for i in range(n):
-            for j in range(i+1, n):
-                # Cosine distance
-                dist = 1.0 - np.dot(self.templates[i], self.templates[j]) / \
-                       (np.linalg.norm(self.templates[i]) * np.linalg.norm(self.templates[j]))
-                self.distances.append(dist)
+        if n < 2:
+            return
+        # 向量化：批量计算所有模板对之间的余弦距离
+        mat = np.array(self.templates)
+        norms = np.linalg.norm(mat, axis=1, keepdims=True) + 1e-12
+        mat_norm = mat / norms
+        # 余弦相似度矩阵，取上三角
+        cos_sim = mat_norm @ mat_norm.T
+        triu_idx = np.triu_indices(n, k=1)
+        self.distances = (1.0 - cos_sim[triu_idx]).tolist()
     
     def get_statistics(self):
         """获取统计信息"""
@@ -255,7 +259,7 @@ class ExperimentRecorder:
     
     def save_results(self, filename='experiment_results.json'):
         """保存到JSON文件"""
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(self.results, f, indent=2)
         print(f"Results saved to {filename}")
 

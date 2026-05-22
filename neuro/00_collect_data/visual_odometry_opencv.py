@@ -32,24 +32,27 @@ class VisualOdometry:
         
         # 特征检测器（使用ORB - 快速且免费）
         self.detector = cv2.ORB_create(nfeatures=2000)
-        
+
         # 特征匹配器
         self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        
+
         # 上一帧数据
         self.prev_frame = None
         self.prev_kp = None
         self.prev_des = None
-        
+
         # 累积位姿
         self.R_total = np.eye(3)
         self.t_total = np.zeros((3, 1))
-        
+
         # 统计信息
         self.num_inliers = 0
         self.scale = 1.0  # 单目VO无法恢复真实尺度
         self.scale_history = []  # 尺度历史（用于滤波）
         self.max_scale_history = 10  # 保持最近10帧
+
+        # 预计算相机内参逆矩阵，加速后续计算
+        self.K_inv = np.linalg.inv(self.K)
         
     def process_frame(self, frame):
         """

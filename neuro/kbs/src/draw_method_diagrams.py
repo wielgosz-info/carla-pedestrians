@@ -5,10 +5,15 @@
 包括：3D Grid Cells、Head Direction Cells、Visual Template处理流程
 """
 
+import os
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Circle, Rectangle
 import numpy as np
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
@@ -54,9 +59,9 @@ ax5.set_title('(e) Feature Vector\n64×64', fontsize=10)
 ax5.axis('off')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/vt_pipeline.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'vt_pipeline.pdf', 
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/vt_pipeline.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'vt_pipeline.png', 
             dpi=300, bbox_inches='tight')
 print("✅ VT Pipeline diagram saved")
 plt.close()
@@ -103,9 +108,9 @@ ax2.set_ylabel('Y Grid Index')
 ax2.grid(False)
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/grid_cell_activity.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'grid_cell_activity.pdf', 
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/grid_cell_activity.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'grid_cell_activity.png', 
             dpi=300, bbox_inches='tight')
 print("✅ Grid Cell Activity diagram saved")
 plt.close()
@@ -164,9 +169,9 @@ ax2.set_xticklabels(['0°', '90°', '180°', '270°', '350°'])
 plt.colorbar(im, ax=ax2, label='Activity')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/hdc_network.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'hdc_network.pdf', 
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/hdc_network.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'hdc_network.png', 
             dpi=300, bbox_inches='tight')
 print("✅ HDC Network diagram saved")
 plt.close()
@@ -225,9 +230,9 @@ ax.set_aspect('equal')
 plt.colorbar(scatter, ax=ax, label='Experience Node Index')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/experience_map.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'experience_map.pdf', 
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/experience_map.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'experience_map.png', 
             dpi=300, bbox_inches='tight')
 print("✅ Experience Map diagram saved")
 plt.close()
@@ -265,9 +270,9 @@ for i, (bar, count) in enumerate(zip(bars, vt_counts)):
             f'{count}', ha='center', va='bottom', fontsize=14, weight='bold')
 
 plt.tight_layout()
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/vt_analysis.pdf', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'vt_analysis.pdf', 
             dpi=300, bbox_inches='tight')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/vt_analysis.png', 
+plt.savefig(os.path.join(OUTPUT_DIR, 'vt_analysis.png', 
             dpi=300, bbox_inches='tight')
 print("✅ VT Analysis diagram saved")
 plt.close()

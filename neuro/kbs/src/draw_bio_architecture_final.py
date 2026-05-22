@@ -39,7 +39,8 @@ COLOR_VISUAL_VENTRAL = '#FFB74D'  # 腹侧通路（橙色）
 COLOR_BRAIN = '#FFC1A1'           # 大脑轮廓
 
 # ==================== 左侧：Environment Input（CARLA场景）====================
-data_path = '/home/dream/neuro_111111/carla-pedestrians/neuro/data/01_NeuroSLAM_Datasets/Town01Data_IMU_Fusion'
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+data_path = os.path.join(SCRIPT_DIR, '..', '..', 'data', '01_NeuroSLAM_Datasets', 'Town01Data_IMU_Fusion')
 
 # Town01 场景
 try:
@@ -478,9 +479,11 @@ ax.plot([14.45, 12.5], [0.6, 0.5], '--', color=COLOR_BORDER,
 plt.tight_layout()
 
 # 保存
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.pdf', 
+output_dir = os.path.join(SCRIPT_DIR, '..', 'fig')
+os.makedirs(output_dir, exist_ok=True)
+plt.savefig(os.path.join(output_dir, 'bio_nav_architecture.pdf'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
-plt.savefig('/home/dream/neuro_111111/carla-pedestrians/neuro/kbs/fig/bio_nav_architecture.png', 
+plt.savefig(os.path.join(output_dir, 'bio_nav_architecture.png'),
             dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
 
 print("✅ 最终版生物启发导航架构图已生成！")

@@ -1,4 +1,5 @@
-import os.path
+import os
+import sys
 import shutil
 import math
 import random
@@ -10,9 +11,6 @@ import carla
 import weakref
 from scipy.spatial.transform import Rotation as R
 
-# -------------------------- 路径配置 --------------------------
-import sys
-import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 carla_api_path = os.path.join(current_dir, '../../../../carla-0.9.15/PythonAPI/carla')
 sys.path.append(carla_api_path)
@@ -473,20 +471,20 @@ def main():
     vo_roll, vo_pitch, vo_yaw = 0.0, 0.0, 0.0
     
     # 保存视觉里程计轨迹
-    vo_log = open(os.path.join(OUTPUT_DIR, 'visual_odometry.txt'), 'w')
+    vo_log = open(os.path.join(OUTPUT_DIR, 'visual_odometry.txt'), 'w', encoding='utf-8')
     vo_log.write("timestamp,vo_x,vo_y,vo_z,vo_roll,vo_pitch,vo_yaw,num_matches,scale\n")
 
     # 数据保存参数（每1帧对齐数据保存1帧，确保时间戳同步）
     img_idx = 0
-    fusion_log = open(os.path.join(OUTPUT_DIR, 'fusion_pose.txt'), 'w')
+    fusion_log = open(os.path.join(OUTPUT_DIR, 'fusion_pose.txt'), 'w', encoding='utf-8')
     fusion_log.write("timestamp,pos_x,pos_y,pos_z,roll,pitch,yaw,imu_pos_x,imu_pos_y,imu_pos_z,vel_x,vel_y,vel_z,uncertainty_x,uncertainty_y,uncertainty_z\n")
     
     # 保存Ground Truth（CARLA车辆真实位置）
-    gt_log = open(os.path.join(OUTPUT_DIR, 'ground_truth.txt'), 'w')
+    gt_log = open(os.path.join(OUTPUT_DIR, 'ground_truth.txt'), 'w', encoding='utf-8')
     gt_log.write("timestamp,pos_x,pos_y,pos_z,roll,pitch,yaw,vel_x,vel_y,vel_z\n")
     
     # 添加MATLAB兼容的元数据文件
-    metadata_log = open(os.path.join(OUTPUT_DIR, 'dataset_metadata.txt'), 'w')
+    metadata_log = open(os.path.join(OUTPUT_DIR, 'dataset_metadata.txt'), 'w', encoding='utf-8')
     metadata_log.write(f"# IMU-Visual SLAM Dataset\n")
     metadata_log.write(f"# Map: {TARGET_MAP}\n")
     metadata_log.write(f"# Camera Rate: {CAMERA_SAMPLE_RATE} Hz\n")
@@ -498,6 +496,11 @@ def main():
     cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
     stagnant_count = 0
     first_valid_imu = False  # 标记是否已跳过初始异常IMU帧
+
+    # 提前打开对齐IMU文件句柄，避免循环内重复open
+    aligned_imu_path = os.path.join(OUTPUT_DIR, 'aligned_imu.txt')
+    aligned_imu_f = open(aligned_imu_path, 'w', encoding='utf-8')
+    aligned_imu_f.write("timestamp,accel_x,accel_y,accel_z,gyro_x,gyro_y,gyro_z\n")
 
     try:
         while True:                                                                                                  
@@ -627,10 +630,9 @@ def main():
                 print(f"保存图像 {img_idx}/{MAX_SAVE_IMG}")
 
                 # 保存IMU数据（与图像时间戳严格对齐）
-                with open(os.path.join(OUTPUT_DIR, 'aligned_imu.txt'), 'a') as f:
-                    f.write(f"{imu_data.timestamp:.6f},"
-                            f"{imu_data.data.accelerometer.x:.6f},{imu_data.data.accelerometer.y:.6f},{imu_data.data.accelerometer.z:.6f},"
-                            f"{imu_data.data.gyroscope.x:.6f},{imu_data.data.gyroscope.y:.6f},{imu_data.data.gyroscope.z:.6f}\n")
+                aligned_imu_f.write(f"{imu_data.timestamp:.6f},"
+                        f"{imu_data.data.accelerometer.x:.6f},{imu_data.data.accelerometer.y:.6f},{imu_data.data.accelerometer.z:.6f},"
+                        f"{imu_data.data.gyroscope.x:.6f},{imu_data.data.gyroscope.y:.6f},{imu_data.data.gyroscope.z:.6f}\n")
 
                 # 保存融合结果（增加速度和不确定性信息）
                 fusion_log.write(f"{img_data.timestamp:.6f},"
@@ -780,6 +782,7 @@ def main():
         fusion_log.close()
         gt_log.close()
         vo_log.close()  # 关闭视觉里程计日志
+        aligned_imu_f.close()
         camera.stop()
         imu.stop()
         collision_sensor.sensor.stop()

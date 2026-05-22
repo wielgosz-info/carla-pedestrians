@@ -74,7 +74,7 @@ class KITTIDataLoader:
         """加载时间戳"""
         times_file = os.path.join(self.data_path, 'times.txt')
         self.timestamps = []
-        with open(times_file, 'r') as f:
+        with open(times_file, 'r', encoding='utf-8') as f:
             for line in f:
                 self.timestamps.append(float(line.strip()))
     
@@ -90,7 +90,7 @@ class KITTIDataLoader:
         """读取OXTS数据 (IMU + GPS)"""
         oxts_file = os.path.join(self.oxts_path, f'{idx:010d}.txt')
         
-        with open(oxts_file, 'r') as f:
+        with open(oxts_file, 'r', encoding='utf-8') as f:
             data = list(map(float, f.readline().split()))
         
         # 解析OXTS数据
@@ -191,9 +191,9 @@ def main():
     vo_file = os.path.join(OUTPUT_DIR, 'visual_odometry_ekf.txt')
     gt_file = os.path.join(OUTPUT_DIR, 'ground_truth_ekf.txt')
     
-    with open(fusion_file, 'w') as f_fusion, \
-         open(vo_file, 'w') as f_vo, \
-         open(gt_file, 'w') as f_gt:
+    with open(fusion_file, 'w', encoding='utf-8') as f_fusion, \
+         open(vo_file, 'w', encoding='utf-8') as f_vo, \
+         open(gt_file, 'w', encoding='utf-8') as f_gt:
         
         # 写入表头
         f_fusion.write("timestamp,pos_x,pos_y,pos_z,roll,pitch,yaw,imu_pos_x,imu_pos_y,imu_pos_z,vel_x,vel_y,vel_z,uncertainty_x,uncertainty_y,uncertainty_z\n")
