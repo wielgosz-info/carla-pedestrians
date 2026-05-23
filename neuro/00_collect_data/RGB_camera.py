@@ -12,7 +12,7 @@ import weakref
 import collections
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-carla_api_path = os.path.join(current_dir, '../../../../carla-0.9.15/PythonAPI/carla')
+carla_api_path = os.path.join(current_dir, '../../../../carla/PythonAPI/carla')
 sys.path.append(carla_api_path)
 from agents.navigation.behavior_agent import BehaviorAgent
 

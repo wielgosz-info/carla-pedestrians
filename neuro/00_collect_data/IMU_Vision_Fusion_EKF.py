@@ -12,7 +12,7 @@ import weakref
 from scipy.spatial.transform import Rotation as R
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-carla_api_path = os.path.join(current_dir, '../../../../carla-0.9.15/PythonAPI/carla')
+carla_api_path = os.path.join(current_dir, '../../../../carla/PythonAPI/carla')
 sys.path.append(carla_api_path)
 from agents.navigation.behavior_agent import BehaviorAgent
 
@@ -70,7 +70,7 @@ class CollisionSensor(object):
                 'actor': actor_type,
                 'intensity': intensity
             })
-            print(f"⚠️  碰撞检测 [{self.collision_count}次]: 与 {actor_type} 发生碰撞 (强度: {intensity:.2f})")
+            print(f"[COLLISION] [{self.collision_count}x]: {actor_type} (intensity: {intensity:.2f})")
     
     def reset_collision_count(self):
         """重置碰撞计数"""
@@ -525,7 +525,7 @@ def main():
                     )
                     # 正常重力加速度约9.8 m/s²，异常帧可达几万 m/s²
                     if accel_mag > 100.0:  # 阈值设为100 m/s² (约10G)
-                        print(f"⚠️  跳过异常IMU帧: 加速度幅值={accel_mag:.1f} m/s² ({accel_mag/9.8:.0f}G)")
+                        print(f"[WARN] Skipping abnormal IMU frame: accel_mag={accel_mag:.1f} m/s^2 ({accel_mag/9.8:.0f}G)")
                         continue
                     first_valid_imu = True
                 
@@ -649,7 +649,7 @@ def main():
                 # 每100帧打印融合质量指标
                 if img_idx % 100 == 0 and img_idx > 0:
                     metrics = ekf.get_fusion_quality_metrics()
-                    print(f"\n📊 融合质量指标 (第{img_idx}帧):")
+                    print(f"\n[Fusion Quality] Frame {img_idx}:")
                     print(f"  EKF新息: {metrics['avg_innovation']:.4f}, 不确定性: {metrics['avg_uncertainty']:.4f}")
                     print(f"  VO特征: {num_matches}匹配点, 尺度: {scale:.4f}")
                     print(f"  已保存 {img_idx} 条融合位姿数据\n")
@@ -665,7 +665,7 @@ def main():
             if agent.done():
                 destination = select_forward_destination(vehicle, spawn_points)
                 agent.set_destination(destination)
-                print(f"✓ 已到达目标，设置新目标：({destination.x:.1f}, {destination.y:.1f}, {destination.z:.1f})")
+                print(f"[OK] Destination reached, new target: ({destination.x:.1f}, {destination.y:.1f}, {destination.z:.1f})")
             
             try:
                 control = agent.run_step()
@@ -682,7 +682,7 @@ def main():
             reset_reason = ""
             
             if collision_sensor.has_major_collision():
-                print(f"❌ 检测到多次碰撞({collision_sensor.collision_count}次)，重置车辆...")
+                print(f"[WARN] Multiple collisions ({collision_sensor.collision_count}), resetting vehicle...")
                 reset_needed = True
                 reset_reason = "碰撞过多"
             
@@ -692,14 +692,14 @@ def main():
             if speed < 0.1:
                 stagnant_count += 1
                 if stagnant_count > 150:  # 增加容忍度到150帧（约7.5秒）
-                    print(f"⏸️  车辆长时间停滞（{stagnant_count}帧），重置...")
+                    print(f"[STUCK] Vehicle stagnant ({stagnant_count} frames), resetting...")
                     reset_needed = True
                     reset_reason = "停滞"
             else:
                 stagnant_count = 0
 
             if reset_needed:
-                print(f"🔄 开始重置流程（原因: {reset_reason})...")
+                print(f"[RESET] Starting reset (reason: {reset_reason})...")
                 try:
                     # 清理旧传感器
                     camera.stop()
@@ -759,10 +759,10 @@ def main():
                     # 重置计数器
                     stagnant_count = 0
                     
-                    print(f"✓ 重置完成，继续采集数据")
+                    print(f"[OK] Reset complete, continuing...")
                     
                 except Exception as e:
-                    print(f"❌ 重置失败: {e}")
+                    print(f"[ERROR] Reset failed: {e}")
                     print("尝试继续运行...")
 
             # 跟随视角
