@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+NeuroSLAM 一键运行入口
+串联 数据采集 -> 消融实验评估 全流程
+
+用法:
+    python main.py                    # 运行完整流程（需先启动CARLA）
+    python main.py --collect-only     # 仅数据采集
+    python main.py --ablate-only      # 仅消融评估（使用已有数据）
+    python main.py --skip-collect     # 跳过采集，运行后续步骤
+"""
 
 import os
 import sys
@@ -31,7 +41,6 @@ def find_carla_python():
     CARLA 0.9.16的wheel是cp312的，需要Python 3.12。
     返回 (python_exe_path, version_string) 或 (None, error_msg)
     """
-    # 先试当前Python
     try:
         result = subprocess.run(
             [sys.executable, '-c', 'import carla'],
@@ -42,53 +51,49 @@ def find_carla_python():
     except Exception:
         pass
 
-    # 尝试 py -3.12
     for launcher in ['py', 'python3']:
-        for ver in ['-3.12', '3.12']:
-            cmd = [launcher, ver] if ver.startswith('-') else [launcher + ver]
+        for ver_suffix in ['-3.12', '3.12']:
+            cmd = [launcher, ver_suffix] if ver_suffix.startswith('-') else [launcher + ver_suffix]
             try:
                 result = subprocess.run(
                     [*cmd, '-c', 'import carla'],
                     capture_output=True, timeout=10
                 )
                 if result.returncode == 0:
-                    return cmd[0] + ' ' + cmd[1] if len(cmd) > 1 else cmd[0], 'Python 3.12'
+                    py_str = f"{cmd[0]} {cmd[1]}" if len(cmd) > 1 else cmd[0]
+                    return py_str, 'Python 3.12'
             except FileNotFoundError:
                 continue
 
-    # 尝试已知路径
-    known_paths = [
-        os.path.expandvars(r'%LOCALAPPDATA%\Programs\Python\Python312\python.exe'),
-        r'C:\Python312\python.exe',
-        r'D:\Python312\python.exe',
-    ]
-    for path in known_paths:
-        if os.path.exists(path):
-            try:
-                result = subprocess.run(
-                    [path, '-c', 'import carla'],
-                    capture_output=True, timeout=10
-                )
-                if result.returncode == 0:
-                    return path, 'Python 3.12'
-            except Exception:
-                continue
+    localappdata_py = os.path.expandvars(
+        r'%LOCALAPPDATA%\Programs\Python\Python312\python.exe'
+    )
+    if os.path.exists(localappdata_py):
+        try:
+            result = subprocess.run(
+                [localappdata_py, '-c', 'import carla'],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                return localappdata_py, 'Python 3.12'
+        except Exception:
+            pass
 
     return None, (
         "找不到可导入carla的Python解释器。\n"
-        "CARLA 0.9.16需要Python 3.12，请确认已安装并执行:\n"
-        "  py -3.12 -m pip install d:\\carla\\PythonAPI\\carla\\dist\\carla-0.9.16-cp312-cp312-win_amd64.whl"
+        "CARLA 0.9.16需要Python 3.12，请安装carla wheel:\n"
+        "  py -3.12 -m pip install <CARLA_DIR>\\PythonAPI\\carla\\dist\\carla-*.whl"
     )
 
 
 def print_banner():
     print("=" * 60)
-    print("   NeuroSLAM — Bio-Inspired VIO Pipeline")
+    print("   NeuroSLAM -- Bio-Inspired VIO Pipeline")
     print("=" * 60)
 
 
 def run_script(script_path, desc, python_exe=None):
-    """运行Python脚本，返回是否成功。python_exe可以是字符串('py -3.12')或列表。"""
+    """运行Python脚本，返回是否成功"""
     if python_exe is None:
         python_exe = sys.executable
 
@@ -102,7 +107,7 @@ def run_script(script_path, desc, python_exe=None):
     else:
         cmd = [python_exe, script_path] if isinstance(python_exe, str) else python_exe + [script_path]
 
-    print(f"[INFO] 使用解释器: {' '.join(cmd[:2]) if len(cmd) >= 2 else cmd[0]}")
+    print(f"[INFO] 使用解释器: {' '.join(cmd[:2])}")
 
     result = subprocess.run(cmd, cwd=os.path.dirname(script_path))
     if result.returncode != 0:
@@ -114,7 +119,6 @@ def run_script(script_path, desc, python_exe=None):
 
 def step_collect(carla_host, carla_port):
     """Step 1: CARLA数据采集（需要Python 3.12 + carla）"""
-    # 找到能导入carla的Python
     carla_py, info = find_carla_python()
     if carla_py is None:
         print(f"\n[ERROR] {info}")
@@ -124,7 +128,7 @@ def step_collect(carla_host, carla_port):
     if not check_carla_server(carla_host, carla_port):
         print("\n" + "=" * 60)
         print("  [阻塞] 等待CARLA服务器...")
-        print("  请手动启动: d:\\carla\\CarlaUE4.exe -RenderOffScreen -quality-level=Low")
+        print("  请手动启动CARLA (例如: CarlaUE4.exe -RenderOffScreen -quality-level=Low)")
         print("=" * 60)
 
         while not check_carla_server(carla_host, carla_port):
@@ -201,7 +205,7 @@ def print_results():
 
 def main():
     parser = argparse.ArgumentParser(
-        description='NeuroSLAM — 一键数据采集+消融评估',
+        description='NeuroSLAM -- 一键数据采集+消融评估',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -226,7 +230,6 @@ def main():
 
     print_banner()
 
-    # 预检：如果涉及数据采集，提前确认carla Python可用
     if args.collect_only or (not args.ablate_only and not args.skip_collect):
         carla_py, info = find_carla_python()
         if carla_py is None:
