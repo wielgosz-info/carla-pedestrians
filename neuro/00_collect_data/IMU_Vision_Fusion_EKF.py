@@ -332,16 +332,75 @@ class EKF_VIO:
         self.dt = dt
         self.init_z = init_pose[2]  # 保存初始Z轴高度（平地车辆固定）
         
-        # EKF协方差矩阵 - 极度信任视觉，IMU仅用于姿态和短期预测
-        self.P = np.diag([0.01, 0.01, 0.01, 0.1, 0.1, 0.1, 0.001, 0.001, 0.001])  # 初始不确定性小
-        # 极大过程噪声（完全不信任IMU位置积分，只用IMU姿态）
-        self.Q = np.diag([10.0, 10.0, 10.0, 5.0, 5.0, 5.0, 0.001, 0.001, 0.001])  # 位置噪声极大
-        # 极小视觉观测噪声（几乎完全信任VO）
-        self.R = np.diag([0.01, 0.01, 0.01, 0.001, 0.001, 0.001])  # 极度信任VO
+        # EKF协方差矩阵 - 平衡IMU预测和VO观测
+        self.P = np.diag([0.1, 0.1, 0.01, 0.5, 0.5, 0.1, 0.01, 0.01, 0.01])
+        # 过程噪声（dt=0.05s, 合理取值避免P过度膨胀）
+        self.Q = np.diag([0.05, 0.05, 0.001, 0.2, 0.2, 0.1, 0.005, 0.005, 0.005])
+        # VO观测噪声
+        self.R = np.diag([0.5, 0.5, 0.1, 0.05, 0.05, 0.05])
         
         # 统计信息
         self.innovation_history = []
         self.uncertainty_history = []
+        self.mahalanobis_history = []
+
+        # 新息门控：宽松阈值，仅过滤极端异常（P+=Q下P不会爆炸）
+        self.chi2_threshold = 1000.0  # 宽松门控，仅拒绝极端异常
+        self.innovation_accepted = 0
+        self.innovation_rejected = 0
+
+    def _gate_innovation(self, y, S):
+        """Mahalanobis distance gate: returns (accepted, distance)."""
+        try:
+            S_inv = np.linalg.inv(S)
+            d = float(y.T @ S_inv @ y)
+            return d < self.chi2_threshold, d
+        except np.linalg.LinAlgError:
+            return False, float('inf')
+
+    def _numerical_jacobian(self, imu_data, epsilon=1e-6):
+        """State transition Jacobian (9x9) via central finite differences.
+        Handles angle wrapping for orientation states 6-8."""
+        accel = np.array([imu_data.accelerometer.x,
+                          imu_data.accelerometer.y,
+                          imu_data.accelerometer.z])
+        gyro = np.array([imu_data.gyroscope.x,
+                         imu_data.gyroscope.y,
+                         imu_data.gyroscope.z])
+        dt = self.dt
+        decay = 0.98
+
+        def f_state(x):
+            roll, pitch, yaw = x[6], x[7], x[8]
+            new_roll  = (roll  + gyro[0]*dt + np.pi) % (2*np.pi) - np.pi
+            new_pitch = (pitch + gyro[1]*dt + np.pi) % (2*np.pi) - np.pi
+            new_yaw   = (yaw   + gyro[2]*dt + np.pi) % (2*np.pi) - np.pi
+            R_mat = R.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
+            a_w = R_mat @ accel
+            new_vx = decay * (x[3] + a_w[0] * dt)
+            new_vy = decay * (x[4] + a_w[1] * dt)
+            new_px = x[0] + new_vx * dt
+            new_py = x[1] + new_vy * dt
+            return np.array([new_px, new_py, x[2],
+                             new_vx, new_vy, 0.0,
+                             new_roll, new_pitch, new_yaw])
+
+        x0 = self.x.copy()
+        F = np.zeros((9, 9))
+        for i in range(9):
+            xp = x0.copy(); xp[i] += epsilon
+            xm = x0.copy(); xm[i] -= epsilon
+            fp = f_state(xp)
+            fm = f_state(xm)
+            diff = fp - fm
+            # Unwrap angular differences for orientation states
+            for j in range(6, 9):
+                if diff[j] > np.pi:
+                    diff[j] -= 2*np.pi
+                elif diff[j] < -np.pi:
+                    diff[j] += 2*np.pi
+            F[:, i] = diff / (2.0 * epsilon)
+        return F
 
     def imu_prediction(self, imu_data):
         accel = np.array([imu_data.accelerometer.x, imu_data.accelerometer.y, imu_data.accelerometer.z])
@@ -367,7 +426,7 @@ class EKF_VIO:
         new_z = self.x[2]  # Z轴位置保持不变（平地行驶）
 
         self.x = np.array([new_x, new_y, new_z, new_vx, new_vy, new_vz, new_roll, new_pitch, new_yaw])
-        self.P += self.Q
+        self.P += self.Q  # 简化协方差传播（避免数值雅可比在大坐标下发散）
 
     def visual_update(self, visual_pose):
         z = np.array(visual_pose, dtype=np.float64)
@@ -376,27 +435,49 @@ class EKF_VIO:
         H[3,6] = H[4,7] = H[5,8] = 1
 
         y = z - H @ self.x  # 新息(innovation)
-        try:
-            S = H @ self.P @ H.T + self.R + np.eye(6)*1e-8
-            K = self.P @ H.T @ np.linalg.inv(S)
-            
-            # 记录新息和不确定性用于质量评估
+        S = H @ self.P @ H.T + self.R + np.eye(6)*1e-8
+
+        # 新息门控：卡方检验拒绝异常VO观测
+        accepted, mahal_dist = self._gate_innovation(y, S)
+        self.mahalanobis_history.append(mahal_dist)
+        if not accepted:
+            self.innovation_rejected += 1
             self.innovation_history.append(np.linalg.norm(y))
-            self.uncertainty_history.append(np.trace(self.P[:3, :3]))  # 位置不确定性
-        except:
-            K = np.eye(9,6)*0.1
+            return  # 拒绝本次VO更新
+
+        self.innovation_accepted += 1
+        self.innovation_history.append(np.linalg.norm(y))
+        self.uncertainty_history.append(np.trace(self.P[:3, :3]))
+
+        try:
+            K = self.P @ H.T @ np.linalg.inv(S)
+        except np.linalg.LinAlgError:
+            K = np.eye(9, 6) * 0.1
 
         self.x += K @ y
         # Joseph形式协方差更新，保证数值稳定性
         I_KH = np.eye(9) - K @ H
         self.P = I_KH @ self.P @ I_KH.T + K @ self.R @ K.T
         self.P = 0.5*(self.P + self.P.T)  # 保持对称性
-        
-        # 平地车辆：强制固定Z轴、roll、pitch
-        self.x[2] = self.init_z  # Z轴固定
-        self.x[5] = 0.0  # Z轴速度为0
-        self.x[6] = 0.0  # roll = 0
-        self.x[7] = 0.0  # pitch = 0
+
+        # Soft flat-ground pseudo-measurement (replaces hard clamp)
+        z_flat = np.array([self.init_z, 0.0, 0.0])  # pz=init_z, roll=0, pitch=0
+        H_flat = np.zeros((3, 9))
+        H_flat[0, 2] = 1.0   # selects pz
+        H_flat[1, 6] = 1.0   # selects roll
+        H_flat[2, 7] = 1.0   # selects pitch
+        R_flat = np.diag([0.01, 0.001, 0.001])
+
+        y_flat = z_flat - H_flat @ self.x
+        S_flat = H_flat @ self.P @ H_flat.T + R_flat + np.eye(3) * 1e-8
+        try:
+            K_flat = self.P @ H_flat.T @ np.linalg.inv(S_flat)
+        except np.linalg.LinAlgError:
+            K_flat = np.zeros((9, 3))
+        self.x += K_flat @ y_flat
+        I_KH_flat = np.eye(9) - K_flat @ H_flat
+        self.P = I_KH_flat @ self.P @ I_KH_flat.T + K_flat @ R_flat @ K_flat.T
+        self.P = 0.5 * (self.P + self.P.T)
 
     def get_current_pose(self):
         return self.x[:3].copy(), self.x[6:9].copy()
@@ -410,13 +491,18 @@ class EKF_VIO:
     
     def get_fusion_quality_metrics(self):
         """返回融合质量指标"""
-        if len(self.innovation_history) > 0:
-            return {
-                'avg_innovation': np.mean(self.innovation_history[-100:]),
-                'avg_uncertainty': np.mean(self.uncertainty_history[-100:]),
-                'innovation_std': np.std(self.innovation_history[-100:])
-            }
-        return {'avg_innovation': 0, 'avg_uncertainty': 0, 'innovation_std': 0}
+        total = self.innovation_accepted + self.innovation_rejected
+        rejection_rate = self.innovation_rejected / total if total > 0 else 0.0
+        n_innov = min(len(self.innovation_history), 100)
+        n_uncert = min(len(self.uncertainty_history), 100)
+        n_mahal = min(len(self.mahalanobis_history), 100)
+        return {
+            'avg_innovation': float(np.mean(self.innovation_history[-n_innov:])) if n_innov > 0 else 0.0,
+            'avg_uncertainty': float(np.mean(self.uncertainty_history[-n_uncert:])) if n_uncert > 0 else 0.0,
+            'innovation_std': float(np.std(self.innovation_history[-n_innov:])) if n_innov > 1 else 0.0,
+            'rejection_rate': rejection_rate,
+            'avg_mahalanobis': float(np.mean(self.mahalanobis_history[-n_mahal:])) if n_mahal > 0 else 0.0,
+        }
 
 # -------------------------- 图像后处理 --------------------------
 def save_image_simple(img_array, output_dir, idx, target_width=160, target_height=120):
@@ -516,21 +602,35 @@ def main():
 
             # 处理对齐的图像和IMU数据
             for img_data, imu_data in time_aligner.get_aligned_pairs():
-                # 检查IMU数据有效性（跳过CARLA传感器初始化时的异常数据）
-                if not first_valid_imu:
-                    accel_mag = math.sqrt(
-                        imu_data.data.accelerometer.x**2 +
-                        imu_data.data.accelerometer.y**2 +
-                        imu_data.data.accelerometer.z**2
-                    )
-                    # 正常重力加速度约9.8 m/s²，异常帧可达几万 m/s²
-                    if accel_mag > 100.0:  # 阈值设为100 m/s² (约10G)
+                # 检查IMU数据有效性（跳过CARLA传感器异常帧，每帧都检查）
+                accel_mag = math.sqrt(
+                    imu_data.data.accelerometer.x**2 +
+                    imu_data.data.accelerometer.y**2 +
+                    imu_data.data.accelerometer.z**2
+                )
+                # 正常重力约9.8 m/s²，异常帧可达几万 m/s²；同时过滤NaN
+                if accel_mag > 100.0 or math.isnan(accel_mag):
+                    if first_valid_imu:
                         print(f"[WARN] Skipping abnormal IMU frame: accel_mag={accel_mag:.1f} m/s^2 ({accel_mag/9.8:.0f}G)")
-                        continue
-                    first_valid_imu = True
+                    continue
+                first_valid_imu = True
                 
                 ekf.imu_prediction(imu_data.data)
                 imu_pos, imu_att = ekf.get_current_pose()
+
+                # 纯IMU速度积分（地面车辆只用XY，Z分量含重力不参与尺度估计）
+                accel_body = np.array([imu_data.data.accelerometer.x,
+                                       imu_data.data.accelerometer.y,
+                                       imu_data.data.accelerometer.z])
+                _, raw_att = ekf.get_current_pose()
+                R_raw = R.from_euler('xyz', raw_att).as_matrix()
+                accel_world = R_raw @ accel_body
+                accel_world[2] = 0.0  # 去掉重力分量（地面车辆Z加速度为零）
+                if not hasattr(main, '_raw_imu_vel'):
+                    main._raw_imu_vel = np.zeros(3)
+                main._raw_imu_vel = 0.98 * (main._raw_imu_vel + accel_world * ekf.dt)
+                main._raw_imu_vel[2] = 0.0  # Z轴速度强制为0
+                raw_imu_delta = main._raw_imu_vel * ekf.dt
 
                 # ============ 使用真正的视觉里程计，而非Ground Truth ============
                 # 参考代码逻辑：raw_data为RGBA格式，取前3通道作为RGB
@@ -540,17 +640,15 @@ def main():
                 vo_result, num_matches = visual_odom.process_frame(img)
                 
                 if vo_result is not None:
-                    # 获取相对运动 [dx, dy, dz, droll, dpitch, dyaw]
+                    # VO返回相机坐标系下的帧间delta: X=右, Y=下, Z=前
                     delta_x, delta_y, delta_z, delta_roll, delta_pitch, delta_yaw = vo_result
-                    cam_right = float(delta_x)
-                    cam_forward = float(delta_z)
-                    delta_roll = 0.0
-                    delta_pitch = 0.0
-                    
+                    cam_right = float(delta_x)    # 相机X -> 横向
+                    cam_forward = float(delta_z)  # 相机Z -> 前向
+
                     # 使用IMU估计的位移来校准VO的尺度（解决单目尺度模糊）
                     if img_idx > 1:
                         prev_scale = visual_odom.scale
-                        imu_delta = ekf.get_current_velocity() * ekf.dt
+                        imu_delta = raw_imu_delta
                         vo_delta = np.array([cam_forward, cam_right, 0.0])
                         scale = scale_estimator.estimate_scale(vo_delta, imu_delta)
                         if abs(prev_scale) < 1e-9:
@@ -565,29 +663,27 @@ def main():
                             prev_scale = 1.0
                         cam_forward = (cam_forward / prev_scale) * scale
                         cam_right = (cam_right / prev_scale) * scale
-                    
-                    # 累积视觉位姿
+
+                    # 累积视觉位姿：从相机坐标系旋转到世界坐标系
                     vo_yaw += delta_yaw
                     vo_x += cam_forward * np.cos(vo_yaw) - cam_right * np.sin(vo_yaw)
                     vo_y += cam_forward * np.sin(vo_yaw) + cam_right * np.cos(vo_yaw)
                     vo_z = 0.0
-                    vo_roll += delta_roll
-                    vo_pitch += delta_pitch
-                    
-                    # 构建视觉观测位姿（绝对位姿，相对初始位置）
+
+                    # 构建视觉观测位姿（绝对位姿）
                     visual_pose = [
                         init_pos[0] + vo_x,
-                        init_pos[1] + vo_y, 
+                        init_pos[1] + vo_y,
                         init_pos[2] + vo_z,
-                        vo_roll,
-                        vo_pitch,
-                        vo_yaw
+                        init_att[0],
+                        init_att[1],
+                        init_att[2] + vo_yaw
                     ]
-                    
-                    # 保存视觉里程计数据
+
+                    # 保存视觉里程计数据（VO相对增量，不包含init偏移）
                     vo_log.write(f"{img_data.timestamp:.6f},"
-                                f"{visual_pose[0]:.6f},{visual_pose[1]:.6f},{visual_pose[2]:.6f},"
-                                f"{vo_roll:.6f},{vo_pitch:.6f},{vo_yaw:.6f},"
+                                f"{vo_x:.6f},{vo_y:.6f},{vo_z:.6f},"
+                                f"0.0,0.0,{vo_yaw:.6f},"
                                 f"{num_matches},{scale:.6f}\n")
                 else:
                     # 首帧或特征不足，使用上一次的位姿
@@ -595,7 +691,9 @@ def main():
                         init_pos[0] + vo_x,
                         init_pos[1] + vo_y,
                         init_pos[2] + vo_z,
-                        vo_roll, vo_pitch, vo_yaw
+                        init_att[0],
+                        init_att[1],
+                        init_att[2] + vo_yaw
                     ]
                     num_matches = 0
                     scale = 1.0
