@@ -73,7 +73,7 @@
 %% Abstract
 \begin{abstract}
 \sloppy
-Brain-inspired spatial cognition offers interpretable alternatives to black-box learning methods for autonomous localization. However, existing bio-inspired frameworks remain limited to 2D environments or simplified visual processing, lacking robust 3D spatial representations under challenging conditions. To address these limitations, this paper proposes NeuroLocMap, a brain-inspired 4-DoF localization-mapping framework integrating vestibular-visual complementary fusion with hippocampal-entorhinal spatial representations. The framework comprises four core modules: dual-stream visual processing (ventral for recognition, dorsal for motion), vestibular IMU modeling, 3D grid cells with face-centered cubic lattice for position encoding, and experience-based cognitive mapping for loop closure. Unlike data-driven approaches, our bio-inspired design achieves real-time performance ($\sim$31 FPS on CPU) with zero-shot deployment capability. Experiments on CARLA (Town01/02/10), EuRoC MAV (MH\_01/03), and KITTI sequence 07 demonstrate 38.1\% average RMSE improvement over EKF baselines, validating the framework's effectiveness for autonomous localization and motion across diverse environments.
+Brain-inspired spatial cognition offers interpretable alternatives to opaque learning methods for autonomous localization. However, existing bio-inspired frameworks remain limited to 2D environments or simplified visual processing, lacking robust 3D spatial representations under challenging conditions. To address these limitations, this paper proposes NeuroLocMap, a brain-inspired 4-DoF localization-mapping framework integrating vestibular-visual complementary fusion with hippocampal-entorhinal spatial representations. The framework comprises four core modules: dual-stream visual processing (ventral for recognition, dorsal for motion), vestibular IMU modeling, 3D grid cells with face-centered cubic lattice for position encoding, and experience-based cognitive mapping for loop closure. Unlike data-driven approaches, our brain-inspired design achieves real-time performance ($\sim$31 FPS on CPU) with zero-shot deployment capability. Experiments on CARLA (Town01/02/10), EuRoC MAV (MH\_01/03), and KITTI sequence 07 demonstrate 38.1\% average RMSE improvement over EKF baselines, validating the framework's effectiveness for autonomous localization and motion across diverse environments.
 \end{abstract}
 %%Graphical abstract
 \begin{graphicalabstract}
@@ -83,7 +83,7 @@ Brain-inspired spatial cognition offers interpretable alternatives to black-box 
 %%Research highlights
 \begin{highlights}
 \item 4-DoF localization-mapping with 3D grid cells and vestibular-visual fusion
-\item 39$\times$ visual template gain (5$\rightarrow$195) for robust loop closure detection
+\item 39-fold visual template gain (5$\rightarrow$195) for robust loop closure detection
 \item 38.1\% RMSE reduction vs. EKF across CARLA, EuRoC, and KITTI benchmarks
 \item Training-free 31 FPS real-time with zero-shot cross-domain generalization
 \end{highlights}
