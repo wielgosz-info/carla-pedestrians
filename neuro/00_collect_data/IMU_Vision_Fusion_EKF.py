@@ -336,8 +336,18 @@ class EKF_VIO:
         self.P = np.diag([0.1, 0.1, 0.01, 0.5, 0.5, 0.1, 0.01, 0.01, 0.01])
         # 过程噪声（dt=0.05s, 合理取值避免P过度膨胀）
         self.Q = np.diag([0.05, 0.05, 0.001, 0.2, 0.2, 0.1, 0.005, 0.005, 0.005])
-        # VO观测噪声
-        self.R = np.diag([0.5, 0.5, 0.1, 0.05, 0.05, 0.05])
+        # VO观测噪声 (R_base保存原始值, visual_update中自适应调整)
+        self.R_base = np.diag([0.5, 0.5, 0.1, 0.05, 0.05, 0.05])
+        self.R = self.R_base.copy()
+
+        # 自适应R: EMA平滑的归一化新息平方
+        self._nis_ema = 1.0
+
+        # IMU零偏估计 (前庭静息校准)
+        self._gyro_bias = np.zeros(3)
+        self._accel_bias = np.zeros(3)
+        self._bias_samples = 0
+        self._bias_max_samples = 200  # 前200个静止样本用于初始校准
         
         # 统计信息
         self.innovation_history = []
@@ -357,6 +367,37 @@ class EKF_VIO:
             return d < self.chi2_threshold, d
         except np.linalg.LinAlgError:
             return False, float('inf')
+
+    def _adapt_R(self, y, S):
+        """自适应R: 基于归一化新息平方(NIS)动态调整VO观测噪声。
+        NIS高=VO残差异常=R增大(降低VO权重), NIS低=VO可靠=R减小(信任VO修正IMU)"""
+        try:
+            S_inv = np.linalg.inv(S + np.eye(6)*1e-8)
+            nis = float(y.T @ S_inv @ y)
+        except np.linalg.LinAlgError:
+            return
+        expected_nis = 6.0
+        self._nis_ema = 0.9 * self._nis_ema + 0.1 * (nis / expected_nis)
+        scale = np.clip(self._nis_ema, 0.2, 10.0)
+        self.R = self.R_base * scale
+
+    def _estimate_imu_bias(self, accel, gyro):
+        """IMU零偏估计: 当加速度接近重力(车辆静止/匀速)时, 累积样本估计零偏。
+        生物启发: 前庭系统静息校准 — 静止时学习补偿基线偏移"""
+        accel_mag = np.linalg.norm(accel)
+        gyro_mag = np.linalg.norm(gyro)
+        # 静止判断: 加速度≈9.81且角速度≈0 (重力是唯一加速度)
+        is_static = (abs(accel_mag - 9.81) < 0.5) and (gyro_mag < 0.02)
+        if is_static and self._bias_samples < self._bias_max_samples:
+            alpha = 1.0 / (self._bias_samples + 1)
+            self._gyro_bias = (1 - alpha) * self._gyro_bias + alpha * gyro
+            self._accel_bias = (1 - alpha) * self._accel_bias + alpha * (accel - self._gravity_dir(accel_mag))
+            self._bias_samples += 1
+
+    @staticmethod
+    def _gravity_dir(mag):
+        """估计重力方向: 假设加速度计测量值的主方向即重力方向"""
+        return np.array([0.0, 0.0, mag])
 
     def _numerical_jacobian(self, imu_data, epsilon=1e-6):
         """State transition Jacobian (9x9) via central finite differences.
@@ -403,8 +444,14 @@ class EKF_VIO:
         return F
 
     def imu_prediction(self, imu_data):
-        accel = np.array([imu_data.accelerometer.x, imu_data.accelerometer.y, imu_data.accelerometer.z])
-        gyro = np.array([imu_data.gyroscope.x, imu_data.gyroscope.y, imu_data.gyroscope.z])
+        accel_raw = np.array([imu_data.accelerometer.x, imu_data.accelerometer.y, imu_data.accelerometer.z])
+        gyro_raw = np.array([imu_data.gyroscope.x, imu_data.gyroscope.y, imu_data.gyroscope.z])
+
+        # --- 改动3: IMU零偏补偿 (前庭静息校准) ---
+        self._estimate_imu_bias(accel_raw, gyro_raw)
+        gyro = gyro_raw - self._gyro_bias
+        accel = accel_raw - self._accel_bias
+        # --- 零偏补偿结束 ---
 
         roll, pitch, yaw = self.x[6], self.x[7], self.x[8]
         new_roll = (roll + gyro[0]*self.dt + np.pi) % (2*np.pi) - np.pi
@@ -459,6 +506,9 @@ class EKF_VIO:
         I_KH = np.eye(9) - K @ H
         self.P = I_KH @ self.P @ I_KH.T + K @ self.R @ K.T
         self.P = 0.5*(self.P + self.P.T)  # 保持对称性
+
+        # --- 改动1: 自适应R — 根据本次残差调整下次观测噪声 ---
+        self._adapt_R(y, S)
 
         # Soft flat-ground pseudo-measurement (replaces hard clamp)
         z_flat = np.array([self.init_z, 0.0, 0.0])  # pz=init_z, roll=0, pitch=0

@@ -128,7 +128,14 @@ class VisualOdometry:
         _, R, t, pose_mask = cv2.recoverPose(E, pts_prev, pts_curr, self.K, mask=mask)
         
         self.num_inliers = np.sum(mask)
-        
+
+        # --- 改动2: RANSAC内点数阈值 — 外点过多则拒绝本次VO ---
+        if self.num_inliers < 20:
+            self.prev_frame = gray
+            self.prev_kp = kp
+            self.prev_des = des
+            return [0, 0, 0, 0, 0, 0], 0
+
         # 累积变换（简化版本，实际应该根据场景估计尺度）
         # 注意：单目VO无法恢复真实尺度，这里使用固定尺度
         self.t_total += self.scale * (self.R_total @ t)
