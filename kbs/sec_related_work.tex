@@ -1,0 +1,54 @@
+%% ==================== RELATED WORK ====================
+\section{Related Work}
+\label{sec:related}
+
+We have summarized research work on different aspects of brain-inspired localization and mapping systems.
+
+\subsection{Visual SLAM and Sensor Fusion}
+\label{sec:related_slam}
+
+Visual SLAM has achieved significant progress over the past two decades. Mur-Artal et al. proposed ORB-SLAM~\cite{mur2015orb}, which extracts sparse ORB keypoints for robust real-time pose estimation and has become a widely-used baseline in the field. Engel et al. developed LSD-SLAM~\cite{engel2014lsd} and DSO~\cite{engel2018direct}, which operate directly on pixel intensities without feature extraction, achieving semi-dense reconstruction in textured environments. For loop closure detection, Cummins and Newman proposed FAB-MAP~\cite{Cummins2008}, a probabilistic approach using bag-of-words models, while Arandjelovic et al. introduced NetVLAD~\cite{Arandjelovic2016}, which learns place descriptors end-to-end for robust place recognition. However, these methods face critical limitations: ORB-SLAM requires sufficient texture (typically $>$100 features per frame) and fails in feature-poor environments, while direct methods like DSO struggle with motion blur and require photometric calibration. Both approaches incur substantial computational cost---ORB-SLAM's feature extraction and matching dominate processing time, while DSO's dense photometric optimization limits real-time performance on embedded platforms.
+
+Integrating IMUs with cameras addresses visual SLAM limitations by providing lighting-invariant motion estimates. Mourikis and Roumeliotis proposed MSCKF~\cite{Mourikis2007}, a tightly-coupled visual-inertial estimator achieving high accuracy through multi-state constraint optimization. Qin et al. developed VINS-Mono~\cite{Qin2018}, which combines tightly-coupled optimization with loop closure for robust monocular visual-inertial odometry. Mahony et al.~\cite{Mahony2008} and Madgwick et al.~\cite{Madgwick2011} proposed complementary filtering approaches that exploit frequency-domain sensor characteristics---visual odometry provides accurate low-frequency estimates while IMU captures high-frequency dynamics. However, tightly-coupled methods like MSCKF and VINS-Mono require careful initialization of IMU biases and scale, involve complex Jacobian derivations, and lack biological interpretability. To address these limitations, we adopt a bio-inspired complementary filtering strategy that mimics biological vestibular-visual integration~\cite{Angelaki2004, Cullen2012}, providing interpretable sensor fusion with minimal parameter tuning and avoiding the computational burden of joint nonlinear optimization.
+
+\subsection{Brain-Inspired Spatial Cognition}
+\label{sec:related_bio}
+
+Biological navigation systems achieve robust spatial cognition through spZsecialized neural circuits. O'Keefe and Dostrovsky discovered place cells in the hippocampus~\cite{OKeefe1971}, which fire at specific locations forming cognitive maps. Hafting et al. discovered grid cells in the entorhinal cortex~\cite{Hafting2005}, exhibiting periodic hexagonal firing patterns that provide metric path integration. Taube et al. identified head direction cells~\cite{Taube1990}, which encode facing direction like an internal compass. Moser et al.~\cite{Moser2017} provided comprehensive reviews of how these spatial cells work together for navigation. Recent discoveries by Finkelstein et al. demonstrated that bats possess 3-D place cells, 3-D grid cells with face-centered cubic (FCC) lattice structure, and 3-D head direction cells~\cite{finkelstein2015three, finkelstein2016three}, providing biological grounding for volumetric spatial representations.
+
+Milford et al. pioneered RatSLAM~\cite{milford2004ratslam, milford2008mapping}, translating rodent spatial cognition to robotics by implementing continuous attractor networks for pose cell dynamics and experience maps for loop closure, successfully demonstrating suburb-scale mapping up to 66 km. Steckel and Peremans developed BatSLAM~\cite{steckel2013batslam}, extending bio-inspired SLAM to sonar sensing. Yu et al. proposed NeuroSLAM (unpublished work), extending to 3-D position encoding with CNN-based visual processing. Lowry et al.~\cite{Lowry2016} analyzed the metric-topological duality in spatial maps: metric maps provide geometric precision but scale poorly, while topological maps enable robust loop closure but lack metric accuracy. However, existing bio-inspired frameworks face three key limitations: (1) most operate in 2D or encode only 3-D position without orientation, lacking the 4-DoF representation needed for aerial/underwater navigation; (2) visual front-ends remain simplistic (e.g., RatSLAM's 1D intensity scanlines yield only $\sim$5 templates in complex environments); and (3) IMU integration is absent or ad-hoc, missing the principled vestibular-visual fusion observed in biological systems. To address these gaps, we implement 3-D grid cells with FCC lattice structure and multilayered head direction cells for full 4-DoF spatial representation, integrate a dual-stream visual processing pipeline that increases template discrimination by 39$\times$, and adopt bio-inspired complementary filtering for vestibular-visual integration.
+
+\subsection{Learning-Based Visual Processing}
+\label{sec:related_learning}
+
+Deep learning offers powerful tools for visual place recognition. Arandjelovic et al. proposed NetVLAD~\cite{Arandjelovic2016}, introducing differentiable VLAD layers for end-to-end place recognition training. Goodale and Milner~\cite{Goodale1992} and Mishkin et al.~\cite{Mishkin1983} established the dual-stream theory of biological vision: the ventral stream (V1$\rightarrow$V4$\rightarrow$IT) processes object identity and scene recognition, while the dorsal stream (V1$\rightarrow$MT$\rightarrow$MST) processes spatial relationships and motion~\cite{DiCarlo2012, Duffy1998}. Vaswani et al. proposed Transformer architectures~\cite{Vaswani2017}, which capture long-range dependencies through self-attention mechanisms, enabling effective temporal modeling for sequence-based tasks. However, learning-based methods face deployment challenges: NetVLAD requires large-scale training datasets (e.g., Google Street View with millions of images) and struggles to generalize to novel environments without retraining; standard Transformers incur quadratic complexity $\mathcal{O}(N^2)$ in sequence length for full self-attention, limiting real-time applicability; and learned representations lack explicit spatial structure, hindering interpretability and integration with metric mapping. To overcome these limitations, we adopt a training-free approach combining dual-stream visual processing inspired by biological ventral/dorsal pathways with a lightweight feature enhancement mechanism that captures global-local interactions through statistical modulation rather than full attention matrices. This design increases visual template discrimination from 5 (RatSLAM) to 195 (39$\times$ improvement) while maintaining real-time performance ($\sim$31 FPS) and zero-shot deployment capability.
+
+\subsection{Comparative Analysis}
+\label{sec:related_compare}
+
+Table~\ref{tab:comparison_bioslam} compares representative bio-inspired SLAM frameworks across key architectural dimensions. Existing approaches face four fundamental limitations: (1) most frameworks operate in 2D (RatSLAM, BatSLAM) or encode only 3-D position without orientation (NeuroSLAM), lacking full 4-DoF representation; (2) visual front-ends rely on simple intensity-based templates (e.g., RatSLAM's 1-D scanlines) that are sensitive to illumination changes and yield limited template diversity; (3) IMU integration is either absent or relies on computationally expensive tightly-coupled optimization; and (4) modern attention mechanisms for feature enhancement remain disconnected from explicit spatial cell representations. NeuroLocMap systematically addresses these gaps: we implement 4-DoF spatial representation through 3-D grid cells (FCC lattice) and multilayered head direction cells; adopt dual-stream visual processing with HART-inspired spatial attention and lightweight global-local feature modulation to achieve 39$\times$ template improvement; integrate vestibular-visual signals through bio-inspired complementary filtering; and unify these components within an explicit spatial cell framework for interpretable navigation.
+
+\begin{table}[t]
+       \centering
+       \footnotesize
+       \caption{Comparison of bio-inspired navigation frameworks.}
+       \label{tab:comparison_bioslam}
+       \setlength{\tabcolsep}{0.5pt}
+       \begin{tabular}{l@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c}
+              \toprule
+              Framework                         & DoF         & Spatial              & Fusion         & Visual             & Loop          & Temp.           \\
+                                                &             & Cells                & Method         & Process            & Closure       & Model           \\
+              \midrule
+              RatSLAM~\cite{milford2008mapping} & 2D          & PC+HDC               & Vis.           & Scanline           & Exp.          & -               \\
+              BatSLAM~\cite{steckel2013batslam} & 2D          & PC+HDC               & Sonar          & Echo               & Exp.          & -               \\
+              NeuroSLAM                         & 3D          & 3D-GC                & Vis.           & CNN                & Exp.          & LSTM            \\
+              \midrule
+              \textbf{NeuroLocMap (Ours)}       & \textbf{4D} & \textbf{3D-GC+M-HDC} & \textbf{Comp.} & \textbf{Dual+HART} & \textbf{Exp.} & \textbf{Trans.} \\
+              \bottomrule
+       \end{tabular}
+       \begin{tablenotes}
+              \scriptsize
+              \item \textbf{Abbreviations}: PC: Place Cells; HDC: Head Direction Cells; GC: Grid Cells; M-HDC: Multilayered HDC; Exp.: Experience map; Comp.: Complementary filtering; Trans.: Transformer-inspired temporal modeling; Vis.: Visual only; Dual+HART: Dual-stream (ventral/dorsal) visual processing with HART-inspired spatial attention.
+              \item \textbf{Note}: Our feature enhancement uses global statistical modulation ($\mathcal{O}(N)$ complexity) to approximate self-attention effects, rather than full Query-Key-Value operations ($\mathcal{O}(N^2)$), enabling real-time performance without training.
+       \end{tablenotes}
+\end{table}

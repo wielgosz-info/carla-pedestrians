@@ -1,0 +1,155 @@
+
+
+\documentclass[12pt,journal,onecolumn]{IEEEtran}
+
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+\usepackage{graphicx}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage[TABBOTCAP]{subfigure}
+\usepackage{bm}
+\usepackage{upgreek} 
+\usepackage{amsmath}
+\usepackage{breqn}
+\usepackage{color}
+\usepackage{cite}
+\usepackage[none]{hyphenat}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{caption2}
+\usepackage{setspace}
+
+\usepackage{tikz}
+\newcommand*{\circled}[1]{\lower.7ex\hbox{\tikz\draw (0pt, 0pt)%
+		circle (.4em) node {\makebox[1em][c]{\small #1}};}}
+
+
+\linespread{1.5}
+
+% 把这两个参数的调整加到tex文件里。hyphenpenalty值越大断字出现的就越少。tolerance越大，换行就会越少，也就是说，LaTex会把本该断开放到下一行的单词，整个儿的留在当前行。
+\hyphenpenalty=5000
+\tolerance=1000
+
+\begin{document}
+
+\begin{center}
+	\textbf{\LARGE Response to Comments} 
+\end{center}
+\vspace{8pt} 
+
+\noindent CVIU-Manuscript: CVIU-21-504R2 \\
+
+\noindent Title: STURE: Spatial-Temporal Mutual Representation Learning for Robust Data Association in Online Multi-Object Tracking \\
+
+\noindent Dear Editor and Reviewers:
+
+\textcolor{blue}{
+We want to thank you and the review team for the detailed comments on our submission, and for the opportunity to revise and reconsider the paper to Computer Vision and Image Understanding.  
+Those comments are all valuable and very helpful for revising and improving our paper, as well as the important guiding significance to our researches. 
+We have studied these comments carefully and have made correction to meet with your approval. 
+The responds to the reviewer's comments are labeled in blue, 
+and the main corrections in the paper are marked in red to facilitate your reading. 
+}
+
+\vspace{8pt} 
+
+\newpage
+
+
+
+
+
+\textbf{To Reviewer \#1:}
+
+\textcolor{blue}{Thanks for the comments for our paper, we have revised the manuscript according to your recommendations as follows:}
+
+\textbf{Comment (1).} Something that is not apparent to me is how the detection and compressed sequence features are combined to produce the reinforced feature. 
+Are they just concatenated? 
+(The input to the linear classifier in Fig.2 is 4,096 dimensional?). 
+Please update the paper to highlight this step.
+
+
+\textbf{Response:} \textcolor{blue}{Thank you for your valuable comment.
+In the revised version, we have reorganized the description about the generation of reinforced feature.
+In our STURE method, the temporal information learned by a sequence learning network is transfered to the detection learning network in a mutual representation space.
+Besides, the detection and compressed sequence features are concatenated into a 4,096 dimensional vector, and input it to a linear classifier in Fig.2.
+Finally, we have emphasized it in Section 3.3.1 and 3.4.4 as follows: 
+}
+
+\textcolor{red}{
+``In this way, the temporal feature can be transfered to detection learning network."
+} \\
+\textcolor{red}{
+``To evaluate the similarity between candidate detections and the historical tracklets, we merge the integrated sequence feature $f_{Sn}$ (1$\times$2048) and the output $d_{nt}$ (1$\times$2048) from detection learning network into one representation, 
+and then put it into the linear classifier, which evaluates the similarity between them.
+The linear classifier has three fully connected layers and its input dimensions are 4096, 256, and 32, respectively."
+} \\
+
+
+
+\textbf{Comment (2).} Does Fig 5a and 5b show the (4,096?) dimensional "reinforced" feature? 
+If so, this should be specified.
+
+
+\textbf{Response:} \textcolor{blue}{Thank you for your valuable comment.
+In Fig.5(a) and Fig.5(b), different colors in representation distribution represent different identities.
+Every point in Fig.5(b) is a 2,048 dimensional "reinforced" feature with STURE, and every point in Fig.5(a) is a original 2,048 dimensional feature without STURE.
+In the revised version, we have reorganized the related description in Section 4.4.1 as follows: 
+} \\
+\textcolor{red}{
+	``Every point in Fig.5 (a) and Fig.5 (b) is a 2,048 dimensional feature."
+} \\
+
+
+
+\textbf{Comment (3).} I also encourage another pass of revising the grammar of the manuscript. 
+There are many sentences still with improper English grammar.
+
+
+\textbf{Response:} \textcolor{blue}{Thank you for your valuable comment.
+We have checked the grammar and expressions of the full manuscript carefully and have made correction to meet with your approval. 
+%	In the revised version, we have reorganized the description about related work and added corresponding references, especially SOT approaches. 
+%	Finally, we have emphasized it in Section 2.1 as follows: 
+}
+
+
+%\begin{figure}[H]
+%	\centering 
+%	\includegraphics[width=0.9\textwidth]{imgs/inconsistency.png}
+%\end{figure}
+%
+%\begin{figure}[H]
+%	\centering 
+%	\includegraphics[width=0.9\textwidth]{imgs/framework.png}
+%\end{figure}
+%\vspace{8pt}
+
+
+
+
+
+%\textbf{[1]} Gu, X. , et al. "Temporal Knowledge Propagation for Image-to-Video Person Re-Identification." International Conference on Computer Vision.
+\vspace{8pt}
+
+
+\vspace{8pt}
+
+\newpage
+
+
+
+
+
+
+\vspace{8pt} 
+
+
+\vspace{8pt}
+
+\bibliographystyle{ACM-Reference-Format}
+%\bibliography{test1}
+
+\end{document}
+
+

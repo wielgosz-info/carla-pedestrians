@@ -1,0 +1,230 @@
+\begin{thebibliography}{43}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Article
+\bibitem[{Cadena et~al.(2016)Cadena, Carlone, Carrillo, Latif, Scaramuzza, Neira, Reid, and Leonard}]{cadena2016past}
+\bibinfo{author}{C.~Cadena}, \bibinfo{author}{L.~Carlone}, \bibinfo{author}{H.~Carrillo}, \bibinfo{author}{Y.~Latif}, \bibinfo{author}{D.~Scaramuzza}, \bibinfo{author}{J.~Neira}, \bibinfo{author}{I.~Reid}, \bibinfo{author}{J.~J. Leonard},
+\newblock \bibinfo{title}{Past, present, and future of simultaneous localization and mapping: Toward the robust-perception age},
+\newblock \bibinfo{journal}{IEEE Transactions on Robotics} \bibinfo{volume}{32} (\bibinfo{year}{2016}) \bibinfo{pages}{1309--1332}.
+%Type = Article
+\bibitem[{Saputra et~al.(2018)Saputra, Markham, and Trigoni}]{saputra2018visual}
+\bibinfo{author}{M.~R.~U. Saputra}, \bibinfo{author}{A.~Markham}, \bibinfo{author}{N.~Trigoni},
+\newblock \bibinfo{title}{Visual slam and structure from motion in dynamic environments: A survey},
+\newblock \bibinfo{journal}{ACM Computing Surveys} \bibinfo{volume}{51} (\bibinfo{year}{2018}) \bibinfo{pages}{1--36}.
+%Type = Article
+\bibitem[{Jeffery et~al.(2013)Jeffery, Jovalekic, Verriotis, and Hayman}]{jeffery2013navigating}
+\bibinfo{author}{K.~J. Jeffery}, \bibinfo{author}{A.~Jovalekic}, \bibinfo{author}{M.~Verriotis}, \bibinfo{author}{R.~Hayman},
+\newblock \bibinfo{title}{Navigating in a three-dimensional world},
+\newblock \bibinfo{journal}{Behavioral and Brain Sciences} \bibinfo{volume}{36} (\bibinfo{year}{2013}) \bibinfo{pages}{523--543}.
+%Type = Article
+\bibitem[{Hafting et~al.(2005)Hafting, Fyhn, Molden, Moser, and Moser}]{hafting2005microstructure}
+\bibinfo{author}{T.~Hafting}, \bibinfo{author}{M.~Fyhn}, \bibinfo{author}{S.~Molden}, \bibinfo{author}{M.-B. Moser}, \bibinfo{author}{E.~I. Moser},
+\newblock \bibinfo{title}{Microstructure of a spatial map in the entorhinal cortex},
+\newblock \bibinfo{journal}{Nature} \bibinfo{volume}{436} (\bibinfo{year}{2005}) \bibinfo{pages}{801--806}.
+%Type = Article
+\bibitem[{Taube et~al.(1990)Taube, Muller, and Ranck}]{taube1990head}
+\bibinfo{author}{J.~S. Taube}, \bibinfo{author}{R.~U. Muller}, \bibinfo{author}{J.~B. Ranck},
+\newblock \bibinfo{title}{Head-direction cells recorded from the postsubiculum in freely moving rats. i. description and quantitative analysis},
+\newblock \bibinfo{journal}{Journal of Neuroscience} \bibinfo{volume}{10} (\bibinfo{year}{1990}) \bibinfo{pages}{420--435}.
+%Type = Article
+\bibitem[{Finkelstein et~al.(2016)Finkelstein, Derdikman, Rubin, Foerster, Las, and Ulanovsky}]{finkelstein2016three}
+\bibinfo{author}{A.~Finkelstein}, \bibinfo{author}{D.~Derdikman}, \bibinfo{author}{A.~Rubin}, \bibinfo{author}{J.~N. Foerster}, \bibinfo{author}{L.~Las}, \bibinfo{author}{N.~Ulanovsky},
+\newblock \bibinfo{title}{Three-dimensional head-direction coding in the bat brain},
+\newblock \bibinfo{journal}{Nature} \bibinfo{volume}{517} (\bibinfo{year}{2016}) \bibinfo{pages}{159--164}.
+%Type = Article
+\bibitem[{Solstad et~al.(2008)Solstad, Boccara, Kropff, Moser, and Moser}]{solstad2008representation}
+\bibinfo{author}{T.~Solstad}, \bibinfo{author}{C.~N. Boccara}, \bibinfo{author}{E.~Kropff}, \bibinfo{author}{M.-B. Moser}, \bibinfo{author}{E.~I. Moser},
+\newblock \bibinfo{title}{Representation of geometric borders in the entorhinal cortex},
+\newblock \bibinfo{journal}{Science} \bibinfo{volume}{322} (\bibinfo{year}{2008}) \bibinfo{pages}{1865--1868}.
+%Type = Article
+\bibitem[{Milford et~al.(2004)Milford, Wyeth, and Prasser}]{milford2004ratslam}
+\bibinfo{author}{M.~J. Milford}, \bibinfo{author}{G.~F. Wyeth}, \bibinfo{author}{D.~Prasser},
+\newblock \bibinfo{title}{Ratslam: A hippocampal model for simultaneous localization and mapping},
+\newblock \bibinfo{journal}{IEEE International Conference on Robotics and Automation}  (\bibinfo{year}{2004}) \bibinfo{pages}{403--408}.
+%Type = Article
+\bibitem[{Milford and Wyeth(2010)}]{milford2010persistent}
+\bibinfo{author}{M.~Milford}, \bibinfo{author}{G.~Wyeth},
+\newblock \bibinfo{title}{Persistent navigation and mapping using a biologically inspired slam system},
+\newblock \bibinfo{journal}{The International Journal of Robotics Research} \bibinfo{volume}{29} (\bibinfo{year}{2010}) \bibinfo{pages}{1131--1153}.
+%Type = Article
+\bibitem[{Mur-Artal et~al.(2015)Mur-Artal, Montiel, and Tardos}]{mur2015orb}
+\bibinfo{author}{R.~Mur-Artal}, \bibinfo{author}{J.~M.~M. Montiel}, \bibinfo{author}{J.~D. Tardos},
+\newblock \bibinfo{title}{Orb-slam: A versatile and accurate monocular slam system},
+\newblock \bibinfo{journal}{IEEE Transactions on Robotics} \bibinfo{volume}{31} (\bibinfo{year}{2015}) \bibinfo{pages}{1147--1163}.
+%Type = Inproceedings
+\bibitem[{Engel et~al.(2014)Engel, Sch{\"o}ps, and Cremers}]{engel2014lsd}
+\bibinfo{author}{J.~Engel}, \bibinfo{author}{T.~Sch{\"o}ps}, \bibinfo{author}{D.~Cremers},
+\newblock \bibinfo{title}{Lsd-slam: Large-scale direct monocular slam},
+\newblock in: \bibinfo{booktitle}{European Conference on Computer Vision}, \bibinfo{organization}{Springer}, \bibinfo{year}{2014}, pp. \bibinfo{pages}{834--849}.
+%Type = Article
+\bibitem[{Engel et~al.(2018)Engel, Koltun, and Cremers}]{engel2018direct}
+\bibinfo{author}{J.~Engel}, \bibinfo{author}{V.~Koltun}, \bibinfo{author}{D.~Cremers},
+\newblock \bibinfo{title}{Direct sparse odometry},
+\newblock \bibinfo{journal}{IEEE Transactions on Pattern Analysis and Machine Intelligence} \bibinfo{volume}{40} (\bibinfo{year}{2018}) \bibinfo{pages}{611--625}.
+%Type = Article
+\bibitem[{Cummins and Newman(2008)}]{Cummins2008}
+\bibinfo{author}{M.~Cummins}, \bibinfo{author}{P.~Newman},
+\newblock \bibinfo{title}{{FAB-MAP}: Probabilistic localization and mapping in the space of appearance},
+\newblock \bibinfo{journal}{The International Journal of Robotics Research} \bibinfo{volume}{27} (\bibinfo{year}{2008}) \bibinfo{pages}{647--665}.
+%Type = Inproceedings
+\bibitem[{Arandjelovic et~al.(2016)Arandjelovic, Gronat, Torii, Pajdla, and Sivic}]{Arandjelovic2016}
+\bibinfo{author}{R.~Arandjelovic}, \bibinfo{author}{P.~Gronat}, \bibinfo{author}{A.~Torii}, \bibinfo{author}{T.~Pajdla}, \bibinfo{author}{J.~Sivic},
+\newblock \bibinfo{title}{{NetVLAD}: {CNN} architecture for weakly supervised place recognition},
+\newblock in: \bibinfo{booktitle}{Proceedings of the IEEE conference on computer vision and pattern recognition}, \bibinfo{year}{2016}, pp. \bibinfo{pages}{5297--5307}.
+%Type = Inproceedings
+\bibitem[{Mourikis and Roumeliotis(2007)}]{Mourikis2007}
+\bibinfo{author}{A.~I. Mourikis}, \bibinfo{author}{S.~I. Roumeliotis},
+\newblock \bibinfo{title}{A multi-state constraint kalman filter for vision-aided inertial navigation},
+\newblock in: \bibinfo{booktitle}{Proceedings 2007 IEEE International Conference on Robotics and Automation}, \bibinfo{organization}{IEEE}, \bibinfo{year}{2007}, pp. \bibinfo{pages}{3565--3572}.
+%Type = Article
+\bibitem[{Qin et~al.(2018)Qin, Li, and Shen}]{Qin2018}
+\bibinfo{author}{T.~Qin}, \bibinfo{author}{P.~Li}, \bibinfo{author}{S.~Shen},
+\newblock \bibinfo{title}{{VINS-Mono}: A robust and versatile monocular visual-inertial state estimator},
+\newblock \bibinfo{journal}{IEEE Transactions on Robotics} \bibinfo{volume}{34} (\bibinfo{year}{2018}) \bibinfo{pages}{1004--1020}.
+%Type = Article
+\bibitem[{Mahony et~al.(2008)Mahony, Hamel, and Pflimlin}]{Mahony2008}
+\bibinfo{author}{R.~Mahony}, \bibinfo{author}{T.~Hamel}, \bibinfo{author}{J.~Pflimlin},
+\newblock \bibinfo{title}{Nonlinear complementary filters on the special orthogonal group},
+\newblock \bibinfo{journal}{IEEE Transactions on Automatic Control} \bibinfo{volume}{53} (\bibinfo{year}{2008}) \bibinfo{pages}{1203--1218}.
+%Type = Article
+\bibitem[{Madgwick et~al.(2011)Madgwick, Harrison, and Vaidyanathan}]{Madgwick2011}
+\bibinfo{author}{S.~O.~H. Madgwick}, \bibinfo{author}{A.~J.~L. Harrison}, \bibinfo{author}{R.~Vaidyanathan},
+\newblock \bibinfo{title}{Estimation of imu and marg orientation using a gradient descent algorithm},
+\newblock \bibinfo{journal}{IEEE International Conference on Rehabilitation Robotics}  (\bibinfo{year}{2011}) \bibinfo{pages}{1--7}.
+%Type = Article
+\bibitem[{Angelaki and Cullen(2004)}]{Angelaki2004}
+\bibinfo{author}{D.~E. Angelaki}, \bibinfo{author}{K.~E. Cullen},
+\newblock \bibinfo{title}{Vestibular system: the many facets of a multimodal sense},
+\newblock \bibinfo{journal}{Annual Review of Neuroscience} \bibinfo{volume}{27} (\bibinfo{year}{2004}) \bibinfo{pages}{393--418}.
+%Type = Article
+\bibitem[{Cullen(2012)}]{Cullen2012}
+\bibinfo{author}{K.~E. Cullen},
+\newblock \bibinfo{title}{The vestibular system: multimodal integration and encoding of self-motion for motor control},
+\newblock \bibinfo{journal}{Trends in Neurosciences} \bibinfo{volume}{35} (\bibinfo{year}{2012}) \bibinfo{pages}{185--196}.
+%Type = Article
+\bibitem[{O'Keefe and Dostrovsky(1971)}]{OKeefe1971}
+\bibinfo{author}{J.~O'Keefe}, \bibinfo{author}{J.~Dostrovsky},
+\newblock \bibinfo{title}{The hippocampus as a spatial map: preliminary evidence from unit activity in the freely-moving rat},
+\newblock \bibinfo{journal}{Brain Research} \bibinfo{volume}{34} (\bibinfo{year}{1971}) \bibinfo{pages}{171--175}.
+%Type = Article
+\bibitem[{Hafting et~al.(2005)Hafting, Fyhn, Molden, Moser, and Moser}]{Hafting2005}
+\bibinfo{author}{T.~Hafting}, \bibinfo{author}{M.~Fyhn}, \bibinfo{author}{S.~Molden}, \bibinfo{author}{M.-B. Moser}, \bibinfo{author}{E.~I. Moser},
+\newblock \bibinfo{title}{Microstructure of a spatial map in the entorhinal cortex},
+\newblock \bibinfo{journal}{Nature} \bibinfo{volume}{436} (\bibinfo{year}{2005}) \bibinfo{pages}{801--806}.
+%Type = Article
+\bibitem[{Taube et~al.(1990)Taube, Muller, and Ranck}]{Taube1990}
+\bibinfo{author}{J.~S. Taube}, \bibinfo{author}{R.~U. Muller}, \bibinfo{author}{J.~B. Ranck},
+\newblock \bibinfo{title}{Head-direction cells recorded from the postsubiculum in freely moving rats. i. description and quantitative analysis},
+\newblock \bibinfo{journal}{Journal of Neuroscience} \bibinfo{volume}{10} (\bibinfo{year}{1990}) \bibinfo{pages}{420--435}.
+%Type = Article
+\bibitem[{Moser et~al.(2017)Moser, Moser, and McNaughton}]{Moser2017}
+\bibinfo{author}{E.~I. Moser}, \bibinfo{author}{M.-B. Moser}, \bibinfo{author}{B.~L. McNaughton},
+\newblock \bibinfo{title}{Spatial representation in the hippocampal formation: a history},
+\newblock \bibinfo{journal}{Nature neuroscience} \bibinfo{volume}{20} (\bibinfo{year}{2017}) \bibinfo{pages}{1448--1464}.
+%Type = Article
+\bibitem[{Finkelstein et~al.(2015)Finkelstein, Derdikman, Rubin, Foerster, Las, and Ulanovsky}]{finkelstein2015three}
+\bibinfo{author}{A.~Finkelstein}, \bibinfo{author}{D.~Derdikman}, \bibinfo{author}{A.~Rubin}, \bibinfo{author}{J.~N. Foerster}, \bibinfo{author}{L.~Las}, \bibinfo{author}{N.~Ulanovsky},
+\newblock \bibinfo{title}{Three-dimensional head-direction coding in the bat brain},
+\newblock \bibinfo{journal}{Nature} \bibinfo{volume}{517} (\bibinfo{year}{2015}) \bibinfo{pages}{159--164}.
+%Type = Article
+\bibitem[{Milford and Wyeth(2008)}]{milford2008mapping}
+\bibinfo{author}{M.~J. Milford}, \bibinfo{author}{G.~F. Wyeth},
+\newblock \bibinfo{title}{Mapping a suburb with a single camera using a biologically inspired slam system},
+\newblock \bibinfo{journal}{IEEE Transactions on Robotics} \bibinfo{volume}{24} (\bibinfo{year}{2008}) \bibinfo{pages}{1038--1053}.
+%Type = Article
+\bibitem[{Steckel and Peremans(2013)}]{steckel2013batslam}
+\bibinfo{author}{J.~Steckel}, \bibinfo{author}{H.~Peremans},
+\newblock \bibinfo{title}{Batslam: Simultaneous localization and mapping using biomimetic sonar},
+\newblock \bibinfo{journal}{PLoS One} \bibinfo{volume}{8} (\bibinfo{year}{2013}) \bibinfo{pages}{e54076}.
+%Type = Article
+\bibitem[{Lowry et~al.(2016)Lowry, S{\"u}nderhauf, Newman, Leonard, Cox, Corke, and Milford}]{Lowry2016}
+\bibinfo{author}{S.~Lowry}, \bibinfo{author}{N.~S{\"u}nderhauf}, \bibinfo{author}{P.~Newman}, \bibinfo{author}{J.~J. Leonard}, \bibinfo{author}{D.~Cox}, \bibinfo{author}{P.~Corke}, \bibinfo{author}{M.~J. Milford},
+\newblock \bibinfo{title}{Visual place recognition: A survey},
+\newblock \bibinfo{journal}{IEEE Transactions on Robotics} \bibinfo{volume}{32} (\bibinfo{year}{2016}) \bibinfo{pages}{1--19}.
+%Type = Article
+\bibitem[{Goodale and Milner(1992)}]{Goodale1992}
+\bibinfo{author}{M.~A. Goodale}, \bibinfo{author}{A.~D. Milner},
+\newblock \bibinfo{title}{Separate visual pathways for perception and action},
+\newblock \bibinfo{journal}{Trends in Neurosciences} \bibinfo{volume}{15} (\bibinfo{year}{1992}) \bibinfo{pages}{20--25}.
+%Type = Article
+\bibitem[{Mishkin et~al.(1983)Mishkin, Ungerleider, and Macko}]{Mishkin1983}
+\bibinfo{author}{M.~Mishkin}, \bibinfo{author}{L.~G. Ungerleider}, \bibinfo{author}{K.~A. Macko},
+\newblock \bibinfo{title}{Object vision and spatial vision: two cortical pathways},
+\newblock \bibinfo{journal}{Trends in Neurosciences} \bibinfo{volume}{6} (\bibinfo{year}{1983}) \bibinfo{pages}{414--417}.
+%Type = Article
+\bibitem[{DiCarlo et~al.(2012)DiCarlo, Zoccolan, and Rust}]{DiCarlo2012}
+\bibinfo{author}{J.~J. DiCarlo}, \bibinfo{author}{D.~Zoccolan}, \bibinfo{author}{N.~C. Rust},
+\newblock \bibinfo{title}{How does the brain solve visual object recognition?},
+\newblock \bibinfo{journal}{Neuron} \bibinfo{volume}{73} (\bibinfo{year}{2012}) \bibinfo{pages}{415--434}.
+%Type = Article
+\bibitem[{Duffy and Wurtz(1998)}]{Duffy1998}
+\bibinfo{author}{C.~J. Duffy}, \bibinfo{author}{R.~H. Wurtz},
+\newblock \bibinfo{title}{Sensitivity of mst neurons to optic flow stimuli. ii. mechanisms of response selectivity revealed by small-field stimuli},
+\newblock \bibinfo{journal}{Journal of Neurophysiology} \bibinfo{volume}{65} (\bibinfo{year}{1998}) \bibinfo{pages}{1346--1359}.
+%Type = Inproceedings
+\bibitem[{Vaswani et~al.(2017)Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, and Polosukhin}]{Vaswani2017}
+\bibinfo{author}{A.~Vaswani}, \bibinfo{author}{N.~Shazeer}, \bibinfo{author}{N.~Parmar}, \bibinfo{author}{J.~Uszkoreit}, \bibinfo{author}{L.~Jones}, \bibinfo{author}{A.~N. Gomez}, \bibinfo{author}{L.~Kaiser}, \bibinfo{author}{I.~Polosukhin},
+\newblock \bibinfo{title}{Attention is all you need},
+\newblock in: \bibinfo{booktitle}{Advances in Neural Information Processing Systems}, volume~\bibinfo{volume}{30}, \bibinfo{year}{2017}, pp. \bibinfo{pages}{5998--6008}.
+%Type = Inproceedings
+\bibitem[{Dosovitskiy et~al.(2017)Dosovitskiy, Ros, Codevilla, Lopez, and Koltun}]{dosovitskiy2017carla}
+\bibinfo{author}{A.~Dosovitskiy}, \bibinfo{author}{G.~Ros}, \bibinfo{author}{F.~Codevilla}, \bibinfo{author}{A.~Lopez}, \bibinfo{author}{V.~Koltun},
+\newblock \bibinfo{title}{Carla: An open urban driving simulator},
+\newblock in: \bibinfo{booktitle}{Conference on Robot Learning}, \bibinfo{organization}{PMLR}, \bibinfo{year}{2017}, pp. \bibinfo{pages}{1--16}.
+%Type = Inproceedings
+\bibitem[{Geiger et~al.(2012)Geiger, Lenz, and Urtasun}]{geiger2012kitti}
+\bibinfo{author}{A.~Geiger}, \bibinfo{author}{P.~Lenz}, \bibinfo{author}{R.~Urtasun},
+\newblock \bibinfo{title}{Are we ready for autonomous driving? the kitti vision benchmark suite},
+\newblock in: \bibinfo{booktitle}{2012 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, \bibinfo{organization}{IEEE}, \bibinfo{year}{2012}, pp. \bibinfo{pages}{3354--3361}.
+%Type = Article
+\bibitem[{Burri et~al.(2016)Burri, Nikolic, Gohl, Schneider, Rehder, Omari, Achtelik, and Siegwart}]{burri2016euroc}
+\bibinfo{author}{M.~Burri}, \bibinfo{author}{J.~Nikolic}, \bibinfo{author}{P.~Gohl}, \bibinfo{author}{T.~Schneider}, \bibinfo{author}{J.~Rehder}, \bibinfo{author}{S.~Omari}, \bibinfo{author}{M.~W. Achtelik}, \bibinfo{author}{R.~Siegwart},
+\newblock \bibinfo{title}{The euroc micro aerial vehicle datasets},
+\newblock \bibinfo{journal}{The International Journal of Robotics Research} \bibinfo{volume}{35} (\bibinfo{year}{2016}) \bibinfo{pages}{1157--1163}.
+%Type = Inproceedings
+\bibitem[{Sturm et~al.(2012)Sturm, Engelhard, Endres, Burgard, and Cremers}]{sturm2012benchmark}
+\bibinfo{author}{J.~Sturm}, \bibinfo{author}{N.~Engelhard}, \bibinfo{author}{F.~Endres}, \bibinfo{author}{W.~Burgard}, \bibinfo{author}{D.~Cremers},
+\newblock \bibinfo{title}{A benchmark for the evaluation of rgb-d slam systems},
+\newblock in: \bibinfo{booktitle}{2012 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, \bibinfo{organization}{IEEE}, \bibinfo{year}{2012}, pp. \bibinfo{pages}{573--580}.
+%Type = Article
+\bibitem[{Angelaki and Cullen(2008)}]{Angelaki2008}
+\bibinfo{author}{D.~E. Angelaki}, \bibinfo{author}{K.~E. Cullen},
+\newblock \bibinfo{title}{Vestibular system: the many facets of a multimodal sense},
+\newblock \bibinfo{journal}{Nature Reviews Neuroscience} \bibinfo{volume}{9} (\bibinfo{year}{2008}) \bibinfo{pages}{292--303}.
+%Type = Article
+\bibitem[{Winter et~al.(2015)Winter, Clark, and Taube}]{Winter2015}
+\bibinfo{author}{S.~S. Winter}, \bibinfo{author}{B.~J. Clark}, \bibinfo{author}{J.~S. Taube},
+\newblock \bibinfo{title}{Disruption of the head direction cell network impairs the parahippocampal grid cell signal},
+\newblock \bibinfo{journal}{Science} \bibinfo{volume}{347} (\bibinfo{year}{2015}) \bibinfo{pages}{870--874}.
+%Type = Inproceedings
+\bibitem[{Milford and Wyeth(2012)}]{Milford2012}
+\bibinfo{author}{M.~J. Milford}, \bibinfo{author}{G.~F. Wyeth},
+\newblock \bibinfo{title}{{SeqSLAM}: Visual route-based navigation for sunny summer days and stormy winter nights},
+\newblock in: \bibinfo{booktitle}{2012 IEEE International Conference on Robotics and Automation}, \bibinfo{organization}{IEEE}, \bibinfo{year}{2012}, pp. \bibinfo{pages}{1643--1649}.
+%Type = Inproceedings
+\bibitem[{Teed and Deng(2021)}]{teed2021droid}
+\bibinfo{author}{Z.~Teed}, \bibinfo{author}{J.~Deng},
+\newblock \bibinfo{title}{Droid-slam: Deep visual slam for monocular, stereo, and rgb-d cameras},
+\newblock in: \bibinfo{booktitle}{Advances in Neural Information Processing Systems (NeurIPS)}, volume~\bibinfo{volume}{34}, \bibinfo{year}{2021}, pp. \bibinfo{pages}{16558--16569}.
+%Type = Inproceedings
+\bibitem[{Wang et~al.(2021)Wang, Hu, and Scherer}]{wang2021tartanvo}
+\bibinfo{author}{W.~Wang}, \bibinfo{author}{Y.~Hu}, \bibinfo{author}{S.~Scherer},
+\newblock \bibinfo{title}{Tartanvo: A generalizable learning-based vo},
+\newblock in: \bibinfo{booktitle}{Conference on Robot Learning (CoRL)}, \bibinfo{year}{2021}, pp. \bibinfo{pages}{1761--1772}.
+%Type = Inproceedings
+\bibitem[{Wang et~al.(2017)Wang, Clark, Wen, and Trigoni}]{wang2017deepvo}
+\bibinfo{author}{S.~Wang}, \bibinfo{author}{R.~Clark}, \bibinfo{author}{H.~Wen}, \bibinfo{author}{N.~Trigoni},
+\newblock \bibinfo{title}{Deepvo: Towards end-to-end visual odometry with deep recurrent convolutional neural networks},
+\newblock in: \bibinfo{booktitle}{2017 IEEE International Conference on Robotics and Automation (ICRA)}, \bibinfo{organization}{IEEE}, \bibinfo{year}{2017}, pp. \bibinfo{pages}{2043--2050}.
+
+\end{thebibliography}

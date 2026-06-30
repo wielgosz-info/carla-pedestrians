@@ -1,0 +1,159 @@
+%% 
+%% Copyright 2007-2025 Elsevier Ltd
+%% 
+%% Knowledge-Based Systems - NeuroSLAM Paper
+%% 
+
+\documentclass[preprint,12pt]{elsarticle}
+
+%% Packages
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\epstopdfsetup{update}
+\graphicspath{{fig/}}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{threeparttable}
+\definecolor{darkgreen}{rgb}{0,0.6,0}
+
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{adjustbox}
+\usepackage{microtype} 
+\tolerance=1000         
+\emergencystretch=3em   
+\hyphenpenalty=50   
+\exhyphenpenalty=50     
+\frenchspacing          
+
+\DeclareMathOperator*{\argmin}{\arg\!\min}
+\usepackage{xspace}
+
+% Abbreviation macros
+\makeatletter
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\def\@onedot{\ifx\@let@token.\else.\null\fi\xspace}
+
+\def\eg{\emph{e.g}\onedot} \def\Eg{\emph{E.g}\onedot}
+\def\ie{\emph{i.e}\onedot} \def\Ie{\emph{I.e}\onedot}
+\def\cf{\emph{c.f}\onedot} \def\Cf{\emph{C.f}\onedot}
+\def\etc{\emph{etc}\onedot} \def\vs{\emph{vs}\onedot}
+\def\wrt{w.r.t\onedot} \def\dof{d.o.f\onedot}
+\def\etal{\emph{et al}\onedot}
+\makeatother
+
+\journal{Knowledge-Based Systems}
+
+\begin{document}
+
+\begin{frontmatter}
+
+    %% Title
+    \title{Brain-Inspired 4-DoF Localization-Mapping: Complementary Vestibular-Visual Fusion with Spatial Cells}
+
+    %% Abstract
+    \begin{abstract}
+        \sloppy
+        Brain-inspired spatial cognition offers interpretable alternatives to opaque learning methods for autonomous localization. However, existing brain-inspired frameworks remain limited to 2-D environments or simplified visual processing, lacking robust 3-D spatial representations under challenging conditions. To address these limitations, this paper proposes NLM, a brain-inspired localization-mapping framework extended to 4-DoF state estimation within 3-D space, integrating vestibular-visual complementary fusion with hippocampal-entorhinal spatial representations. The framework comprises four core modules: dual-stream visual processing (ventral for recognition, dorsal for motion), vestibular IMU modeling, 3-D grid cells with face-centered cubic lattice for position encoding, and experience-based cognitive mapping for loop closure. Unlike data-driven approaches, our brain-inspired design achieves real-time performance ($\sim$ 31 FPS on CPU) with zero-shot deployment capability. Experiments on CARLA (Town 01 / 02 / 10) demonstrate 38.1\% average RMSE improvement over EKF baselines, validating the framework's effectiveness for autonomous localization and motion across diverse environments.
+    \end{abstract}
+    %%Graphical abstract
+    \begin{graphicalabstract}
+        \includegraphics[width=\linewidth]{fig/1_abstract.pdf}
+    \end{graphicalabstract}
+
+    %%Research highlights
+    \begin{highlights}
+        \item A brain-inspired 4-DoF localization and mapping framework integrating 3-D grid cells and complementary vestibular-visual multimodal fusion
+        \item 39-fold expansion of visual scene templates (from 5 to 195) to enable fine-grained, robust loop closure detection
+        \item Achieves an average 38.1\% RMSE reduction compared with EKF fusion baseline over CARLA, EuRoC and KITTI datasets
+        \item Training-free real-time implementation at 31 FPS with strong zero-shot cross-domain generalization across urban, highway and indoor environments
+    \end{highlights}
+
+    %% Keywords
+    \begin{keyword}
+        Brain-inspired localization-mapping \sep Vestibular-visual fusion \sep Hippocampal spatial cells \sep Visual place recognition \sep Cognitive mapping
+    \end{keyword}
+
+\end{frontmatter}
+
+%% ==================== INTRODUCTION ====================
+\section{Introduction}
+\label{sec:intro}
+
+Spatial localization and mapping in complex 3-D environments is fundamental to autonomous driving, mobile robotics, and intelligent transportation systems~\cite{cadena2016past}. As the core sensing module of autonomous devices, SLAM directly supports all autonomous movement planning and execution. Modern practical approaches typically combine cameras, IMUs, and sometimes GNSS to achieve robust pose estimation~\cite{saputra2018visual}.Conventional SLAM solutions mostly adopt optimization or filtering frameworks for pose solving, but they commonly have obvious defects in model interpretability and computing resource consumption.
+
+Interestingly, organisms such as bats complete 3-D navigation by fusing visual and vestibular signals with hippocampal spatial cells~\cite{jeffery2013navigating,hafting2005microstructure,taube1990head,finkelstein2016three,solstad2008representation}. These neural mechanisms enable brain-inspired localization frameworks to outperform traditional SLAM in interpretability and computational efficiency.
+
+However, translating these biological principles into practical robotic systems faces several challenges. First, most existing bio-inspired frameworks operate in 2-D, whereas real-world deployments require robust 3-D spatial representation. Second, classical visual template matching is sensitive to lighting and viewpoint variations, limiting place recognition performance in challenging environments. Third, a simple yet effective fusion strategy that combines visual odometry with inertial measurements---without relying on computationally expensive filters like EKF---remains under-explored for brain-inspired localization frameworks.
+
+To address these challenges, we present NLM, a brain-inspired localization-mapping framework extended to 4-DoF pose estimation within 3-D space (pose $x$, $y$, $z$, $\psi$) that integrates a dual-stream visual front-end (ventral pathway for scene recognition, dorsal pathway for motion extraction) and a vestibular front-end for IMU processing, with complementary filtering for multi-sensory fusion. The framework employs 3-D grid cells and multilayered head direction cells for spatial representation, and a multilayer experience map functioning as hippocampal-like episodic memory for place recognition and drift correction. For ground vehicles operating on relatively flat terrain (e.g., urban roads, indoor floors), the orientation is dominated by yaw angle $\psi$, while pitch and roll variations are typically constrained by vehicle dynamics ($<5^\circ$). Our 4-DoF representation provides efficient localization-mapping for such scenarios~\cite{milford2004ratslam,milford2010persistent}.
+
+The contributions of this paper are summarized as follows:
+\begin{itemize}
+    \item We propose a unified brain-inspired architecture that couples dual-stream visual processing with vestibular modeling and hippocampal-entorhinal spatial representations for 4-DoF localization and mapping.
+    \item We develop cortex-inspired visual processing with explicit operators for visual template creation, increasing template count from 5 (typical in RatSLAM) to 195 (39 $\times$ improvement) for finer-grained place discrimination under challenging lighting and viewpoint variations.
+    \item We design a lightweight complementary fusion strategy for vestibular-visual integration that operates without computationally expensive filters, achieving real-time performance ($\sim$ 31 FPS on CPU) without requiring training data.
+    \item We validate the framework on six diverse scenarios (CARLA Town 01 / 02 / 10, EuRoC MH\_01 / 03, KITTI~07), achieving an average RMSE improvement of 38.1\% over EKF baselines across all tested environments.
+\end{itemize}
+
+%% ==================== RELATED WORK ====================
+\input{sec_related_work.tex}
+
+
+%% ==================== METHOD ====================
+\input{sec_method_expanded.tex}
+
+
+%% ==================== EXPERIMENT ====================
+\input{experiment_section.tex}
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+With the increasing demand for robust and interpretable localization systems in resource-constrained environments, achieving biologically-plausible spatial representations has become essential for autonomous navigation and mobile robotics. This study proposes NeuroLocMap, a brain-inspired 4-DoF localization-mapping framework that integrates computational models of 3-D grid cells and multilayered head direction cells with dual-stream visual processing and complementary vestibular-visual fusion. We describe the bio-inspired spatial cell architecture, the dual-stream visual processing strategy inspired by ventral and dorsal pathways, and the lightweight complementary fusion mechanism for multi-sensory integration. Experimental results across six diverse scenarios (CARLA Town 01 / 02 / 10, KITTI~07, EuRoC MH\_01 / 03) verify that NeuroLocMap achieves 38.1\% average RMSE improvement over EKF baselines while maintaining real-time performance at $\sim$31~FPS. The framework increases visual template count from $\sim$5~templates (typical in RatSLAM) to 195~templates (39$\times$ improvement), enabling finer-grained place discrimination for robust loop closure detection. Future work will extend the framework to full 6-DoF pose representation, integrate learning-based place recognition modules, and deploy on neuromorphic hardware to progressively realize training-free, interpretable localization systems capable of real-time operation on embedded platforms.
+
+\vspace{2em}
+
+\noindent \textbf{Acknowledgements}
+\vspace{1em}
+
+The authors gratefully acknowledge the financial support provided by the Natural Science Foundation of Hunan Province (No.2024JJ6190), Scientific Research Project of Hunan Provincial Department of Education (No.22B0646), the Research on a New Generation of Brain-like Intelligent Computing Framework Based on Ultra-large-scale Real Neural Systems (24XJJCYJ01001), the Open Project of Xiangjiang Laboratory (No.23XJ03009), Research and Application of Key Technologies of Holographic Media Creativity Based on Multimodal AI Big Model (No.24XJ01001), and the Digital Intelligence+ Interdisciplinary Research Project of Hunan University of Technology and Business (No.2023SZJ19).
+
+\vspace{1em}
+\noindent \textbf{Code Availability}
+\vspace{0.5em}
+
+The NeuroLocMap code is available at: \url{https://github.com/OpenHUTB/carla-pedestrians}
+
+\vspace{1em}
+\noindent \textbf{Declaration of competing interests}
+\vspace{0.5em}
+
+The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\vspace{1em}
+\noindent \textbf{Author contributions}
+\vspace{0.5em}
+
+\textbf{Haidong Wang}: Conceptualization, Methodology, Software, Writing - Original Draft. \textbf{Caixia Ning}: Data curation, Validation, Writing - Review \& Editing.
+
+%% Bibliography
+\bibliographystyle{elsarticle-num-names}
+\bibliography{NeuroSLAM_KBS_all}
+
+\end{document}

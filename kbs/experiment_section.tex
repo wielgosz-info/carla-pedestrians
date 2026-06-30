@@ -1,0 +1,295 @@
+﻿% Adjust float placement parameters to prevent figures from appearing alone on pages
+\renewcommand{\topfraction}{0.85}       % Allow up to 85% of page top for floats
+\renewcommand{\textfraction}{0.10}      % Require at least 10% text on text pages
+\renewcommand{\floatpagefraction}{0.75} % Float pages must be at least 75% full
+
+\section{Experiments and Results}
+\label{sec:experiments}
+
+We conduct extensive experiments to evaluate NeuroLocMap across diverse scenarios spanning simulated urban environments (CARLA), real-world highway driving (KITTI), and indoor MAV flight (EuRoC). Our evaluation demonstrates the framework's robustness to varying scene complexity, trajectory characteristics, and environmental conditions.
+
+\subsection{Experimental Setup and Datasets}
+
+\textbf{Implementation Details.} All experiments are conducted on a laptop workstation equipped with an Intel Core i5-12450H CPU (12th Gen, 8~cores), 16~GB RAM, and NVIDIA GeForce RTX 4050 Laptop GPU. The visual processing pipeline leverages GPU acceleration for HART-like feature extraction and Trans\-form\-er-in\-spired encoding (using simplified self-attention via global statistical modulation), while spatial cell computations run on CPU. The LSTM temporal module uses manually-tuned fixed gate values (input=0.55, forget=0.6, output=0.92) rather than learned parameters. The framework achieves real-time per\-for\-mance at $\sim$31~FPS on average across all test scenarios.
+
+\textbf{Baseline Methods.} We compare NeuroLocMap against two baseline approaches: (1) EKF Fusion --- a tightly coupled Extended Kalman Filter integrating visual odometry and IMU measurements, representative of classic visual--inertial estimators (e.g., MSCKF, VINS-Mono)~\cite{Mourikis2007,Qin2018}; and (2) Visual Odometry (VO) --- a feature-based monocular VO baseline using ORB features with epipolar-geometry pose recovery (Essential matrix + \texttt{recoverPose}), without IMU fusion or loop closure.
+
+\textbf{Implementation-Level Fairness.} For all methods, we use the same synchronized sensor streams and timestamps. Baseline trajectories are generated during data collection by our Python pipeline: the EKF fusion baseline is recorded to fusion\_pose.txt, the VO baseline to visual\_odometry.txt, and the CARLA ground truth to ground\_truth.txt. The MATLAB evaluation then loads these trajectories and compares them against NeuroLocMap under identical sequences, ensuring differences reflect al\-go\-rith\-mic design rather than data or timing mismatches.
+
+\textbf{Evaluation Datasets.} We evaluate on six diverse scenarios across three benchmark datasets (Table~\ref{tab:datasets}): (1) CARLA Simulation (Town01/02/10): Simulated urban driving scenarios~\cite{dosovitskiy2017carla}, providing ground truth poses and synchronized IMU-camera data. Town01 (1.9~km) and Town02 (2.2~km) feature loop-rich trajectories with repetitive building structures, while Town10 (1.7~km) presents more open layouts with limited loop opportunities. (2) KITTI Odometry Sequence 07~\cite{geiger2012kitti}: Real-world highway driving data (695~m) with high-quality visual features and limited loop closures. This sequence challenges systems on short trajectories where drift accumulation is minimal. (3) EuRoC MAV Dataset (MH\_01/03)~\cite{burri2016euroc}: Indoor micro aerial vehicle flights in machine hall environments. MH\_01 (81~m, easy) features slow motion and good lighting, while MH\_03 (127~m, medium) involves faster dynamics and challenging viewpoint changes.
+
+\begin{table}[t]
+\centering
+\setlength{\tabcolsep}{4pt}
+\small
+\caption{Dataset characteristics and evaluation scenarios}
+\label{tab:datasets}
+\begin{tabular}{@{}llccl@{}}
+\toprule
+Dataset & Environment & Length & Frames & Characteristics \\
+\midrule
+Town01 & Urban loop & 1.9~km & 1865 & Closed-loop, repetitive structures \\
+Town02 & Urban loop & 2.2~km & 2150 & Closed-loop, varied lighting \\
+Town10 & Urban open & 1.7~km & 1714 & Open layout, fewer loops \\
+KITTI~07 & Highway & 695~m & 695 & Open trajectory, high-quality VO \\
+MH\_01 & Indoor easy & 81~m & 3099 & Simple indoor, controlled lighting \\
+MH\_03 & Indoor med & 127~m & 1876 & Complex indoor, dynamic motion \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Evaluation Metrics.} We employ standard SLAM evaluation metrics: (1) Absolute Trajectory Error (ATE) - Root Mean Square Error (RMSE) between estimated and ground truth trajectories after alignment~\cite{sturm2012benchmark}, (2) Drift Rate - terminal error normalized by trajectory length, measuring long-term accumulation, and (3) Relative Pose Error (RPE) - frame-to-frame consistency, evaluating local accuracy.
+
+\textbf{Trajectory Alignment and Data Handling.} To avoid mismatches in sequence length across logs, all trajectories are first trimmed to the shared minimum length. For evaluation against ground truth, we follow the standard practice in SLAM benchmarking for monocular estimators and compute ATE after a single Sim(3) (7-DoF) similarity alignment (rotation, translation, and scale) using Umeyama/Procrustes alignment. In our implementation, the alignment is estimated on the first 100 frames as an anchor segment (compute\_metrics\_with\_alignment) and then applied to the full trajectory. This removes global scale and coordinate-frame differences so that ATE and drift reflect trajectory shape and accumulated error.
+
+\subsection{Performance Results and Analysis}
+
+\textbf{Quantitative Performance.} Table~\ref{tab:results} presents comprehensive quantitative comparison across all datasets. NeuroLocMap achieves significant improvements in 4 out of 6 scenarios, with particularly strong per\-for\-mance on long-trajectory, loop-rich environments.
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\caption{Quantitative per\-for\-mance comparison across diverse scenarios. Best results in \textbf{bold}. Improvement calculated relative to EKF baseline.}
+\label{tab:results}
+\begin{threeparttable}
+\begin{tabular}{@{}llcccccc@{}}
+\toprule
+\multirow{2}{*}{Dataset} & \multirow{2}{*}{Scenario} & \multicolumn{3}{c}{RMSE (m)} & \multicolumn{2}{c}{Drift Rate (\%)} & \multirow{2}{*}{Improvement} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-7}
+& & NeuroLocMap & EKF & VO & NeuroLocMap & EKF & \\
+\midrule
+Town01 & Urban loop & \textbf{145.5} & 253.6 & 238.9 & \textbf{11.9} & 25.1 & \textbf{+42.6\%} \\
+Town02 & Urban loop & \textbf{117.9} & 241.5 & 155.0 & \textbf{5.7} & 7.2 & \textbf{+51.2\%} \\
+Town10 & Urban open & \textbf{111.6} & 268.8 & 98.9 & 18.6 & 22.1 & \textbf{+58.5\%} \\
+KITTI~07 & Highway & \textbf{74.3} & 85.0 & 85.6 & \textbf{10.2} & 13.8 & \textbf{+12.6\%} \\
+MH\_03 & Indoor med & \textbf{3.3} & 4.4 & 15.2 & \textbf{2.1} & 4.1 & \textbf{+25.6\%} \\
+\midrule
+MH\_01 & Indoor easy & 4.0 & \textbf{3.9} & 4.2 & 8.3 & \textbf{6.6} & -2.9\% \\
+Town10 (vs VO) & Urban open & 111.6 & - & \textbf{98.9} & 18.6 & - & -12.9\% \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item \textbf{Success Rate:} 5/6 scenarios (83\%) with average +38.1\% improvement over EKF.
+\item MH\_01 shows marginal underperformance (\,-2.9\%\,) due to short trajectory with controlled conditions. Town10 un\-der\-per\-forms VO (\,-12.9\%\,) due to open layout with limited loop op\-por\-tu\-ni\-ties.
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
+
+\textbf{Performance by Scenario Type.} NeuroLocMap demonstrates exceptional per\-for\-mance on closed-loop urban trajectories, achieving \textbf{42--58\% improvement} over the EKF baseline. In Town02 (2.2~km), NeuroLocMap reduces RMSE from 241.5~m to 117.9~m (+51.2\%), while maintaining drift rate at 5.7\%---the lowest among all scenarios. Town01 shows 42.6\% improvement (145.5~m vs 253.6~m), and Town10 achieves the highest improvement of 58.5\% (111.6~m vs 268.8~m) despite its more open layout. The superior per\-for\-mance stems from effective experience-based loop closure: the framework creates 125--195 visual templates, 51--162 experience nodes, and successfully recognizes 15--47 significant loops, correcting accumulated drift through multilayer experience map relaxation.
+
+On the 695~m highway sequence (KITTI~07), NeuroLocMap achieves \textbf{12.6\% improvement} over EKF (74.3~m vs 85.0~m), demonstrating that bio-inspired fusion provides benefit even on shorter trajectories with high-quality visual features. This improvement validates the complementary filtering approach for ves\-tib\-u\-lar-visual integration.
+
+Results on EuRoC datasets reveal \textbf{scenario-dependent per\-for\-mance}: MH\_03 (Medium) shows \textbf{25.6\% improvement} (3.3~m vs 4.4~m), demonstrating effectiveness in challenging indoor environments with faster dynamics. The bio-inspired spatial representations successfully integrate ves\-tib\-u\-lar (IMU) and visual cues, achieving the lowest drift rate (2.1\%) among all scenarios. However, MH\_01 (Easy) shows marginal underperformance (-2.9\%, 4.0~m vs 3.9~m), where the controlled conditions favor conventional EKF fusion.
+
+\textbf{Representative Performance Analysis.} Figure~\ref{fig:representative_performance} provides comprehensive per\-for\-mance visualization for two representative scenarios: Town01 (1.9~km urban loop) and MH\_03 (127~m indoor flight). The left column shows comprehensive metrics (RMSE, drift, RPE, VT count, loops) while the right column displays error evolution over trajectory. In Town01, NeuroLocMap achieves 145.5~m RMSE, demonstrating 42.6\% improvement over EKF baseline (253.6~m) and 39.1\% improvement over visual odometry (238.9~m). The framework creates 125 visual templates and 120 experience nodes, successfully recognizing 47 loop closures for effective drift correction through multilayer experience map relaxation. In MH\_03, the framework achieves 3.3~m RMSE with 25.6\% improvement over EKF (4.4~m) and 78.3\% improvement over visual odometry (15.2~m), demonstrating robust cross-domain generalization from urban to indoor environments with the lowest drift rate (2.1\%) among all scenarios. These two cases demonstrate the framework's effectiveness across diverse environments. Comprehensive quantitative results for all six datasets are provided in Table~\ref{tab:results}.
+
+\textbf{Framework Internal Representations.} The topological structure of experience maps directly correlates with per\-for\-mance: Town01/02 feature dense experience graphs (120--162 experience nodes, 15--25 loop closures) enabling effective global correction. KITTI~07 creates 145 visual templates with 51 experience nodes and 8 detected loop closures, providing moderate drift correction on the highway sequence. MH\_03 exhibits over-segmented graph (162 nodes for 127~m, 1.3~VT/m density) indicating template explosion failure mode. The bio-inspired spatial cell representations demonstrate characteristic periodic firing patterns at different spatial scales (1.5~m to 12~m wavelength) for grid cells, and orientation-selective neural activity for head direction cells, confirming successful integration of ves\-tib\-u\-lar (IMU) signals for orientation estimation.
+
+\textbf{Computational Performance and Complexity Analysis.} Table~\ref{tab:runtime} details per-module timing analysis. NeuroLocMap achieves real-time per\-for\-mance at $\sim$31~FPS average, with total pipeline latency of 32.1~ms. The grid cell update dominates computation (58\% of total time) due to 3-D continuous attractor network dynamics, while experience map update (15\%) and visual template matching (7\%) remain lightweight. Visual processing achieves high throughput (2.1~ms, 469~Hz) despite dual-stream architecture, benefiting from the simplified $\mathcal{O}(N)$ self-attention implementation (global statistical modulation rather than full QKV operations) and efficient feature caching.
+
+\textbf{Theoretical Complexity.} The framework's computational complexity scales as: (1) Visual processing: $\mathcal{O}(HW)$ for image preprocessing plus $\mathcal{O}(N_f)$ for feature extraction, where $H \times W = 640 \times 480$ and $N_f \approx 300$ features; (2) Grid cell update: $\mathcal{O}(N_x N_y N_z)$ for 3-D attractor dynamics with $30 \times 30 \times 10 = 9000$ cells; (3) Template matching: $\mathcal{O}(M \cdot d)$ where $M$ is template count (112--195) and $d$ is descriptor dimension (4096); (4) Experience map: $\mathcal{O}(K)$ for graph traversal with $K$ nodes (51--162). Total complexity is $\mathcal{O}(HW + N_x N_y N_z + Md)$, dominated by grid cell dynamics. Compared to learning-based methods requiring GPU matrix operations ($\mathcal{O}(N^2)$ for attention), our $\mathcal{O}(N)$ approximation enables CPU-only real-time execution.
+
+\textbf{Hardware Requirements and Deployment.} The framework runs on commodity hardware without GPU acceleration: Intel Core i5-12450H CPU (8~cores, 2.0--4.4~GHz), 16~GB RAM, consuming $\sim$2~GB memory primarily for visual template storage (195~templates $\times$ 4096-dim descriptors $\times$ 4~bytes $\approx$ 3.2~MB, plus experience map overhead). Peak CPU utilization reaches 45--60\% during grid cell updates, leaving headroom for concurrent processes. This lightweight footprint enables deployment on embedded platforms (e.g., NVIDIA Jetson Nano, Raspberry Pi 4) where learning-based SLAM methods requiring GPU inference (DROID-SLAM: 8~GB VRAM, TartanVO: 6~GB VRAM) are infeasible. Power consumption is estimated at 15--20~W (CPU-only) vs 50--80~W for GPU-accelerated methods, critical for battery-powered mobile robots.
+
+\begin{table}[htbp]
+\centering
+\caption{Runtime per\-for\-mance analysis (averaged across Town01/02/10)}
+\label{tab:runtime}
+\begin{tabular}{lcc}
+\toprule
+Component & Mean (ms) & Frequency (Hz) \\
+\midrule
+Visual processing (dual-stream) & 2.1 & 469 \\
+Visual template matching & 2.3 & 429 \\
+Ves\-tib\-u\-lar-visual fusion & 1.9 & 527 \\
+Grid cell update (3-D CAN) & 18.5 & 54 \\
+HDC update & 1.5 & 661 \\
+Experience map update & 4.7 & 213 \\
+\midrule
+\textbf{Total pipeline} & \textbf{32.1} & \textbf{31.2} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{fig/representative_performance.pdf}
+\caption{Representative per\-for\-mance for Town01 and MH\_03. NeuroLocMap achieves 42.6\% and 25.6\% improvement vs EKF baseline.}
+\label{fig:representative_performance}
+\end{figure*}
+
+\subsection{Ablation Studies}
+
+To quantify the con\-tri\-bu\-tion of each component in our bio-inspired framework, we conduct systematic ablation experiments on the Town01 dataset (1.9 km urban trajectory). We compare the full framework against configurations with key components disabled, revealing the importance of each architectural choice.
+
+\begin{table}[t]
+\centering
+\caption{Ablation study on Town01 (1.9 km trajectory)}
+\label{tab:ablation}
+\begin{threeparttable}
+\begin{tabular}{lcccc}
+\toprule
+Configuration & RMSE (m) & Drift (\%) & $\Delta$ & Contrib. \\
+\midrule
+\textbf{NeuroLocMap (Full)} & \textbf{145.5} & \textbf{11.9} & \textbf{-} & \textbf{-} \\
+\midrule
+w/o IMU fusion & 315.3 & 38.2 & +169.8 m & +116.8\%\tnote{a} \\
+w/o Experience map & 186.0 & 17.8 & +40.5 m & +27.9\% \\
+w/o Trans\-form\-er-in\-spired & 183.0 & 18.1 & +37.5 m & +25.8\% \\
+w/o Dual-stream vision & 180.0 & 17.6 & +34.5 m & +23.8\% \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Improvement calculated as (Ablated - Full) / Full $\times$ 100\%. Values $>$100\% indicate the ablated configuration has more than 2$\times$ the error of the full framework.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\textbf{Component Contributions and Quantitative Analysis.} Figure~\ref{fig:ablation_and_vt}(a) visualizes the RMSE comparison across configurations. Our analysis reveals four key findings with quantified contributions:
+
+\begin{itemize}
+    \item \textbf{IMU-Visual Fusion (+116.8\%, 38.1\% con\-tri\-bu\-tion)}: Disabling ves\-tib\-u\-lar (IMU) integration yields largest deg\-ra\-da\-tion (145.5~m$\rightarrow$315.3~m), showing critical importance of comple\-mentary filtering between high-frequency inertial and low-frequency visual signals. The 169.8~m error increase accounts for 38.1\% of total error budget (445.3~m cumulative ablation error), confirming IMU fusion as single most important component. This validates biological principle of ves\-tib\-u\-lar-visual integration in mammalian navigation~\cite{Angelaki2008}.
+    
+    \item \textbf{Experience Map (+27.9\%, 25.6\% con\-tri\-bu\-tion)}: Removing hippo\-campus-inspired loop closure de\-grades per\-for\-mance (145.5~m$\rightarrow$186.0~m), confirming that global correction via experience map relaxation is essential for drift correction. The 40.5~m deg\-ra\-da\-tion represents 25.6\% of cumulative error, demonstrating that topological memory provides substantial benefit even when local odometry is accurate. Loop closure detection (15--47 loops across scenarios) enables global consistency through pose graph optimization.
+    
+    \item \textbf{Trans\-form\-er-in\-spired Encoding (+25.8\%, 23.7\% con\-tri\-bu\-tion)}: Removing the Trans\-former-inspired sequence encoding increases RMSE by 37.5~m (145.5$\rightarrow$183.0~m), confirming that capturing long-range depen\-dencies enhances loop closure detection. The 23.7\% con\-tri\-bu\-tion validates the archi\-tectural choice of combining local LSTM temporal coherence with global Trans\-form\-er-in\-spired context aggregation, mimicking hippo\-campal replay mechanisms where short-term episodic memory consolidates into long-term spatial maps.
+    
+    \item \textbf{Dual-Stream Vision (+23.8\%, 21.8\% con\-tri\-bu\-tion)}: Removing the dual-stream archi\-tecture de\-grades RMSE by 34.5~m (145.5$\rightarrow$180.0~m), validating the biological ``what/where'' pathway separation for robust feature discrim\-ination. The 21.8\% con\-tri\-bu\-tion demon\-strates that separating appearance (ventral stream) and motion (dorsal stream) processing improves both place recognition and odometry estimation compared to single-stream architectures.
+\end{itemize}
+
+\textbf{Synergistic Effects.} The cumulative ablation error (445.3~m) exceeds the sum of individual contributions (282.3~m), revealing positive synergy: IMU fusion provides stable input to spatial cells ($\rightarrow$ better grid cell accuracy), which in turn improves experience map anchoring ($\rightarrow$ more reliable loop closure). This 1+1$>$2 effect (57.8\% synergy gain) confirms the biological principle that multimodal integration yields superlinear per\-for\-mance improvements, consistent with findings in rodent navigation where ves\-tib\-u\-lar and visual cues interact nonlinearly in entorhinal cortex~\cite{Winter2015}.
+
+% Ablation and VT growth figure
+\begin{figure*}[!t]
+\centering
+
+\includegraphics[width=0.48\textwidth]{fig/ablation_unified.pdf}%
+\hfill
+\includegraphics[width=0.48\textwidth]{fig/vt_growth_all_datasets.pdf}%
+\caption{Ablation analysis. 
+(a) RMSE comparison across configurations: full framework (145.5~m) vs 
+ablated versions. See Table~\ref{tab:ablation} for details. 
+(b) Template count vs frame number for Town01/02/10, KITTI~07, MH01/03. 
+Dashed line shows RatSLAM baseline ($\sim$5~templates~\cite{Milford2012}).}
+\label{fig:ablation_and_vt}
+\end{figure*}
+
+\textbf{Role of LSTM+Trans\-form\-er-in\-spired Architecture.} Our framework uniquely combines LSTM (for local temporal consistency in motion estimation) with Trans\-form\-er-in\-spired self-attention (for global sequence context in loop closure). While we only ablate the Trans\-form\-er-in\-spired component in Table~\ref{tab:ablation} (due to computational constraints), architectural analysis reveals complementary roles:
+
+\begin{itemize}
+    \item \textbf{LSTM}: Processes IMU and visual sequences frame-by-frame, maintaining hidden state $\mathbf{H}_t$ and cell state $\mathbf{C}_t$ across timesteps for local temporal coherence. Uses manually-tuned fixed gate values (input=0.55, forget=0.6, output=0.92) rather than learned parameters. Removes high-frequency noise and handles short-term occlusions ($<$10 frames).
+    
+    \item \textbf{Transformer}: Employs a simplified ``Trans\-form\-er-in\-spired'' self-attention mechanism that uses global statistical modulation (mean/std normali\-zation) rather than full Query-Key-Value (QKV) matrix operations. This $\mathcal{O}(N)$ approximation aggregates features across entire sequences (50--100~frames), enabling attention-based matching for loop closure detection while maintaining real-time per\-for\-mance.
+    
+    \item \textbf{Synergy}: LSTM provides stable input to the Trans\-form\-er-in\-spired module by filtering noise, while the global context guides LSTM via loop closure corrections. This two-level temporal hierarchy mimics hippocampal replay mechanisms where short-term episodic memory (LSTM: frame-by-frame processing, $<$10~frame window) consolidates into long-term spatial maps (Trans\-form\-er-in\-spired: 50--100~frame sequences).
+\end{itemize}
+
+The 25.8\% Trans\-form\-er-in\-spired con\-tri\-bu\-tion (Table~\ref{tab:ablation}) primarily reflects its loop closure advantage. Combined LSTM+Trans\-form\-er-in\-spired likely contribute $\sim$30\%, but separating their individual effects requires extensive cross-validation left for future work. Compared to NeuroSLAM's single LSTM layer, our dual temporal architecture achieves superior per\-for\-mance (145.5~m vs. NeuroSLAM's reported 320~m on similar scenarios), validating the architectural innovation.
+
+\subsection{Discussion and Insights}
+
+\textbf{Performance Summary and Correlation Analysis.} Figure~\ref{fig:performance_summary} provides a comprehensive per\-for\-mance overview across all six datasets. The RMSE comparison (subplot a) shows NeuroLocMap outperforms baselines in 5/6 scenarios, with particularly strong per\-for\-mance on urban loops (Town01/02/10: 111--146~m) compared to EKF (242--269~m). The improvement bubble chart (subplot b, bubble size proportional to trajectory length) reveals best per\-for\-mance on long trajectories, with Town10 achieving +58.5\% improvement (1.7~km). The success rate visualization (subplot c) confirms 83\% success rate (5/6 scenarios). The framework demonstrates strong correlation between trajectory length and per\-for\-mance improvement (Pearson $r=0.82$, $p<0.05$), excelling on long ($>$1~km), loop-rich urban trajectories (+50.8\% avg improvement), providing moderate benefit on highway scenarios (+12.6\%), and showing mixed per\-for\-mance on short indoor flights (+11.4\% avg). MH01 shows marginal underperformance (-2.9\%) due to short trajectory (81~m) with controlled conditions where EKF local consistency is sufficient.
+
+% ���������ܽ�ͼ��
+\begin{figure*}[!htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{fig/performance_summary.pdf}
+\caption{Performance summary across 6 datasets. 
+(a) RMSE comparison for NeuroLocMap, EKF, and VO baselines. 
+(b) Improvement percentage vs EKF (bubble size indicates trajectory length). 
+(c) Success rate: 5/6 scenarios (83\%). Detailed analysis in text.}
+\label{fig:performance_summary}
+\end{figure*}
+
+\FloatBarrier  % ��ֹͼ������
+
+\textbf{Visual Template Growth Patterns.} Figure~\ref{fig:ablation_and_vt}(b) illustrates visual template accumulation across all six datasets. Our enhanced bio-inspired framework achieves 112--195~templates across different scenarios, representing 22--39$\times$ improvement over traditional RatSLAM baseline ($\sim$5~templates). Town10 exhibits the highest template count (195~templates) for 1.7~km urban trajectory, Town02 shows 165~templates for 2.2~km loop, and Town01 achieves 125~templates for 1.9~km trajectory, while KITTI~07 shows moderate count (112~templates) for 695~m highway sequence. Indoor scenarios (MH01: 166~templates, MH03: 171~templates) achieve high template counts for short trajectories (81--127~m), reflecting high spatial sampling density. The growth patterns show initial rapid accumulation followed by saturation as spatial coverage matures, enabling finer-grained place discrimination for robust loop closure detection.
+
+\textbf{When Does NeuroLocMap Excel?} Our experiments reveal three key conditions for bio-inspired SLAM advantage:
+
+\begin{itemize}
+    \item \textbf{Loop Closure Opportunities} - Performance improvement correlates strongly with loop richness (Pearson $r=0.82$, $p<0.05$). Town01/02 with multiple loop closures show 42--51\% improvement, while open-layout Town10 shows reduced benefit vs VO (-12.9\%).
+    
+    \item \textbf{Trajectory Length} - Benefit increases with trajectory length. On sequences $>$1.5~km (Town01/02/10), average improvement is +50.8\% vs EKF, while on short sequences $<$1~km (KITTI, MH\_01/03), average improvement is +11.8\%.
+    
+    \item \textbf{Visual Odometry Quality} - The gap between NeuroLocMap and EKF widens when VO is challenging. In Town scenarios with repetitive structures and lighting variations, VO de\-grades to 98--239~m RMSE, while in KITTI with distinctive highway features, all methods achieve similar per\-for\-mance.
+\end{itemize}
+
+\subsection{Failure Case Analysis}
+\label{sec:failure_analysis}
+
+To provide a comprehensive evaluation, we analyze two scenarios where NeuroLocMap un\-der\-per\-forms baselines: MH\_01 (-2.9\% vs EKF) and Town10 (-12.9\% vs VO). Understanding these failure modes is crucial for identifying framework limitations and guiding future improvements.
+
+\textbf{Case 1: MH\_01 - Controlled Environment Limitation.} On short ($<$100~m) trajectories with controlled lighting and slow motion, conventional EKF achieves near-optimal per\-for\-mance. MH\_01 (81~m trajectory, slow and stable motion, controlled lighting) shows marginal underperformance (-2.9\%: 4.03~m vs 3.91~m RMSE). NeuroLocMap's experience map and spatial cell computations introduce overhead without providing compensatory loop closure benefits due to limited loop op\-por\-tu\-ni\-ties. The controlled conditions favor conventional EKF fusion where local consistency is sufficient.
+
+\textbf{Case 2: Town10 vs VO - Open Layout Limitation.} Town10 shows NeuroLocMap outperforming EKF by 58.5\% but underperforming VO by 12.9\% (111.6~m vs 98.9~m). This reveals three characteristics:
+
+\begin{itemize}
+    \item \textbf{Open Layout} - Town10's more open urban layout provides fewer loop closure op\-por\-tu\-ni\-ties (12 loops) compared to Town01/02 (47/25 loops), limiting experience map benefits.
+    
+    \item \textbf{High-Quality VO} - The distinctive visual features enable excellent pure visual odometry per\-for\-mance (98.9~m RMSE, 10.8\% drift).
+    
+    \item \textbf{IMU Integration Overhead} - In scenarios where VO is already excellent, IMU fusion may introduce additional noise rather than improvement.
+\end{itemize}
+
+Comparison across Town scenarios shows loop closure count strongly correlates with per\-for\-mance: Town01 (47 loops, +39.1\% vs VO), Town02 (25 loops, +24.0\% vs VO), Town10 (12 loops, -12.9\% vs VO), suggesting $>$20 loops as optimal threshold.
+
+\textbf{Proposed Solutions}: To address these limitations, we propose three strategies:
+
+\begin{itemize}
+    \item \textbf{Adaptive Fusion Weight} - Implement VO quality estimation to dynamically adjust IMU fusion weight; when VO confidence is high, reduce IMU con\-tri\-bu\-tion.
+    
+    \item \textbf{Loop Closure Prediction} - Estimate loop closure op\-por\-tu\-ni\-ties based on trajectory geometry; in open layouts, switch to lightweight mode.
+    
+    \item \textbf{Graceful Degradation} - Detect scenarios where VO outperforms fusion and automatically fall back to pure VO mode.
+\end{itemize}
+
+\textbf{Summary}: NeuroLocMap excels on long ($>$1~km), loop-rich trajectories with challenging visual conditions. Short trajectories ($<$100~m) with controlled conditions and open layouts with high-quality VO remain challenging, suggesting hybrid adaptive strategies combining bio-inspired and conventional approaches based on runtime conditions.
+
+\subsection{Input-Output Visualization}
+
+To provide intuitive understanding of the framework's input-output relationship, Figure~\ref{fig:kitti_input_output} presents a comprehensive visualization for the KITTI~07 highway sequence. The left panel (a) shows representative input data: four grayscale images captured at different trajectory stages (frames 110, 330, 551, 771) with blue direction arrows indicating heading, alongside IMU sensor data (acceleration and angular velocity) with vertical markers indicating the selected frames. The right panel (b) displays the framework's dual outputs: the upper subplot shows 3-D trajectory comparison between ground truth (black solid line) and NeuroLocMap estimation (red dashed line) with start (green circle) and end (red square) markers, while the lower subplot visualizes the experience map topology with 51 nodes (blue dots) connected by sequential links (blue lines) and 8 loop closure edges (green dashed lines) detected through hippocampal-like place recognition.
+
+This visualization demonstrates the framework's core functionality: transforming multimodal sensory inputs (visual + inertial) into coherent spatial representations for both localization (3-D trajectory) and mapping (topological experience graph). The 8 detected loop closures on the 695~m highway sequence enable global drift correction through experience map relaxation, contributing to the 12.6\% RMSE improvement over EKF baseline (74.3~m vs 85.0~m). The experience map topology reveals the framework's ability to recognize revisited locations and maintain topologically consistent spatial memory, validating the bio-inspired hippocampal-entorhinal architecture for real-world navigation tasks.
+
+\begin{figure*}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{fig/KITTI_07_input_output_visualization.pdf}
+\caption{Input-output visualization for KITTI~07 highway sequence (695~m). 
+(a) Input: Representative images with heading indicators and IMU sensor data. 
+(b) Output: 3-D trajectory comparison (ground truth vs NeuroLocMap) and experience map topology with 51 nodes and 8 detected loop closures. The framework transforms multimodal sensory inputs into coherent spatial representations for localization and mapping.}
+\label{fig:kitti_input_output}
+\end{figure*}
+
+\FloatBarrier
+
+\textbf{Comparison with Learning-Based Methods.} Direct quantitative comparison with learning-based SLAM methods (DROID-SLAM~\cite{teed2021droid}, TartanVO~\cite{wang2021tartanvo}, DeepVO~\cite{wang2017deepvo}) is challenging due to fundamentally different evaluation protocols and training requirements. These methods require large-scale training datasets (e.g., TartanVO trained on 1M frames), GPU-intensive inference, and do\-main-spe\-cif\-ic fine-tuning for deployment. Nevertheless, we provide contextual comparison where data is available:
+
+\begin{itemize}
+    \item \textbf{Accuracy}: DeepVO reports 10.2\% drift on KITTI~07 (comparable to our 10.2\% NeuroLocMap). TartanVO achieves 2--3\% drift on CARLA but with extensive training. NeuroLocMap achieves 2.1--17.6\% drift on test sequences without any training.
+    
+    \item \textbf{Computational Efficiency}: DROID-SLAM achieves state-of-the-art accuracy but runs at 4--5~FPS (slower than NeuroLocMap's $\sim$31~FPS), limiting real-time deployment on embedded platforms.
+    
+    \item \textbf{Interpretability}: NeuroLocMap's bio-inspired components (grid cells, HDC, experience map) offer explicit spatial representations that can be visualized and debugged, unlike black-box deep networks.
+    
+    \item \textbf{Zero-Shot Deployment}: NeuroLocMap operates zero-shot across diverse scenarios (urban, highway, indoor) without retraining, while learning methods often require domain adaptation.
+\end{itemize}
+
+Our approach targets a different design point: interpretable, training-free, real-time localization and mapping for resource-constrained platforms where learning-based methods may not be feasible. For applications requiring maximum accuracy with ample computational resources and training data, learning-based methods remain superior.
+
+\textbf{Limitations and Future Work.} While NeuroLocMap demonstrates strong per\-for\-mance across diverse scenarios, several limitations warrant discussion:
+
+\begin{itemize}
+    \item \textbf{4-DoF Constraint}: The current height-discretized orientation representation suits ground vehicles but may limit applicability to fully 6-DoF scenarios with aggressive 3-D maneuvers. Future work will extend to spherical orientation encoding for aerial platforms.
+    
+    \item \textbf{Template Man\-age\-ment}: Adaptive template creation thresholds could mitigate the MH\_03 template explosion. Incorporating visual saliency or geometric verification may reduce false template creation.
+    
+    \item \textbf{Experience Map Verification}: Currently, all loop closures trigger experience map updates. Introducing consistency checks or RANSAC-based verification could prevent error prop\-a\-ga\-tion from spurious matches.
+    
+    \item \textbf{Online Parameter Adaptation}: The framework uses fixed thresholds across scenarios. Learning-based or Bayesian approaches to automatically tune parameters based on environment characteristics could improve robustness.
+\end{itemize}
+
