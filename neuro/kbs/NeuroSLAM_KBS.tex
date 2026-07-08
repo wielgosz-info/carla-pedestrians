@@ -4,49 +4,35 @@
 %% Knowledge-Based Systems - NeuroSLAM Paper
 %% 
 
-\documentclass[preprint,12pt]{elsarticle}
+\documentclass[twocolumn,journal]{IEEEtran}
 
-%% Packages
-\usepackage{amssymb}
-\usepackage{amsmath}
-\usepackage{amsmath,amsfonts}
+%% Packages 【TIP 标准精简无冲突版本】
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{algorithm}
 \usepackage{array}
 \usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
-\usepackage{textcomp}
-\usepackage{stfloats}
 \usepackage{url}
-\usepackage{verbatim}
 \usepackage{graphicx}
-\usepackage{epstopdf}  % 支持EPS矢量图自动转换为PDF
-\epstopdfsetup{update}  % 自动更新EPS文件
 % 图片路径（统一指向本地fig目录）
 \graphicspath{{fig/}}
 \usepackage{xcolor}
-\usepackage{colortbl}  % 支持表格行颜色
-\usepackage{booktabs}
 \usepackage{multirow}
-\usepackage{longtable}  % 支持跨页长表格
-\usepackage{threeparttable}  % 支持表格注释
+\usepackage{threeparttable}
+\usepackage{microtype}
+\usepackage{xspace}
 
-% 定义自定义颜色
+% 定义自定义颜色（仅作图使用，表格无彩色可删除此行）
 \definecolor{darkgreen}{rgb}{0,0.6,0}
 
-\usepackage{float}
-\usepackage{placeins}
-\usepackage{adjustbox}
-\usepackage{microtype}  % Improve text justification
-
-% 改善两端对齐的字间距问题
-\tolerance=1000          % 允许更宽松的断行（默认200）
-\emergencystretch=3em    % 紧急情况下允许额外拉伸
-\hyphenpenalty=50        % 降低断字惩罚，允许更多断字
-\exhyphenpenalty=50      % 显式连字符后的断字惩罚
-\frenchspacing           % 禁用句号后的额外空格，保持所有空格一致
+% 改善两端对齐的字间距问题【适配TIP收紧参数】
+\tolerance=300
+\emergencystretch=1em
+\hyphenpenalty=200
+\exhyphenpenalty=200
 
 \DeclareMathOperator*{\argmin}{\arg\!\min}
-\usepackage{xspace}
 
 % Abbreviation macros
 \makeatletter
@@ -61,39 +47,31 @@
 \def\etal{\emph{et al}\onedot}
 \makeatother
 
-\journal{Knowledge-Based Systems}
+
+% 1. 标题写在document外面
+\title{Brain-Inspired 4-DoF Localization-Mapping: Complementary Vestibular-Visual Fusion with Spatial Cells}
+
+% 2. IEEE标准作者区块（把你的姓名、单位、邮箱填进去）
+\author{
+\IEEEauthorblockN{name}
+\IEEEauthorblockA{hutb\\
+changsha, 400210\\
+Email: xxx@shturl.}
+}
 
 \begin{document}
+% 生成标题、作者栏，IEEE必须加
+\maketitle
 
-\begin{frontmatter}
+% 摘要
+\begin{abstract}
+    \sloppy
+    Brain-inspired spatial cognition offers interpretable alternatives to opaque learning methods for autonomous localization. However, existing brain-inspired frameworks remain limited to 2D environments or simplified visual processing, lacking robust 3D spatial representations under challenging conditions. To address these limitations, this paper proposes NLM, a brain-inspired localization-mapping framework extended to 4-DoF state estimation within 3D space, integrating vestibular-visual complementary fusion with hippocampal-entorhinal spatial representations. The framework comprises four core modules: dual-stream visual processing (ventral for recognition, dorsal for motion), vestibular IMU modeling, 3D grid cells with face-centered cubic lattice for position encoding, and experience-based cognitive mapping for loop closure. Unlike data-driven approaches, our brain-inspired design achieves real-time performance ($\sim$ 31 FPS on CPU) with zero-shot deployment capability. Experiments on CARLA (Town 01 / 02 / 10) demonstrate 38.1\% average RMSE improvement over EKF baselines, validating the framework's effectiveness for autonomous localization and motion across diverse environments.
+\end{abstract}
 
-    %% Title
-    \title{Brain-Inspired 4-DoF Localization-Mapping: Complementary Vestibular-Visual Fusion with Spatial Cells}
-
-    %% Abstract
-    \begin{abstract}
-        \sloppy
-        Brain-inspired spatial cognition offers interpretable alternatives to opaque learning methods for autonomous localization. However, existing brain-inspired frameworks remain limited to 2D environments or simplified visual processing, lacking robust 3D spatial representations under challenging conditions. To address these limitations, this paper proposes NLM, a brain-inspired localization-mapping framework extended to 4-DoF state estimation within 3D space, integrating vestibular-visual complementary fusion with hippocampal-entorhinal spatial representations. The framework comprises four core modules: dual-stream visual processing (ventral for recognition, dorsal for motion), vestibular IMU modeling, 3D grid cells with face-centered cubic lattice for position encoding, and experience-based cognitive mapping for loop closure. Unlike data-driven approaches, our brain-inspired design achieves real-time performance ($\sim$ 31 FPS on CPU) with zero-shot deployment capability. Experiments on CARLA (Town 01 / 02 / 10) demonstrate 38.1\% average RMSE improvement over EKF baselines, validating the framework's effectiveness for autonomous localization and motion across diverse environments.
-    \end{abstract}
-    %%Graphical abstract
-    \begin{graphicalabstract}
-        \includegraphics[width=\linewidth]{fig/1_abstract.pdf}
-    \end{graphicalabstract}
-
-    %%Research highlights
-    \begin{highlights}
-        \item A brain-inspired 4-DoF localization and mapping framework integrating 3D grid cells and complementary vestibular-visual multimodal fusion
-        \item 39-fold expansion of visual scene templates (from 5 to 195) to enable fine-grained, robust loop closure detection
-        \item Achieves an average 38.1\% RMSE reduction compared with EKF fusion baseline over CARLA, EuRoC and KITTI datasets
-        \item Training-free real-time implementation at 31 FPS with strong zero-shot cross-domain generalization across urban, highway and indoor environments
-    \end{highlights}
-
-    %% Keywords
-    \begin{keyword}
-        Brain-inspired localization-mapping \sep Vestibular-visual fusion \sep Hippocampal spatial cells \sep Visual place recognition \sep Cognitive mapping
-    \end{keyword}
-
-\end{frontmatter}
+% IEEE标准关键词，逗号分隔，不用\sep
+\IEEEkeywords
+Brain-inspired localization-mapping, Vestibular-visual fusion, Hippocampal spatial cells, Visual place recognition, Cognitive mapping
 
 %% ==================== INTRODUCTION ====================
 \section{Introduction}
@@ -158,7 +136,7 @@ The authors declare that they have no known competing financial interests or per
 \textbf{Haidong Wang}: Conceptualization, Methodology, Software, Writing - Original Draft. \textbf{Caixia Ning}: Data curation, Validation, Writing - Review \& Editing.
 
 %% Bibliography
-\bibliographystyle{elsarticle-num-names}
+\bibliographystyle{IEEEtran}
 \bibliography{NeuroSLAM_KBS_all}
 
 \end{document}

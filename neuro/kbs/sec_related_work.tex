@@ -28,27 +28,28 @@ Deep learning offers powerful tools for visual place recognition. Arandjelovic e
 
 Table~\ref{tab:comparison_bioslam} compares representative bio-inspired SLAM frameworks across key architectural dimensions. Existing approaches face four fundamental limitations: (1) most frameworks operate in 2D (RatSLAM, BatSLAM) or encode only 3D position without orientation (NeuroSLAM), lacking full 4-DoF representation; (2) visual front-ends rely on simple intensity-based templates (e.g., RatSLAM's 1-D scanlines) that are sensitive to illumination changes and yield limited template diversity; (3) IMU integration is either absent or relies on computationally expensive tightly-coupled optimization; and (4) modern attention mechanisms for feature enhancement remain disconnected from explicit spatial cell representations. NeuroLocMap systematically addresses these gaps: we implement 4-DoF spatial representation through 3D grid cells (FCC lattice) and multilayered head direction cells; adopt dual-stream visual processing with HART-inspired spatial attention and lightweight global-local feature modulation to achieve 39$\times$ template improvement; integrate vestibular-visual signals through bio-inspired complementary filtering; and unify these components within an explicit spatial cell framework for interpretable navigation.
 
-\begin{table}[t]
+\begin{table*}[!t]
        \centering
        \footnotesize
-       \caption{Comparison of bio-inspired navigation frameworks.}
+       \caption{Comparison of bio-inspired navigation frameworks}
        \label{tab:comparison_bioslam}
-       \setlength{\tabcolsep}{0.5pt}
-       \begin{tabular}{l@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c@{\hspace{2pt}}c}
-              \toprule
-              Framework                         & DoF         & Spatial              & Fusion         & Visual             & Loop          & Temp.           \\
-                                                &             & Cells                & Method         & Process            & Closure       & Model           \\
-              \midrule
-              RatSLAM~\cite{milford2008mapping} & 2D          & PC+HDC               & Vis.           & Scanline           & Exp.          & -               \\
-              BatSLAM~\cite{steckel2013batslam} & 2D          & PC+HDC               & Sonar          & Echo               & Exp.          & -               \\
-              NeuroSLAM                         & 3D          & 3D-GC                & Vis.           & CNN                & Exp.          & LSTM            \\
-              \midrule
-              \textbf{NeuroLocMap (Ours)}       & \textbf{4D} & \textbf{3D-GC+M-HDC} & \textbf{Comp.} & \textbf{Dual+HART} & \textbf{Exp.} & \textbf{Trans.} \\
-              \bottomrule
-       \end{tabular}
-       \begin{tablenotes}
-              \scriptsize
-              \item \textbf{Abbreviations}: PC: Place Cells; HDC: Head Direction Cells; GC: Grid Cells; M-HDC: Multilayered HDC; Exp.: Experience map; Comp.: Complementary filtering; Trans.: Transformer-inspired temporal modeling; Vis.: Visual only; Dual+HART: Dual-stream (ventral/dorsal) visual processing with HART-inspired spatial attention.
-              \item \textbf{Note}: Our feature enhancement uses global statistical modulation ($\mathcal{O}(N)$ complexity) to approximate self-attention effects, rather than full Query-Key-Value operations ($\mathcal{O}(N^2)$), enabling real-time performance without training.
-       \end{tablenotes}
-\end{table}
+       \setlength{\tabcolsep}{2.2pt}
+       \begin{threeparttable}
+              \begin{tabular}{lcccccc}
+                     \toprule
+                     Framework                         & DoF         & Spatial Cells        & Fusion Method  & Visual Process     & Loop Closure  & Temp. Model     \\
+                     \midrule
+                     RatSLAM~\cite{milford2008mapping} & 2D          & PC+HDC               & Vis.           & Scanline           & Exp.          & -               \\
+                     BatSLAM~\cite{steckel2013batslam} & 2D          & PC+HDC               & Sonar          & Echo               & Exp.          & -               \\
+                     NeuroSLAM                         & 3D          & 3D-GC                & Vis.           & CNN                & Exp.          & LSTM            \\
+                     \midrule
+                     \textbf{NeuroLocMap (Ours)}       & \textbf{4D} & \textbf{3D-GC+M-HDC} & \textbf{Comp.} & \textbf{Dual+HART} & \textbf{Exp.} & \textbf{Trans.} \\
+                     \bottomrule
+              \end{tabular}
+              \begin{tablenotes}
+                     \scriptsize
+                     \item \textbf{Abbreviations}: PC: Place Cells; HDC: Head Direction Cells; GC: Grid Cells; M-HDC: Multilayered HDC; Exp.: Experience map; Comp.: Complementary filtering; Trans.: Transformer-inspired temporal modeling; Vis.: Visual only; Dual+HART: Dual-stream (ventral/dorsal) visual processing with HART-inspired spatial attention.
+                     \item \textbf{Note}: Our feature enhancement uses global statistical modulation ($\mathcal{O}(N)$ complexity) to approximate self-attention effects, rather than full Query-Key-Value operations ($\mathcal{O}(N^2)$), enabling real-time performance without training.
+              \end{tablenotes}
+       \end{threeparttable}
+\end{table*}

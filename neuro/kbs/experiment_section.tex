@@ -18,11 +18,11 @@ We conduct extensive experiments to evaluate NeuroLocMap across diverse scenario
 
 \textbf{Evaluation Datasets.} We evaluate on six diverse scenarios across three benchmark datasets (Table~\ref{tab:datasets}): (1) CARLA Simulation (Town01/02/10): Simulated urban driving scenarios~\cite{dosovitskiy2017carla}, providing ground truth poses and synchronized IMU-camera data. Town01 (1.9~km) and Town02 (2.2~km) feature loop-rich trajectories with repetitive building structures, while Town10 (1.7~km) presents more open layouts with limited loop opportunities. (2) KITTI Odometry Sequence 07~\cite{geiger2012kitti}: Real-world highway driving data (695~m) with high-quality visual features and limited loop closures. This sequence challenges systems on short trajectories where drift accumulation is minimal. (3) EuRoC MAV Dataset (MH\_01/03)~\cite{burri2016euroc}: Indoor micro aerial vehicle flights in machine hall environments. MH\_01 (81~m, easy) features slow motion and good lighting, while MH\_03 (127~m, medium) involves faster dynamics and challenging viewpoint changes.
 
-\begin{table}[t]
+\begin{table*}[!t]
     \centering
-    \setlength{\tabcolsep}{4pt}
-    \small
-    \caption{Dataset characteristics and evaluation scenarios}
+    \setlength{\tabcolsep}{2.8pt} % 适度缩小列间距，更紧凑
+    \footnotesize
+    \caption{Dataset Characteristics and Evaluation Scenarios}
     \label{tab:datasets}
     \begin{tabular}{@{}llccl@{}}
         \toprule
@@ -36,7 +36,7 @@ We conduct extensive experiments to evaluate NeuroLocMap across diverse scenario
         MH\_03   & Indoor med  & 127~m  & 1876   & Complex indoor, dynamic motion     \\
         \bottomrule
     \end{tabular}
-\end{table}
+\end{table*}
 
 \textbf{Evaluation Metrics.} We employ standard SLAM evaluation metrics: (1) Absolute Trajectory Error (ATE) - Root Mean Square Error (RMSE) between estimated and ground truth trajectories after alignment~\cite{sturm2012benchmark}, (2) Drift Rate - terminal error normalized by trajectory length, measuring long-term accumulation, and (3) Relative Pose Error (RPE) - frame-to-frame consistency, evaluating local accuracy.
 
@@ -46,12 +46,11 @@ We conduct extensive experiments to evaluate NeuroLocMap across diverse scenario
 
 \textbf{Quantitative Performance.} Table~\ref{tab:results} presents comprehensive quantitative comparison across all datasets. NeuroLocMap achieves significant improvements in 4 out of 6 scenarios, with particularly strong per\-for\-mance on long-trajectory, loop-rich environments.
 
-\begin{table*}[t]
+\begin{table*}[!t]
     \centering
-    \small
     \setlength{\tabcolsep}{3pt}
-    \scriptsize
-    \caption{Quantitative per\-for\-mance comparison across diverse scenarios. Best results in \textbf{bold}. Improvement calculated relative to EKF baseline.}
+    \footnotesize
+    \caption{Quantitative Performance Comparison Across Diverse Scenarios}
     \label{tab:results}
     \begin{threeparttable}
         \begin{tabular}{@{}llcccccc@{}}
@@ -71,9 +70,9 @@ We conduct extensive experiments to evaluate NeuroLocMap across diverse scenario
             \bottomrule
         \end{tabular}
         \begin{tablenotes}
-            \footnotesize
-            \item \textbf{Success Rate:} 5/6 scenarios (83\%) with average +38.1\% improvement over EKF.
-            \item MH\_01 shows marginal underperformance (\,-2.9\%\,) due to short trajectory with controlled conditions. Town10 un\-der\-per\-forms VO (\,-12.9\%\,) due to open layout with limited loop op\-por\-tu\-ni\-ties.
+            \scriptsize
+            \item \textbf{Success Rate}: 5/6 scenarios (83\%) with average +38.1\% improvement over EKF.
+            \item MH\_01 shows marginal underperformance (\,-2.9\%\,) due to short trajectory with controlled conditions. Town10 underperforms VO (\,-12.9\%\,) due to open layout with limited loop opportunities.
         \end{tablenotes}
     \end{threeparttable}
 \end{table*}
@@ -94,9 +93,11 @@ Results on EuRoC datasets reveal \textbf{scenario-dependent per\-for\-mance}: MH
 
 \textbf{Hardware Requirements and Deployment.} The framework runs on commodity hardware without GPU acceleration: Intel Core i5-12450H CPU (8~cores, 2.0--4.4~GHz), 16~GB RAM, consuming $\sim$2~GB memory primarily for visual template storage (195~templates $\times$ 4096-dim descriptors $\times$ 4~bytes $\approx$ 3.2~MB, plus experience map overhead). Peak CPU utilization reaches 45--60\% during grid cell updates, leaving headroom for concurrent processes. This lightweight footprint enables deployment on embedded platforms (e.g., NVIDIA Jetson Nano, Raspberry Pi 4) where learning-based SLAM methods requiring GPU inference (DROID-SLAM: 8~GB VRAM, TartanVO: 6~GB VRAM) are infeasible. Power consumption is estimated at 15--20~W (CPU-only) vs 50--80~W for GPU-accelerated methods, critical for battery-powered mobile robots.
 
-\begin{table}[htbp]
+\begin{table*}[!t]
     \centering
-    \caption{Runtime per\-for\-mance analysis (averaged across Town01/02/10)}
+    \setlength{\tabcolsep}{3pt}
+    \footnotesize
+    \caption{Runtime Performance Analysis (Averaged Across Town01/02/10)}
     \label{tab:runtime}
     \begin{tabular}{lcc}
         \toprule
@@ -104,7 +105,7 @@ Results on EuRoC datasets reveal \textbf{scenario-dependent per\-for\-mance}: MH
         \midrule
         Visual processing (dual-stream) & 2.1           & 469            \\
         Visual template matching        & 2.3           & 429            \\
-        Ves\-tib\-u\-lar-visual fusion  & 1.9           & 527            \\
+        Vestibular-visual fusion        & 1.9           & 527            \\
         Grid cell update (3D CAN)       & 18.5          & 54             \\
         HDC update                      & 1.5           & 661            \\
         Experience map update           & 4.7           & 213            \\
@@ -112,7 +113,7 @@ Results on EuRoC datasets reveal \textbf{scenario-dependent per\-for\-mance}: MH
         \textbf{Total pipeline}         & \textbf{32.1} & \textbf{31.2}  \\
         \bottomrule
     \end{tabular}
-\end{table}
+\end{table*}
 
 \begin{figure*}[!t]
     \centering
@@ -125,29 +126,31 @@ Results on EuRoC datasets reveal \textbf{scenario-dependent per\-for\-mance}: MH
 
 To quantify the con\-tri\-bu\-tion of each component in our bio-inspired framework, we conduct systematic ablation experiments on the Town01 dataset (1.9 km urban trajectory). We compare the full framework against configurations with key components disabled, revealing the importance of each architectural choice.
 
-\begin{table}[t]
+\begin{table*}[!t]
     \centering
-    \caption{Ablation study on Town01 (1.9 km trajectory)}
+    \setlength{\tabcolsep}{3pt}
+    \footnotesize
+    \caption{Ablation Study on Town01 (1.9 km Trajectory)}
     \label{tab:ablation}
     \begin{threeparttable}
         \begin{tabular}{lcccc}
             \toprule
-            Configuration                  & RMSE (m)       & Drift (\%)    & $\Delta$   & Contrib.          \\
+            Configuration               & RMSE (m)       & Drift (\%)    & $\Delta$   & Contrib.          \\
             \midrule
-            \textbf{NeuroLocMap (Full)}    & \textbf{145.5} & \textbf{11.9} & \textbf{-} & \textbf{-}        \\
+            \textbf{NeuroLocMap (Full)} & \textbf{145.5} & \textbf{11.9} & \textbf{-} & \textbf{-}        \\
             \midrule
-            w/o IMU fusion                 & 315.3          & 38.2          & +169.8 m   & +116.8\%\tnote{a} \\
-            w/o Experience map             & 186.0          & 17.8          & +40.5 m    & +27.9\%           \\
-            w/o Trans\-form\-er-in\-spired & 183.0          & 18.1          & +37.5 m    & +25.8\%           \\
-            w/o Dual-stream vision         & 180.0          & 17.6          & +34.5 m    & +23.8\%           \\
+            w/o IMU fusion              & 315.3          & 38.2          & +169.8 m   & +116.8\%\tnote{a} \\
+            w/o Experience map          & 186.0          & 17.8          & +40.5 m    & +27.9\%           \\
+            w/o Transformer-inspired    & 183.0          & 18.1          & +37.5 m    & +25.8\%           \\
+            w/o Dual-stream vision      & 180.0          & 17.6          & +34.5 m    & +23.8\%           \\
             \bottomrule
         \end{tabular}
         \begin{tablenotes}
-            \footnotesize
+            \scriptsize
             \item[a] Improvement calculated as (Ablated - Full) / Full $\times$ 100\%. Values $>$100\% indicate the ablated configuration has more than 2$\times$ the error of the full framework.
         \end{tablenotes}
     \end{threeparttable}
-\end{table}
+\end{table*}
 
 \textbf{Component Contributions and Quantitative Analysis.} Figure~\ref{fig:ablation_and_vt}(a) visualizes the RMSE comparison across configurations. Our analysis reveals four key findings with quantified contributions:
 
@@ -205,7 +208,7 @@ The 25.8\% Trans\-form\-er-in\-spired con\-tri\-bu\-tion (Table~\ref{tab:ablatio
     \label{fig:performance_summary}
 \end{figure*}
 
-\FloatBarrier  % ��ֹͼ������
+
 
 \textbf{Visual Template Growth Patterns.} Figure~\ref{fig:ablation_and_vt}(b) illustrates visual template accumulation across all six datasets. Our enhanced bio-inspired framework achieves 112--195~templates across different scenarios, representing 22--39$\times$ improvement over traditional RatSLAM baseline ($\sim$5~templates). Town10 exhibits the highest template count (195~templates) for 1.7~km urban trajectory, Town02 shows 165~templates for 2.2~km loop, and Town01 achieves 125~templates for 1.9~km trajectory, while KITTI~07 shows moderate count (112~templates) for 695~m highway sequence. Indoor scenarios (MH01: 166~templates, MH03: 171~templates) achieve high template counts for short trajectories (81--127~m), reflecting high spatial sampling density. The growth patterns show initial rapid accumulation followed by saturation as spatial coverage matures, enabling finer-grained place discrimination for robust loop closure detection.
 
@@ -265,7 +268,7 @@ This visualization demonstrates the framework's core functionality: transforming
     \label{fig:kitti_input_output}
 \end{figure*}
 
-\FloatBarrier
+
 
 \textbf{Comparison with Learning-Based Methods.} Direct quantitative comparison with learning-based SLAM methods (DROID-SLAM~\cite{teed2021droid}, TartanVO~\cite{wang2021tartanvo}, DeepVO~\cite{wang2017deepvo}) is challenging due to fundamentally different evaluation protocols and training requirements. These methods require large-scale training datasets (e.g., TartanVO trained on 1M frames), GPU-intensive inference, and do\-main-spe\-cif\-ic fine-tuning for deployment. Nevertheless, we provide contextual comparison where data is available:
 
