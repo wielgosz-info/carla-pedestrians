@@ -3,130 +3,6 @@
 \label{sec:method}
 
 \subsection{Notation and Conventions}
-
-Table~\ref{tab:notation} summarizes the primary mathematical notations used in this paper.
-
-\begin{table*}[!t]
-    \centering
-    \caption{Primary notation and symbols used in this paper}\label{tab:notation}
-    \footnotesize
-    \setlength{\tabcolsep}{2.5pt}
-    \begin{threeparttable}
-    \begin{tabular}{p{0.21\textwidth}p{0.68\textwidth}}
-    \toprule
-    \textbf{Symbol}                                             & \textbf{Description}                                                 \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Pose and Motion}}                                                                                       \\
-    $x, y, z$                                                   & 3D position coordinates (meters)                                     \\
-    $\psi$                                                      & Yaw angle / heading direction (radians)                              \\
-    $\mathbf{p}_t = (x_t, y_t, z_t)^T$                          & Position vector at time $t$                                          \\
-    $\mathbf{v}_t$                                              & Translational velocity (m/s)                                         \\
-    $r_t$                                                       & Yaw rate (scalar, rad/s), $r_t = \mathbf{e}_z^\top \omega_t$         \\
-    $\omega_t$                                                  & Angular velocity vector (rad/s)                                      \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Sensory Inputs}}                                                                                        \\
-    $\mathbf{I}_t$                                              & RGB image at time $t$                                                \\
-    $\mathbf{a}_t$                                              & Linear acceleration from accelerometer (m/s$^2$)                     \\
-    $\boldsymbol{\omega}_t^g$                                   & Angular velocity from gyroscope (rad/s)                              \\
-    $\mathbf{f}_v$                                              & Visual feature descriptor                                            \\
-    $\mathbf{f}_i$                                              & Inertial measurement vector                                          \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Fusion and Filtering}}                                                                                  \\
-    $\mathbf{v}_t^{\text{vis}}$                                 & Visual velocity estimate (low-freq)                                  \\
-    $\mathbf{v}_t^{\text{imu}}$                                 & IMU velocity estimate (high-freq)                                    \\
-    $\mathbf{v}_t^f$                                            & Fused velocity (complementary filter)                                \\
-    $r_t^{\text{vis}}, r_t^{\text{imu}}, r_t^f$                 & Visual, IMU, and fused yaw rates                                     \\
-    $H_{\text{LP}}(s), H_{\text{HP}}(s)$                        & Low-pass and high-pass transfer functions                            \\
-    $\omega_c$                                                  & Com\-ple\-men\-tary filter cutoff frequency (rad/s)                  \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Spatial Cell Representations}}                                                                          \\
-    $\mathbf{A}_t^g \in \mathbb{R}^{N_x \times N_y \times N_z}$ & 3D grid cell activity (position encoding)                            \\
-    $\mathbf{A}_t^h \in \mathbb{R}^{N_\psi \times N_h}$         & Head direction cell activity (orientation encoding)                  \\
-    $\mathcal{S}_t = (\mathbf{A}_t^g, \mathbf{A}_t^h)$          & Conjunctive spatial cell state                                       \\
-    $\mathbf{u}_t = (\mathbf{v}_t^f, r_t^f)$                    & Fused motion cue for path integration                                \\
-    $N_x, N_y, N_z$                                             & Grid cell network dimensions                                         \\
-    $N_\psi, N_h$                                               & Azimuth bins and number of height layers                             \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Visual Templates and Experience Map}}                                                                   \\
-    $\mathcal{T} = \{T_1, T_2, \ldots, T_M\}$                   & Set of visual templates                                              \\
-    $T_i$                                                       & Visual template $i$ (scene descriptor)                               \\
-    $d(T_i, T_j)$                                               & Similarity distance between templates                                \\
-    $\mathcal{E} = \{e_1, e_2, \ldots, e_K\}$                   & Experience map (node set)                                            \\
-    $e_k = (T_k, \mathcal{S}_k, \mathbf{p}_k)$                  & Experience node: template, spatial state, pose                       \\
-    $\mathbf{G} = (\mathcal{E}, \mathcal{L})$                   & Experience graph (nodes + links)                                     \\
-    $\mathcal{L}$                                               & Set of links/edges in the experience graph                           \\
-    $d_{thresh}$                                                & Spatial distance threshold for creating a new experience             \\
-    $T_{min}$                                                   & Minimum temporal separation for loop closure                         \\
-    $\mathbf{T}_{i \to i+1}$                                    & Relative pose edge between consecutive experiences                   \\
-    $\mathbf{T}_{loop}$                                         & Loop closure residual (pose error)                                   \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Operators and Parameters}}                                                                              \\
-    $\mathbf{K}$                                                & Camera intrinsic matrix                                              \\
-    $\mathcal{G},\,\mathcal{C}_\lambda,\,\mathcal{K}_\sigma$    & Grayscale, CLAHE (clip limit $\lambda$), Gaussian kernel ($\sigma$)  \\
-    $\mathcal{D}$                                               & Downsampling operator (to $64\times64$)                              \\
-    $\boldsymbol{\phi}_t$                                       & Vectorized visual descriptor at time $t$                             \\
-    $d_{\cos}(\cdot,\cdot)$                                     & Cosine distance for template matching                                \\
-    $\tau_{vt},\,\tau_{loop}$                                   & Thresholds for template creation and loop closure                    \\
-    $\mathcal{L}_\tau,\,\mathcal{H}_\tau$                       & Low-/high-pass filters with time constant $\tau$                     \\
-    $\eta,\,\eta_r$                                             & Fusion weights for velocity and yaw-rate                             \\
-    $\kappa_t$                                                  & Visual velocity scale factor                                         \\
-    $\Xi_{m,i,j,k},\,\rho$                                      & VT--grid association strength, correction gain                       \\
-    $\mathcal{S}_{active}$                                      & Set of currently active visual templates                             \\
-    $\Delta t$                                                  & Sampling interval                                                    \\
-    $\alpha,\,\alpha_r$                                         & Forgetting factors for low-pass filters                              \\
-    $\beta$                                                     & Adaptation gain for visual velocity scale                            \\
-    $\gamma_x,\,\gamma_y,\,\gamma_z$                            & Metric-to-index gains for grid path integration                      \\
-    $\gamma_\psi,\,\gamma_h$                                    & Gains for HDC azimuth and height updates                             \\
-    $w_i$                                                       & Robust weights for least squares                                     \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Intermediate Variables (Vision/Flow)}}                                                                  \\
-    $H,\,W$                                                     & Image height and width                                               \\
-    $Y_t,\,U_t,\,V_t,\,\tilde V_t,\,Z_t$                        & Luminance, CLAHE output, blurred, normalized, and downsampled images \\
-    $\mathbf{p}_i^t$                                            & Pixel coordinates of feature $i$ at time $t$                         \\
-    $\tilde{\mathbf{q}}_i^t,\,\mathbf{q}_i^t$                   & Homogeneous and normalized image coordinates                         \\
-    $\pi(\cdot)$                                                & Perspective projection operator                                      \\
-    $\mathbf{f}_i^{\perp}$                                      & Rotation-compensated residual flow for feature $i$                   \\
-    $\bar{\mathbf{v}}^{vis}_t$                                  & Unscaled visual velocity (before $\kappa_t$)                         \\
-    $\mathbf{A}_i$                                              & Design matrix in the translational flow model                        \\
-    $\lambda_i,\,Z_g$                                           & Inverse depth per feature and approximate ground-plane depth         \\
-    $\mathcal{VT}$                                              & Set of visual templates used for matching                            \\
-    $VT_m$                                                      & Indicator/value for active visual template $m$                       \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Filter States and Network Terms}}                                                                       \\
-    $L_t,\,H_t$                                                 & Low-pass and high-pass filtered signals                              \\
-    $L^{vis}_t,\,H^{imu}_t$                                     & Filtered visual and IMU velocities                                   \\
-    $L^{r,vis}_t,\,H^{r}_t$                                     & Filtered visual and IMU yaw-rate components                          \\
-    $s,\,\omega$                                                & Laplace/frequency variables ($s=j\omega$)                            \\
-    $\mathbf{g}_t$                                              & Raw gyroscope measurement                                            \\
-    $\mathbf{e}_z$                                              & Vertical unit vector (yaw extraction)                                \\
-    $\mathcal{K}^g,\,\mathcal{K}^h$                             & Gaussian connectivity kernels (grid/HDC)                             \\
-    $\sigma_x,\,\sigma_y,\,\sigma_z$                            & Kernel widths in grid network                                        \\
-    $\bar A^{g}$                                                & Mean grid-cell activity (for inhibition)                             \\
-    $\mathbf{c}_{i,j,k}$                                        & Grid-cell coordinates for decoding pose                              \\
-    $\hat{\mathbf{p}}_t,\,\hat{\psi}_t$                         & Decoded metric position and heading                                  \\
-    $\theta_u$                                                  & Azimuth corresponding to HDC bin $u$                                 \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Mathematical Operators}}                                                                                \\
-    $[\,\cdot\,]_+$                                             & Rectifier (ReLU) operator                                            \\
-    $\langle \cdot \rangle_{N}$                                 & Modulo-$N$ wrapping operator                                         \\
-    $\mathrm{atan2}(\cdot,\cdot)$                               & Two-argument arctangent for heading decoding                         \\
-    $\mathrm{vec}(\cdot)$                                       & Vectorization operator                                               \\
-    $\lfloor \cdot \rfloor$                                     & Floor operator                                                       \\
-    \midrule
-    \multicolumn{2}{l}{\textit{Graph and Loop-closure Terms}}                                                                          \\
-    $\mathcal{V}$                                               & Set of nodes (graph context)                                         \\
-    $\mathcal{E}$                                               & Set of edges (graph context)                                         \\
-    $\mathcal{L}$                                               & Set of links/edges in the experience graph                           \\
-    $d_{thresh}$                                                & Spatial threshold for new experience creation                        \\
-    $T_{min}$                                                   & Minimum temporal separation for loop closure                         \\
-    $\mathbf{T}_{i \to i+1}$                                    & Relative pose edge between consecutive experiences                   \\
-    $\mathbf{T}_{loop}$                                         & Loop closure residual (pose error)                                   \\
-    $\mathcal{P}$                                               & Node sequence along an identified loop path                          \\
-    \bottomrule
-    \end{tabular}
-    \end{threeparttable}
-    \end{table*}
-
 \textbf{Notation Conventions.} Superscripts indicate sensory modality ($^{\text{vis}}$: visual, $^{\text{imu}}$: inertial, $^f$: fused) or cell type ($^g$: grid cells, $^h$: head direction cells). Subscript $t$ denotes time. Bold uppercase letters denote matrices or high-dimensional arrays; bold lowercase denotes vectors; calligraphic fonts denote sets.
 
 \subsection{Framework Architecture and Global State-Space Formulation}
@@ -202,6 +78,7 @@ where $\mathcal{D}$ is the downsampling operator (bilinear interpolation). Row-w
 \begin{equation}
     \boldsymbol{\phi}_t=\mathrm{vec}(Z_t)\in\mathbb{R}^{4096}
 \end{equation}
+where $\mathrm{vec}(\cdot)$ denotes vectorization operator mapping 2D feature map to one-dimensional descriptor, and $\boldsymbol{\phi}_t$ is holistic scene feature vector at timestamp $t$.
 This $64 \times 64 = 4096$-dimensional feature vector serves as a holistic scene descriptor analogous to the view-selective, position-invariant representations in IT cortex.
 
 \textbf{Visual Template Matching and Place Recognition.} Place recognition is achieved through template matching using cosine similarity, which is more robust than intensity-based metrics like sum-of-absolute-differences (SAD):
@@ -240,6 +117,8 @@ Unlike conventional data-driven LSTMs that require extensive training on do\-mai
     \text{Forget gate: } & f_t = 0.60 \quad \text{(retains 60\% historical context)} \\
     \text{Output gate: } & o_t = 0.92 \quad \text{(emphasizes current perception)}
 \end{align}
+where $i_t$, $f_t$, $o_t$ represent fixed input gate, forget gate, output gate of bio-inspired LSTM module, respectively.
+
 
 This design offers three critical advantages for SLAM applications:
 
@@ -254,7 +133,7 @@ The LSTM processes fused dorsal-ventral features sequentially, maintaining hidde
     \mathbf{C}_t & = f_t \odot \mathbf{C}_{t-1} + i_t \odot \tanh(\mathbf{F}^{\text{fused}}_t) \\
     \mathbf{H}_t & = o_t \odot \tanh(\mathbf{C}_t)
 \end{align}
-where $\mathbf{F}^{\text{fused}}_t = 0.6 \cdot \mathbf{F}^{\text{ventral}}_t + 0.4 \cdot \mathbf{F}^{\text{dorsal}}_t$ combines both streams. This temporal filtering removes high-frequency noise (e.g., motion blur, transient occlusions) and maintains frame-to-frame coherence, critical for robust visual template matching and loop closure detection.
+where $\odot$ denotes element-wise Hadamard product, $\mathbf{C}_t$ is LSTM cell state, $\mathbf{H}_t$ is temporal hidden state, and $\mathbf{F}^{\text{fused}}_t$ integrates ventral and dorsal visual features.
 
 \textbf{Comparison with Learning-Based Approaches.} Section~\ref{sec:experiments} demonstrates that our fixed-gate LSTM achieves comparable or superior per\-for\-mance to NeuroSLAM's learned LSTM (55\% improvement in RMSE) while offering zero-shot deployment. This validates that principled bio-inspired design can match or exceed data-driven learning when the underlying task structure aligns with biological mechanisms---in this case, spatial navigation where biological systems have evolved highly optimized solutions over millions of years.
 
@@ -271,27 +150,27 @@ where $\pi$ is perspective projection. Compute image plane flow:
 
 \textbf{Rotation Estimation.} For small inter-frame rotation, the yaw-induced flow at normalized point $\mathbf{q}=(x,y)$ is $\Delta t\,r\,[-y,\,x]^\top$. We estimate the visual yaw rate by weighted least squares:
 \begin{equation}
-    r^{vis}_t=\frac{\sum_{i=1}^N w_i(x_i f_{i,y}-y_i f_{i,x})}{\Delta t\,\sum_{i=1}^N w_i(x_i^2+y_i^2)}
+    r^\mathrm{vis}_t=\frac{\sum_{i=1}^N w_i(x_i f_{i,y}-y_i f_{i,x})}{\Delta t\,\sum_{i=1}^N w_i(x_i^2+y_i^2)}
 \end{equation}
-where $w_i$ are robust weights (e.g., Huber function) to handle outliers.
+where $w_i$ stands for Huber robust weight to suppress outlier feature points, $N$ is total tracked feature count, and $r_t^\mathrm{vis}$ denotes visual estimated yaw rate.
 
 \textbf{Translation Estimation.} Remove rotation component to obtain trans\-la\-tion-dom\-i\-nant residual flow:
 \begin{equation}
-    \mathbf{f}_i^{\perp}=\mathbf{f}_i-\Delta t\,r^{vis}_t\begin{bmatrix}-y_i\\ x_i\end{bmatrix}
+    \mathbf{f}_i^{\perp}=\mathbf{f}_i-\Delta t\,r^\mathrm{vis}_t\begin{bmatrix}-y_i\\ x_i\end{bmatrix}
 \end{equation}
 Assuming a dominant ground plane with inverse depth $\lambda_i\approx 1/Z_g$ for inliers, the translational flow model is:
 \begin{equation}
-    \mathbf{f}_i^{\perp}\approx \Delta t\,\lambda_i\,\underbrace{\begin{bmatrix}-1 & 0 & x_i\\ 0 & -1 & y_i\end{bmatrix}}_{\mathbf{A}_i}\,\mathbf{v}^{vis}_t,\quad \mathbf{v}^{vis}_t=(v_x^{vis}, v_y^{vis}, v_z^{vis})^\top
+    \mathbf{f}_i^{\perp}\approx \Delta t\,\lambda_i\,\underbrace{\begin{bmatrix}-1 & 0 & x_i\\ 0 & -1 & y_i\end{bmatrix}}_{\mathbf{A}_i}\,\mathbf{v}^\mathrm{vis}_t,\quad \mathbf{v}^\mathrm{vis}_t=(v_x^\mathrm{vis}, v_y^\mathrm{vis}, v_z^\mathrm{vis})^\top
 \end{equation}
 The weighted least-squares solution with robust weights $w_i$ is:
 \begin{equation}
-    \bar{\mathbf{v}}^{vis}_t=\Big(\sum_i w_i\,(\Delta t\,\lambda_i)^2\,\mathbf{A}_i^\top\mathbf{A}_i\Big)^{-1}\,\sum_i w_i\,(\Delta t\,\lambda_i)\,\mathbf{A}_i^\top\mathbf{f}_i^{\perp}
+    \bar{\mathbf{v}}^\mathrm{vis}_t=\Big(\sum_i w_i\,(\Delta t\,\lambda_i)^2\,\mathbf{A}_i^\top\mathbf{A}_i\Big)^{-1}\,\sum_i w_i\,(\Delta t\,\lambda_i)\,\mathbf{A}_i^\top\mathbf{f}_i^{\perp}
 \end{equation}
 The final visual odometry velocity incorporates a scale factor $\kappa_t$:
 \begin{equation}
-    \mathbf{v}^{vis}_t=\kappa_t\,\bar{\mathbf{v}}^{vis}_t
+    \mathbf{v}^\mathrm{vis}_t=\kappa_t\,\bar{\mathbf{v}}^\mathrm{vis}_t
 \end{equation}
-where $\kappa_t$ can be set from known ground plane geometry or adapted online to maintain consistency with IMU measurements. The fused cues $(\mathbf{v}^{f}_t, r^{f}_t)$ from complementary filtering absorb residual scale uncertainties and temporal latencies.
+where $\lambda_i$ is inverse depth of feature point $i$, matrix $\mathbf{A}_i$ is geometric projection matrix, $\bar{\mathbf{v}}_t^\mathrm{vis}$ is raw translational velocity solved from optical flow, and $\kappa_t$ is online scale correction factor for visual odometry.
 
 \textbf{Ves\-tib\-u\-lar Front-End.} The ves\-tib\-u\-lar front-end processes inertial measurements to extract self-motion cues analogous to the mammalian ves\-tib\-u\-lar system. The ves\-tib\-u\-lar apparatus comprises semicircular canals (angular velocity) and otolith organs (linear acceleration).
 
@@ -299,13 +178,15 @@ where $\kappa_t$ can be set from known ground plane geometry or adapted online t
 \begin{equation}
     r_t \approx \mathbf{e}_z^\top\,\boldsymbol{\omega}_t^g,\quad \mathbf{e}_z=(0,0,1)^\top.
 \end{equation}
+where $\boldsymbol{\omega}_t^g$ is raw gyroscope angular velocity vector measured by IMU, and $\mathbf{e}_z$ is unit vertical basis vector.
 This corresponds to the horizontal semicircular canal cue, adequate for our complementary fusion with vision.
 
 \textbf{Linear Acceleration Usage (Simplified).} We adopt a lightweight approximation consistent with the codebase: using the accelerometer magnitude and the $z$-axis reading with a constant gravity subtraction $g\!=\!9.81$ to derive indicative translational and vertical velocity components over the frame interval $\Delta t$:
 \begin{align}
-    v^{imu}_{trans}(t) & \approx \max\big(0, (\lVert\mathbf{a}_t\rVert - g)\,\Delta t\,k_t\big), \\
-    v^{imu}_{z}(t)     & \approx (a_{t,z} - g)\,\Delta t\,k_z,
+    v^\mathrm{imu}_{trans}(t) & \approx \max\big(0, (\lVert\mathbf{a}_t\rVert - g)\,\Delta t\,k_t\big), \\
+    v^\mathrm{imu}_{z}(t)     & \approx (a_{t,z} - g)\,\Delta t\,k_z,
 \end{align}
+where $g=9.81\,\mathrm{m/s^2}$ is gravitational acceleration, $k_t, k_z$ are constant scaling gains, and $\Delta t$ denotes frame sampling interval.
 with small gains $k_t, k_z$ matching our implementation constants. This avoids explicit bias/gravity-vector estimation while providing high-frequency motion cues that are subsequently combined with visual odometry via complementary fusion.
 
 \textbf{Bias Estimation.} The baseline implementation does not perform online bias or gravity-vector estimation. More advanced bias/gravity compensation can be integrated as future work, but is not required for the complementary-fusion results reported here.
@@ -321,11 +202,10 @@ with small gains $k_t, k_z$ matching our implementation constants. This avoids e
 
 \textbf{Filter Design.} Let $\mathcal{L}_\tau$ denote a low-pass filter with time constant $\tau$, and $\mathcal{H}_\tau$ denote the complementary high-pass filter satisfying $\mathcal{L}_\tau + \mathcal{H}_\tau = \mathrm{Id}$ (identity). The fused velocity and yaw rate are:
 \begin{align}
-    \mathbf{v}^{f}_t & = (1-\eta)\,\mathcal{L}_\tau(\mathbf{v}^{vis})_t + \eta\,\mathcal{H}_\tau(\mathbf{v}^{imu})_t,\label{eq:comp_vel} \\
-    r^{f}_t          & = (1-\eta_r)\,\mathcal{L}_{\tau_r}(r^{vis})_t + \eta_r\,\mathcal{H}_{\tau_r}(r^{imu})_t\label{eq:comp_yaw}
+    \text{Low-pass: }  & \;L_t = \alpha L_{t-1} + (1-\alpha) x_t,\quad L_0=0 \\
+    \text{High-pass: } & \;H_t = x_t - L_t
 \end{align}
-where $\eta, \eta_r \in [0,1]$ control the relative weighting. Setting $\eta=\eta_r=0.5$ gives equal weighting to low-frequency visual and high-frequency inertial components. The time constants $\tau$ and $\tau_r$ determine the cutoff frequency; typical values are $\tau = \tau_r = 0.1$~s.
-
+where $\alpha$ is IIR filter forgetting factor, $L_t$ stores low-frequency smoothed signal, and $H_t$ stores residual high-frequency signal component.
 \textbf{Biological Analogy.} This fusion strategy mirrors multisensory integration in the ves\-tib\-u\-lar nuclei and posterior parietal cortex (area 7a), where visual and ves\-tib\-u\-lar signals are combined to estimate self-motion. Neurons in these regions exhibit weighted combinations of visual and ves\-tib\-u\-lar tuning, with dynamic weighting depending on signal reliability---analogous to our fixed weighting parameters $\eta$ and $\eta_r$.
 
 \textbf{Discrete-Time Implementation.} With sampling interval $\Delta t$, we implement first-order IIR (infinite impulse response) filters. Choose forgetting factors $\alpha=\exp(-\Delta t/\tau)$ and $\alpha_r=\exp(-\Delta t/\tau_r)$. For any input sequence $x_t$, define:
@@ -335,10 +215,10 @@ where $\eta, \eta_r \in [0,1]$ control the relative weighting. Setting $\eta=\et
 \end{align}
 Then the fused cues are computed as:
 \begin{align}
-    \mathbf{v}^{f}_t & = (1-\eta)\,L^{vis}_t + \eta\,H^{imu}_t     \\
-    r^{f}_t          & = (1-\eta_r)\,L^{r,vis}_t + \eta_r\,H^{r}_t
+    \mathbf{v}^\mathrm{f}_t & = (1-\eta)\,L^\mathrm{vis}_t + \eta\,H^\mathrm{imu}_t \\
+    r^\mathrm{f}_t          & = (1-\eta_r)\,L^{r,vis}_t + \eta_r\,H^{r}_t
 \end{align}
-where $L^{vis}_t$ and $H^{imu}_t$ denote the low-pass filtered visual velocity and high-pass filtered IMU velocity, respectively, and similarly for the yaw rates.
+where $L^\mathrm{vis}_t$ and $H^\mathrm{imu}_t$ denote the low-pass filtered visual velocity and high-pass filtered IMU velocity, respectively, and similarly for the yaw rates.
 
 \textbf{Frequency-Domain Transfer Functions.} In the Laplace domain with $s = j\omega$ (frequency variable), the first-order low-pass and high-pass filters have transfer functions:
 \begin{align}
@@ -353,14 +233,16 @@ With $\tau = 0.1$s, the cutoff frequency is $\omega_c = 10$ rad/s ($\approx 1.6$
 
 \textbf{Adaptive Weighting.} While our baseline implementation uses fixed fusion weights $\eta$ and $\eta_r$, the framework naturally extends to adaptive weighting based on signal reliability. For instance, during aggressive maneuvers or rapid lighting changes, visual odometry may become unreliable, warranting increased reliance on IMU ($\eta \to 1$). Conversely, during slow motion where IMU integration accumulates bias, visual odometry should dominate ($\eta \to 0$). Adaptive schemes can be implemented by:
 \begin{equation}
-    \eta_t = f(\sigma^{vis}_t, \sigma^{imu}_t),\quad \text{e.g.} \quad \eta_t = \frac{\sigma^{vis}_t}{\sigma^{vis}_t + \sigma^{imu}_t}
+    \eta_t = f(\sigma^\mathrm{vis}_t, \sigma^\mathrm{imu}_t),\quad \text{e.g.} \quad \eta_t = \frac{\sigma^\mathrm{vis}_t}{\sigma^\mathrm{vis}_t + \sigma^\mathrm{imu}_t}
 \end{equation}
-where $\sigma^{vis}_t$ and $\sigma^{imu}_t$ are online estimates of visual and inertial uncertainty (e.g., from flow residuals and IMU noise models).
+where $\sigma_t^\mathrm{vis}$ and $\sigma_t^\mathrm{imu}$ are real-time uncertainty estimations of visual and inertial measurements, and $\eta_t$ is time-varying fusion weight.
 
 Additionally, the visual odometry scale factor $\kappa_t$ in Eq.~(202) can be adapted to maintain consistency between visual and inertial velocity magnitudes:
 \begin{equation}
-    \kappa_{t+1} = \kappa_t \cdot \left(1 + \beta \frac{\lVert\mathbf{v}^{imu}_t\rVert - \lVert\kappa_t \bar{\mathbf{v}}^{vis}_t\rVert}{\lVert\kappa_t \bar{\mathbf{v}}^{vis}_t\rVert}\right)
+    \kappa_{t+1} = \kappa_t \cdot \left(1 + \beta \frac{\lVert\mathbf{v}^\mathrm{imu}_t\rVert - \lVert\kappa_t \bar{\mathbf{v}}^\mathrm{vis}_t\rVert}{\lVert\kappa_t \bar{\mathbf{v}}^\mathrm{vis}_t\rVert}\right)
 \end{equation}
+where $\beta$ is small constant gain for online visual odometry scale correction.
+
 with small adaptation gain $\beta \ll 1$ (e.g., $\beta=0.01$). This online scale adaptation compensates for systematic errors in the assumed ground plane depth or camera calibration inaccuracies.
 
 \subsection{Neural Spatial Representation}
@@ -369,7 +251,7 @@ The spatial representation module encodes the robot's 4-DoF pose through bio-ins
 
 \textbf{3D Grid Cell Network.} The 3D grid cell network mimics the 3D spatial neural representation in the mammalian brain, exhibiting regular 3D lattice patterns (face-centered cubic, FCC) that encode position and provide a universal metric for path integration. Inspired by the discovery of 3D grid cells in bats~\cite{finkelstein2016three} and theoretical models of hexagonal grid structures~\cite{hafting2005microstructure}, our implementation extends 2D continuous attractor networks to full 3D space while preserving key biological properties: multi-scale representation, metric path integration, and resilience to noise.
 
-\textbf{Network Architecture.} The 3D grid cell network is a 3D multi-scale continuous attractor network (MD-CAN) with dimensions $N_x \times N_y \times N_z$ (typically $N_x = N_y = N_z = 61$). The network activity $\mathbf{A}^{g}_t \in \mathbb{R}^{N_x \times N_y \times N_z}$ represents a distributed population code for the robot's 3D position $(x_t, y_t, z_t)$, where each cell $(i,j,k)$ is tuned to a preferred spatial location within the environment. The activity forms a localized ``bump'' (or activity packet) centered at the current position, analogous to the activity bump observed in rodent entorhinal cortex recordings.
+\textbf{Network Architecture.} The 3D grid cell network is a 3D multi-scale continuous attractor network (MD-CAN) with dimensions $N_x \times N_y \times N_z$ (typically $N_x = N_y = N_z = 61$). The network activity $\mathbf{A}^\mathrm{g}_t \in \mathbb{R}^{N_x \times N_y \times N_z}$ represents a distributed population code for the robot's 3D position $(x_t, y_t, z_t)$, where each cell $(i,j,k)$ is tuned to a preferred spatial location within the environment. The activity forms a localized ``bump'' (or activity packet) centered at the current position, analogous to the activity bump observed in rodent entorhinal cortex recordings.
 
 The network's topology implements periodic boundary conditions with toroidal wrapping, enabling unbounded spatial representation. Cell-to-cell connectivity follows a face-centered cubic (FCC) lattice---the densest sphere packing in 3D---which provides optimal spatial coverage with minimal neurons. In the FCC structure, each cell has 12 nearest neighbors (compared to 6 in 2D hexagonal grids), yielding efficient 3D path integration with isotropic directional sensitivity.
 
@@ -386,71 +268,71 @@ Figure~\ref{fig:3D_grid_cell_fcc} schematically illustrates: (a) the 3D activity
 
 \textbf{(1) Local excitation.} Cells excite their neighbors according to a Gaussian connectivity kernel. With a separable kernel
 \begin{equation}
-    \mathcal{K}^{g}_{a,b,c}=\mathcal{N}(a;0,\sigma_x)\mathcal{N}(b;0,\sigma_y)\mathcal{N}(c;0,\sigma_z)
+    \mathcal{K}^\mathrm{g}_{a,b,c}=\mathcal{N}(a;0,\sigma_x)\mathcal{N}(b;0,\sigma_y)\mathcal{N}(c;0,\sigma_z)
 \end{equation}
+where $\mathcal{N}(\cdot;\mu,\sigma)$ denotes one-dimensional Gaussian distribution, and $\sigma_x,\sigma_y,\sigma_z$ are spatial kernel widths along three axes.
 the excitatory update is:
 \begin{equation}
-    \Delta A^{g}_{i,j,k}=\sum_{p,q,r} A^{g}_{p,q,r}\,\mathcal{K}^{g}_{\langle i-p\rangle_{N_x},\langle j-q\rangle_{N_y},\langle k-r\rangle_{N_z}}
+    \Delta A^\mathrm{g}_{i,j,k}=\sum_{p,q,r} A^\mathrm{g}_{p,q,r}\,\mathcal{K}^\mathrm{g}_{\langle i-p\rangle_{N_x},\langle j-q\rangle_{N_y},\langle k-r\rangle_{N_z}}
 \end{equation}
 where $\langle \cdot \rangle_N$ denotes modulo-$N$ wrapping for periodic boundary conditions. Typical parameters are $\sigma_x = \sigma_y = \sigma_z = 5$ cells.
 
 \textbf{(2) Global inhibition and normalization.} Uniform global inhibition subtracts the mean activity, while rectification and normalization maintain a single stable bump:
 \begin{equation}
-    A^{g}_{i,j,k}\leftarrow \big[A^{g}_{i,j,k}+\Delta A^{g}_{i,j,k}-\lambda\,\bar A^{g}\big]_+,\quad \bar A^{g}=\frac{1}{N_xN_yN_z}\sum_{p,q,r}A^{g}_{p,q,r}
+    A^\mathrm{g}_{i,j,k}\leftarrow \big[A^\mathrm{g}_{i,j,k}+\Delta A^\mathrm{g}_{i,j,k}-\lambda\,\bar A^\mathrm{g}\big]_+,\quad \bar A^\mathrm{g}=\frac{1}{N_xN_yN_z}\sum_{p,q,r}A^\mathrm{g}_{p,q,r}
 \end{equation}
 where $[\cdot]_+ = \max(0, \cdot)$ is rectification and $\lambda$ controls inhibition strength (typically $\lambda=1.0$). After inhibition, the activity is $L_1$-normalized:
 \begin{equation}
-    A^{g}\leftarrow \frac{A^{g}}{\lVert A^{g}\rVert_1}=\frac{A^{g}}{\sum_{i,j,k}|A^{g}_{i,j,k}|}
+    A^\mathrm{g}\leftarrow \frac{A^\mathrm{g}}{\lVert A^\mathrm{g}\rVert_1}=\frac{A^\mathrm{g}}{\sum_{i,j,k}|A^\mathrm{g}_{i,j,k}|}
 \end{equation}
 This normalization ensures the activity pattern has unit total mass, making the readout (center of mass) insensitive to overall activity magnitude.
 
-\textbf{(3) Path integration.} The activity bump shifts according to fused velocity cues $\mathbf{v}^{f}_t = (v^f_x, v^f_y, v^f_z)$. Index shifts are computed as:
+\textbf{(3) Path integration.} The activity bump shifts according to fused velocity cues $\mathbf{v}^\mathrm{f}_t = (v^f_x, v^f_y, v^f_z)$. Index shifts are computed as:
 \begin{equation}
     (\Delta i,\Delta j,\Delta k)=\big(\lfloor \gamma_x v^f_x\Delta t\rfloor,\ \lfloor \gamma_y v^f_y\Delta t\rfloor,\ \lfloor \gamma_z v^f_z\Delta t\rfloor\big)
 \end{equation}
-where $\gamma_x, \gamma_y, \gamma_z$ are gain factors (cells per meter) that map metric velocities to network indices. The activity pattern is then cyclically shifted:
+where $\gamma_x,\gamma_y,\gamma_z$ are metric-to-index gain factors converting physical velocity to network grid shifts.
 \begin{equation}
-    A^{g}_{i,j,k}\leftarrow A^{g}_{\langle i-\Delta i\rangle_{N_x},\langle j-\Delta j\rangle_{N_y},\langle k-\Delta k\rangle_{N_z}}
+    A^\mathrm{g}_{i,j,k}\leftarrow A^\mathrm{g}_{\langle i-\Delta i\rangle_{N_x},\langle j-\Delta j\rangle_{N_y},\langle k-\Delta k\rangle_{N_z}}
 \end{equation}
 This discrete shifting operation efficiently implements path integration on the toroidal network topology.
 
 \textbf{Visual Anchoring and Drift Correction.} Pure path integration accumulates drift over time. To prevent unbounded error, the grid cell activity is anchored to visual landmarks through learned associations. Let $\Xi_{m,i,j,k}$ store the association strength between visual template $m$ and grid cell $(i,j,k)$. For each active visual template $m \in \mathcal{S}_{active}$, update associations and inject corrective activity:
 \begin{align}
-     & \text{Hebbian learning: } \Xi_{m,i,j,k}^{t+1}=\max\big(\eta\,VT_m\,A^{g}_{i,j,k},\ \Xi_{m,i,j,k}^{t}\big)                                             \\
-     & \text{Corrective injection: } \Delta A^{g}_{i,j,k} \mathrel{+}= \frac{\rho}{|\mathcal{S}_{active}|}\sum_{m\in\mathcal{S}_{active}}VT_m\,\Xi_{m,i,j,k}
+     & \text{Hebbian learning: } \Xi_{m,i,j,k}^{t+1}=\max\big(\eta\,VT_m\,A^\mathrm{g}_{i,j,k},\ \Xi_{m,i,j,k}^{t}\big)                                             \\
+     & \text{Corrective injection: } \Delta A^\mathrm{g}_{i,j,k} \mathrel{+}= \frac{\rho}{|\mathcal{S}_{active}|}\sum_{m\in\mathcal{S}_{active}}VT_m\,\Xi_{m,i,j,k}
 \end{align}
-where $\eta$ is the learning rate and $\rho$ is the correction strength. The max operation ensures associations only strengthen (one-shot learning), while the corrective injection biases the activity bump toward positions associated with the currently visible scene.
+where $\eta$ is Hebbian learning rate, $\rho$ is spatial correction strength, and $\mathcal{S}_{active}$ is set of currently matched visual templates.
 
 \textbf{Multilayered Head Direction Cells.} The multilayered head direction cell (HDC) network represents the robot's orientation using a 2D MD-CAN with dimensions $N_\psi \times N_h$ (azimuth bins by height layers). Different height layers allow representation of heading at various vertical positions, supporting 3D operation where orientation may vary with altitude.
 
-\textbf{Network Architecture.} The multilayer head-direction network has activity $\mathbf{A}^{h} \in \mathbb{R}^{N_\psi \times N_h}$ (typically $N_\psi = 360$ azimuth bins and $N_h = 5$ height layers). Each cell $(u, h)$ is tuned to azimuth angle $\theta_u = 2\pi u / N_\psi$ and height layer $h$.
+\textbf{Network Architecture.} The multilayer head-direction network has activity $\mathbf{A}^\mathrm{h} \in \mathbb{R}^{N_\psi \times N_h}$ (typically $N_\psi = 360$ azimuth bins and $N_h = 5$ height layers). Each cell $(u, h)$ is tuned to azimuth angle $\theta_u = 2\pi u / N_\psi$ and height layer $h$.
 
-\textbf{Attractor Dynamics.} Similar to the grid cell network, the HDC network employs local excitation, global inhibition, and path integration. With a Gaussian kernel $\mathcal{K}^{h}$:
+\textbf{Attractor Dynamics.} Similar to the grid cell network, the HDC network employs local excitation, global inhibition, and path integration. With a Gaussian kernel $\mathcal{K}^\mathrm{h}$:
 \begin{equation}
-    \Delta A^{h}_{\psi,h}=\sum_{u,v}A^{h}_{u,v}\,\mathcal{K}^{h}_{\langle \psi-u\rangle_{N_\psi},\langle h-v\rangle_{N_h}}
+    \Delta A^\mathrm{h}_{\psi,h}=\sum_{u,v}A^\mathrm{h}_{u,v}\,\mathcal{K}^\mathrm{h}_{\langle \psi-u\rangle_{N_\psi},\langle h-v\rangle_{N_h}}
 \end{equation}
 followed by inhibition and normalization:
 \begin{equation}
-    A^{h}\leftarrow \frac{[A^{h}+\Delta A^{h}-\lambda_h\,\bar A^{h}]_+}{\lVert A^{h}\rVert_1}
+    A^\mathrm{h}\leftarrow \frac{[A^\mathrm{h}+\Delta A^\mathrm{h}-\lambda_h\,\bar A^\mathrm{h}]_+}{\lVert A^\mathrm{h}\rVert_1}
 \end{equation}
 Path integration shifts the activity bump according to yaw rate $r^f$ and vertical velocity $v^f_z$:
 \begin{equation}
     \Delta\psi=\lfloor \gamma_\psi r^f \Delta t\rfloor,\quad \Delta h=\lfloor \gamma_h v^f_z \Delta t\rfloor
 \end{equation}
-where $\gamma_\psi$ converts angular velocity (rad/s) to azimuth bins, and $\gamma_h$ converts vertical velocity (m/s) to height layers.
-
+where $\gamma_\psi$ converts angular velocity to azimuth bins, and $\gamma_h$ maps vertical velocity to height layer shifts.
 \textbf{Pose Readout.} The metric pose estimate is decoded from the spatial cell activities via center-of-mass computation (population vector decoding):
 \begin{align}
-    \hat{\mathbf{p}}_t & = ({\hat x}_t, {\hat y}_t, {\hat z}_t) = \frac{\sum_{i,j,k} \mathbf{c}_{i,j,k} A^{g}_{i,j,k,t}}{\sum_{i,j,k} A^{g}_{i,j,k,t}}, \quad \mathbf{c}_{i,j,k} = (x_i, y_j, z_k) \\
-    \hat{\psi}_t       & = \mathrm{atan2}\left(\sum_{u,h} A^{h}_{u,h,t} \sin\theta_u, \sum_{u,h} A^{h}_{u,h,t} \cos\theta_u\right), \quad \theta_u = 2\pi u / N_\psi
+    \hat{\mathbf{p}}_t & = ({\hat x}_t, {\hat y}_t, {\hat z}_t) = \frac{\sum_{i,j,k} \mathbf{c}_{i,j,k} A^\mathrm{g}_{i,j,k,t}}{\sum_{i,j,k} A^\mathrm{g}_{i,j,k,t}}, \quad \mathbf{c}_{i,j,k} = (x_i, y_j, z_k) \\
+    \hat{\psi}_t       & = \mathrm{\mathrm{atan2}}\left(\sum_{u,h} A^\mathrm{h}_{u,h,t} \sin\theta_u, \sum_{u,h} A^\mathrm{h}_{u,h,t} \cos\theta_u\right), \quad \theta_u = 2\pi u / N_\psi
 \end{align}
-This decoding naturally handles the circular topology of orientation (using $\mathrm{atan2}$ to avoid angle wrapping issues) and provides sub-bin resolution for position through the weighted average.
+This decoding naturally handles the circular topology of orientation (using $\mathrm{\mathrm{atan2}}$ to avoid angle wrapping issues) and provides sub-bin resolution for position through the weighted average.
 
 \subsection{Experience Map and Loop Closure}
 
 The multilayered experience map represents 3D spatial experiences as a graph structure, providing a hybrid topological-metric representation that combines the benefits of discrete place-based maps (topological robustness, loop closure) and continuous metric representations (accurate localization).
 
-\textbf{Experience Representation.} Each experience node $\mathcal{E}_i$ encodes a distinct spatial episode comprising the active visual template and descriptor $(VT_i,\,\boldsymbol{\phi}_i\in\mathbb{R}^{4096})$, the concurrent spatial-cell codes $\mathbf{P}^{gc}_i=\mathbf{A}^{g}_i\in\mathbb{R}^{N_x\times N_y\times N_z}$ and $\mathbf{P}^{hdc}_i=\mathbf{A}^{h}_i\in\mathbb{R}^{N_\psi\times N_h}$, the metric pose $(x_i, y_i, z_i, \psi_i)$ decoded from these activities, and the timestamp $t_i$ for temporal ordering.
+\textbf{Experience Representation.} Each experience node $\mathcal{E}_i$ encodes a distinct spatial episode comprising the active visual template and descriptor $(VT_i,\,\boldsymbol{\phi}_i\in\mathbb{R}^{4096})$, the concurrent spatial-cell codes $\mathbf{P}^{gc}_i=\mathbf{A}^\mathrm{g}_i\in\mathbb{R}^{N_x\times N_y\times N_z}$ and $\mathbf{P}^{hdc}_i=\mathbf{A}^\mathrm{h}_i\in\mathbb{R}^{N_\psi\times N_h}$, the metric pose $(x_i, y_i, z_i, \psi_i)$ decoded from these activities, and the timestamp $t_i$ for temporal ordering.
 This rich multimodal encoding enables robust loop closure detection through visual matching while maintaining metric information through the spatial cell codes.
 
 \textbf{Experience Creation and Linking.} As the robot navigates, new experiences are created when the current spatial representation differs sufficiently from all existing experiences. The creation criterion combines visual and spatial cell similarity:
@@ -491,8 +373,7 @@ This loop constraint typically violates graph consistency (due to accumulated dr
 \begin{equation}
     \mathbf{e}_{loop} = \sum_{k \in \mathcal{P}} \mathbf{T}_{k \to k+1} - \mathbf{T}_{loop}
 \end{equation}
-This residual $\mathbf{e}_{loop} = (e_x, e_y, e_z, e_\psi)$ quantifies the drift accumulated around the loop.
-
+where $\mathbf{e}_{loop}$ is accumulated pose drift residual around closed trajectory, and $\mathcal{P}$ denotes ordered experience sequence forming the loop.
 \textbf{Step 3: Distribute correction.} Distribute the correction proportionally across the loop experiences:
 \begin{equation}
     \mathbf{T}_{k \to k+1} \leftarrow \mathbf{T}_{k \to k+1} - \frac{\mathbf{e}_{loop}}{|\mathcal{P}|}
